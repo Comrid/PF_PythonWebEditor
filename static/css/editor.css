@@ -1,0 +1,242 @@
+/*
+ * CONTENTS
+ * ========
+ * Editor Specific Styles
+ * Monaco Editor Customization
+ * Editor Theme
+ * Editor Scrollbar
+ * Editor Minimap
+ * Editor Status Bar
+ * Editor Suggestions
+ * Editor Parameter Hints
+ * Editor Hover
+ * Editor Context Menu
+ * Editor Error Decorations
+ * Editor Line Numbers
+ * Editor Selection
+ * Editor Cursor
+ * Editor Find Widget
+ */
+
+/* Editor Specific Styles */
+.monaco-editor {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Monaco Editor Customization */
+.monaco-editor .overflow-guard {
+    border-radius: 8px;
+}
+
+.monaco-editor .monaco-editor-background {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.monaco-editor .margin {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.monaco-editor .monaco-editor-background,
+.monaco-editor .inputarea {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Editor Theme Customization */
+.monaco-editor .token.comment {
+    color: #6b7280;
+}
+
+.monaco-editor .token.string {
+    color: #10b981;
+}
+
+.monaco-editor .token.keyword {
+    color: #3b82f6;
+}
+
+.monaco-editor .token.function {
+    color: #f59e0b;
+}
+
+.monaco-editor .token.number {
+    color: #8b5cf6;
+}
+
+/* Editor Scrollbar */
+.monaco-editor .scrollbar .slider {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.monaco-editor .scrollbar .slider:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.monaco-editor .scrollbar .slider.active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Editor Minimap */
+.monaco-editor .minimap {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.monaco-editor .minimap .minimap-slider {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.monaco-editor .minimap .minimap-slider:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.monaco-editor .minimap .minimap-slider.active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Editor Status Bar */
+.monaco-editor .statusbar {
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.monaco-editor .statusbar .statusbar-item {
+    color: #a0aec0;
+}
+
+/* Editor Suggestions */
+.monaco-editor .suggest-widget {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+}
+
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row {
+    color: #fff;
+}
+
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row.selected {
+    background: rgba(74, 222, 128, 0.2);
+}
+
+/* Editor Parameter Hints */
+.monaco-editor .parameter-hints-widget {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+}
+
+/* Editor Hover */
+.monaco-editor .monaco-hover {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+}
+
+/* Editor Context Menu */
+.monaco-editor .context-view {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+}
+
+.monaco-editor .context-view .monaco-menu {
+    background: transparent;
+}
+
+.monaco-editor .context-view .monaco-menu .monaco-action-bar .action-item {
+    color: #fff;
+}
+
+.monaco-editor .context-view .monaco-menu .monaco-action-bar .action-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Editor Error and Warning Decorations */
+.monaco-editor .squiggly-error {
+    border-bottom: 2px solid #ef4444;
+}
+
+.monaco-editor .squiggly-warning {
+    border-bottom: 2px solid #f59e0b;
+}
+
+.monaco-editor .squiggly-info {
+    border-bottom: 2px solid #3b82f6;
+}
+
+.monaco-editor .squiggly-hint {
+    border-bottom: 2px solid #10b981;
+}
+
+/* Editor Line Numbers */
+.monaco-editor .margin .margin-view-overlays .cgmr {
+    color: #6b7280;
+}
+
+.monaco-editor .margin .margin-view-overlays .cgmr.active {
+    color: #fff;
+}
+
+/* Editor Selection */
+.monaco-editor .selected-text {
+    background: rgba(74, 222, 128, 0.2);
+}
+
+.monaco-editor .selection {
+    background: rgba(74, 222, 128, 0.3);
+}
+
+/* Editor Cursor */
+.monaco-editor .cursor {
+    background: #fff;
+    border-left: 2px solid #fff;
+}
+
+/* Editor Find Widget */
+.monaco-editor .find-widget {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+}
+
+.monaco-editor .find-widget input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #fff;
+    padding: 4px 8px;
+}
+
+.monaco-editor .find-widget input:focus {
+    outline: none;
+    border-color: #4ade80;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+}
+
+.monaco-editor .find-widget .button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #fff;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.monaco-editor .find-widget .button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

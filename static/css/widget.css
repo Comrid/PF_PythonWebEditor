@@ -1,0 +1,811 @@
+/*
+ * CONTENTS
+ * ========
+ * Widget Content Styles
+ * Simple Widget Styling
+ * Basic Widget Components
+ * Advanced Widget Styles
+ * Animation Effects
+ * Interactive Elements
+ */
+
+/* Widget Content Styles */
+.widget-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.widget-content:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.widget-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #4ade80, #22c55e, #16a34a);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+.widget-header h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.widget-header h4 i {
+    color: #4ade80;
+    font-size: 16px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Editable Widget Title */
+.widget-title {
+    cursor: text;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    outline: none;
+}
+
+.widget-title:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.widget-title:focus {
+    background: rgba(74, 222, 128, 0.2);
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.3);
+}
+
+.widget-title:empty::before {
+    content: 'Enter title...';
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.widget-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    backdrop-filter: blur(5px);
+}
+
+.btn-icon:hover {
+    background: rgba(74, 222, 128, 0.2);
+    transform: scale(1.05);
+}
+
+.widget-body {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Enhanced Gauge Widget */
+.gauge-widget {
+    text-align: center;
+    position: relative;
+}
+
+.gauge {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, #4ade80 0deg, #4ade80 var(--percentage), #374151 var(--percentage), #374151 360deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.5s ease;
+    animation: gaugeRotate 2s ease-out;
+}
+
+@keyframes gaugeRotate {
+    from { transform: rotate(-90deg); }
+    to { transform: rotate(0deg); }
+}
+
+.gauge::before {
+    content: '';
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1f2937, #111827);
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gauge-value {
+    position: relative;
+    z-index: 1;
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.gauge-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+.gauge-details {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 16px;
+    gap: 16px;
+}
+
+.detail-item {
+    text-align: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+    transition: all 0.2s ease;
+}
+
+.detail-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.detail-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    display: block;
+}
+
+/* Enhanced Memory Widget */
+.memory-widget {
+    width: 100%;
+}
+
+.memory-bar {
+    width: 100%;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.memory-used {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 8px;
+    transition: width 0.5s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.memory-used::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+.memory-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.stat-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Enhanced Network Widget */
+.network-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.network-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.network-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.network-item:hover::before {
+    left: 100%;
+}
+
+.network-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
+}
+
+.network-item i {
+    width: 24px;
+    color: #4ade80;
+    font-size: 16px;
+    animation: networkPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes networkPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.network-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    flex: 1;
+}
+
+.network-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Enhanced System Info Widget */
+.system-info-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.info-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    transition: width 0.3s ease;
+}
+
+.info-item:hover::after {
+    width: 100%;
+}
+
+.info-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.info-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.info-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Enhanced Quick Actions Widget */
+.quick-actions-widget {
+    display: flex;
+    gap: 16px;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    border: none;
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 80px;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.action-btn:hover::before {
+    left: 100%;
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.2), rgba(34, 197, 94, 0.1));
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(74, 222, 128, 0.3);
+}
+
+.action-btn:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.action-btn i {
+    font-size: 20px;
+    color: #4ade80;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover i {
+    transform: scale(1.2);
+    color: #22c55e;
+}
+
+.action-btn span {
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover span {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* New Advanced Widgets */
+
+/* Code Statistics Widget */
+.code-stats-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.stat-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
+}
+
+.stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-title {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 2px;
+}
+
+.stat-number {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Weather Widget */
+.weather-widget {
+    text-align: center;
+    width: 100%;
+}
+
+.weather-icon {
+    font-size: 48px;
+    color: #4ade80;
+    margin-bottom: 16px;
+    animation: weatherFloat 3s ease-in-out infinite;
+}
+
+@keyframes weatherFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+}
+
+.weather-temp {
+    font-size: 32px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+.weather-desc {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 16px;
+}
+
+.weather-details {
+    display: flex;
+    justify-content: space-around;
+    gap: 16px;
+}
+
+.weather-detail {
+    text-align: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.weather-detail-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+}
+
+.weather-detail-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Clock Widget */
+.clock-widget {
+    text-align: center;
+    width: 100%;
+}
+
+.clock-time {
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.clock-date {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 16px;
+}
+
+.clock-timezone {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* Enhanced Progress Widget */
+.progress-widget {
+    width: 100%;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.progress-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.progress-percentage {
+    font-size: 12px;
+    color: #4ade80;
+    font-weight: 600;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: progressShimmer 2s ease-in-out infinite;
+}
+
+@keyframes progressShimmer {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Image Widget */
+.image-widget {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.image-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.image-container:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+.image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.image-placeholder i {
+    margin-bottom: 8px;
+    animation: imagePulse 2s ease-in-out infinite;
+}
+
+@keyframes imagePulse {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.1); opacity: 0.5; }
+}
+
+#display-image{
+    object-fit:contain;         /* 전체를 보이되, 빈 공간은 유지
+                                   ↳ 가득 채우고 잘라도 되면 cover */
+    border-radius:8px;
+    transition:all 0.3s ease;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);
+}
+
+#display-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.image-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.image-info .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.image-info .info-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.image-info .info-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.image-info .info-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    transition: color 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .quick-actions-widget {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .action-btn {
+        min-width: 70px;
+        padding: 12px 16px;
+    }
+    
+    .action-btn span {
+        font-size: 10px;
+    }
+    
+    .gauge {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .gauge::before {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .weather-icon {
+        font-size: 36px;
+    }
+    
+    .weather-temp {
+        font-size: 28px;
+    }
+    
+    .clock-time {
+        font-size: 28px;
+    }
+}

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Awesome Icons Gallery</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+            min-width: 300px;
+        }
+
+        .search-box::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .icons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .icon-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .icon-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-card i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .icon-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .icon-class {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .stats {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .stats span {
+            margin: 0 15px;
+            font-size: 1.1rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .icons-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 10px;
+            }
+
+            .icon-card {
+                padding: 15px;
+            }
+
+            .icon-card i {
+                font-size: 1.5rem;
+            }
+
+            .search-box {
+                min-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-icons"></i> Font Awesome Icons Gallery</h1>
+            <p>모든 Font Awesome 아이콘을 한눈에 확인하세요</p>
+        </div>
+
+        <div class="controls">
+            <input type="text" class="search-box" placeholder="아이콘 이름으로 검색..." id="searchInput">
+            <button class="filter-btn active" data-filter="all">전체</button>
+            <button class="filter-btn" data-filter="solid">Solid</button>
+            <button class="filter-btn" data-filter="regular">Regular</button>
+            <button class="filter-btn" data-filter="brands">Brands</button>
+        </div>
+
+        <div class="stats">
+            <span>총 아이콘: <span id="totalCount">0</span></span>
+            <span>표시 중: <span id="visibleCount">0</span></span>
+        </div>
+
+        <div class="icons-grid" id="iconsGrid">
+            <!-- 아이콘들이 JavaScript로 동적 생성됩니다 -->
+        </div>
+    </div>
+
+    <script>
+        // Font Awesome 아이콘 데이터
+        const iconData = {
+            solid: [
+                'address-book', 'address-card', 'adjust', 'align-center', 'align-justify', 'align-left', 'align-right',
+                'anchor', 'angle-double-down', 'angle-double-left', 'angle-double-right', 'angle-double-up',
+                'angle-down', 'angle-left', 'angle-right', 'angle-up', 'archive', 'arrow-alt-circle-down',
+                'arrow-alt-circle-left', 'arrow-alt-circle-right', 'arrow-alt-circle-up', 'arrow-circle-down',
+                'arrow-circle-left', 'arrow-circle-right', 'arrow-circle-up', 'arrow-down', 'arrow-left',
+                'arrow-right', 'arrow-up', 'arrows-alt', 'arrows-alt-h', 'arrows-alt-v', 'assistive-listening-systems',
+                'asterisk', 'at', 'audio-description', 'backward', 'ban', 'bars', 'battery-empty', 'battery-full',
+                'battery-half', 'battery-quarter', 'battery-three-quarters', 'bed', 'beer', 'bell', 'bell-slash',
+                'bicycle', 'binoculars', 'birthday-cake', 'blind', 'bold', 'bolt', 'bomb', 'book', 'bookmark',
+                'braille', 'briefcase', 'bug', 'building', 'bullhorn', 'bullseye', 'bus', 'calculator', 'calendar',
+                'calendar-alt', 'calendar-check', 'calendar-minus', 'calendar-plus', 'calendar-times', 'camera',
+                'camera-retro', 'car', 'caret-down', 'caret-left', 'caret-right', 'caret-up', 'cart-arrow-down',
+                'cart-plus', 'certificate', 'chart-area', 'chart-bar', 'chart-line', 'chart-pie', 'check',
+                'check-circle', 'check-square', 'chess', 'chess-bishop', 'chess-board', 'chess-king', 'chess-knight',
+                'chess-pawn', 'chess-queen', 'chess-rook', 'chevron-circle-down', 'chevron-circle-left',
+                'chevron-circle-right', 'chevron-circle-up', 'chevron-down', 'chevron-left', 'chevron-right',
+                'chevron-up', 'child', 'circle', 'circle-notch', 'clipboard', 'clock', 'clone', 'closed-captioning',
+                'cloud', 'cloud-download-alt', 'cloud-upload-alt', 'code', 'code-branch', 'coffee', 'cog', 'cogs',
+                'columns', 'comment', 'comment-alt', 'comment-dots', 'comment-slash', 'comments', 'compass',
+                'compress', 'copy', 'copyright', 'credit-card', 'crop', 'crosshairs', 'cube', 'cubes', 'cut',
+                'database', 'deaf', 'desktop', 'download', 'edit', 'ellipsis-h', 'ellipsis-v', 'envelope',
+                'envelope-open', 'envelope-square', 'eraser', 'exchange-alt', 'exclamation', 'exclamation-circle',
+                'exclamation-triangle', 'expand', 'external-link-alt', 'external-link-square-alt', 'eye',
+                'eye-dropper', 'eye-slash', 'fast-backward', 'fast-forward', 'fax', 'female', 'fighter-jet',
+                'file', 'file-alt', 'file-archive', 'file-audio', 'file-code', 'file-excel', 'file-image',
+                'file-pdf', 'file-powerpoint', 'file-video', 'file-word', 'film', 'filter', 'fire', 'fire-extinguisher',
+                'flag', 'flag-checkered', 'flask', 'folder', 'folder-open', 'font', 'football-ball', 'forward',
+                'frown', 'futbol', 'gamepad', 'gavel', 'gem', 'genderless', 'gift', 'glass-martini', 'globe',
+                'golf-ball', 'graduation-cap', 'h-square', 'hand-lizard', 'hand-paper', 'hand-peace', 'hand-point-down',
+                'hand-point-left', 'hand-point-right', 'hand-point-up', 'hand-pointer', 'hand-rock', 'hand-scissors',
+                'hand-spock', 'handshake', 'hashtag', 'hdd', 'heading', 'headphones', 'heart', 'heartbeat',
+                'history', 'home', 'hospital', 'hourglass', 'hourglass-end', 'hourglass-half', 'hourglass-start',
+                'i-cursor', 'id-badge', 'id-card', 'image', 'images', 'inbox', 'indent', 'industry', 'info',
+                'info-circle', 'italic', 'key', 'keyboard', 'language', 'laptop', 'leaf', 'lemon', 'level-down-alt',
+                'level-up-alt', 'life-ring', 'lightbulb', 'link', 'list', 'list-alt', 'list-ol', 'list-ul',
+                'location-arrow', 'lock', 'lock-open', 'long-arrow-alt-down', 'long-arrow-alt-left',
+                'long-arrow-alt-right', 'long-arrow-alt-up', 'low-vision', 'magic', 'magnet', 'male',
+                'map', 'map-marker', 'map-marker-alt', 'map-pin', 'map-signs', 'mars', 'mars-double',
+                'mars-stroke', 'mars-stroke-h', 'mars-stroke-v', 'medkit', 'meh', 'mercury', 'microchip',
+                'microphone', 'microphone-slash', 'minus', 'minus-circle', 'minus-square', 'mobile', 'mobile-alt',
+                'money-bill-alt', 'moon', 'motorcycle', 'mouse-pointer', 'music', 'neuter', 'newspaper',
+                'object-group', 'object-ungroup', 'outdent', 'paint-brush', 'paper-plane', 'paperclip',
+                'paragraph', 'paste', 'pause', 'pause-circle', 'paw', 'pen', 'pencil-alt', 'percent',
+                'phone', 'phone-square', 'phone-volume', 'plane', 'play', 'play-circle', 'plug', 'plus',
+                'plus-circle', 'plus-square', 'podcast', 'pound-sign', 'power-off', 'print', 'puzzle-piece',
+                'qrcode', 'question', 'question-circle', 'quote-left', 'quote-right', 'random', 'recycle',
+                'redo', 'redo-alt', 'registered', 'reply', 'reply-all', 'retweet', 'road', 'rocket', 'rss',
+                'rss-square', 'ruble-sign', 'rupee-sign', 'save', 'search', 'search-minus', 'search-plus',
+                'server', 'share', 'share-alt', 'share-alt-square', 'share-square', 'shekel-sign', 'shield-alt',
+                'ship', 'shipping-fast', 'shopping-bag', 'shopping-basket', 'shopping-cart', 'shower',
+                'sign', 'sign-in-alt', 'sign-language', 'sign-out-alt', 'signal', 'sitemap', 'sliders-h',
+                'smile', 'snowflake', 'sort', 'sort-alpha-down', 'sort-alpha-up', 'sort-amount-down',
+                'sort-amount-up', 'sort-down', 'sort-numeric-down', 'sort-numeric-up', 'sort-up', 'space-shuttle',
+                'spinner', 'square', 'square-full', 'star', 'star-half', 'step-backward', 'step-forward',
+                'stethoscope', 'sticky-note', 'stop', 'stop-circle', 'stopwatch', 'street-view', 'strikethrough',
+                'subscript', 'subway', 'suitcase', 'sun', 'superscript', 'sync', 'sync-alt', 'table-tennis',
+                'tablet', 'tablet-alt', 'tachometer-alt', 'tag', 'tags', 'tasks', 'taxi', 'terminal',
+                'text-height', 'text-width', 'th', 'th-large', 'th-list', 'thermometer-empty', 'thermometer-full',
+                'thermometer-half', 'thermometer-quarter', 'thermometer-three-quarters', 'thumbs-down',
+                'thumbs-up', 'thumbtack', 'ticket-alt', 'times', 'times-circle', 'tint', 'toggle-off',
+                'toggle-on', 'trademark', 'trash', 'trash-alt', 'tree', 'trophy', 'truck', 'tty', 'umbrella',
+                'underline', 'undo', 'undo-alt', 'universal-access', 'university', 'unlink', 'unlock',
+                'unlock-alt', 'upload', 'user', 'user-alt', 'user-alt-slash', 'user-astronaut', 'user-check',
+                'user-circle', 'user-clock', 'user-cog', 'user-edit', 'user-friends', 'user-graduate',
+                'user-injured', 'user-lock', 'user-md', 'user-minus', 'user-ninja', 'user-plus', 'user-secret',
+                'user-shield', 'user-slash', 'user-tag', 'user-tie', 'users', 'utensil-spoon', 'utensils',
+                'venus', 'venus-double', 'venus-mars', 'video', 'volleyball-ball', 'volume-down', 'volume-off',
+                'volume-up', 'warehouse', 'weight', 'wheelchair', 'wifi', 'window-close', 'window-maximize',
+                'window-minimize', 'window-restore', 'won-sign', 'wrench', 'yen-sign'
+            ],
+            regular: [
+                'address-book', 'address-card', 'angry', 'arrow-alt-circle-down', 'arrow-alt-circle-left',
+                'arrow-alt-circle-right', 'arrow-alt-circle-up', 'bell', 'bell-slash', 'bookmark', 'building',
+                'calendar', 'calendar-alt', 'calendar-check', 'calendar-minus', 'calendar-plus', 'calendar-times',
+                'caret-square-down', 'caret-square-left', 'caret-square-right', 'caret-square-up', 'chart-bar',
+                'check-circle', 'check-square', 'circle', 'clipboard', 'clock', 'clone', 'closed-captioning',
+                'comment', 'comment-alt', 'comment-dots', 'comments', 'compass', 'copy', 'copyright',
+                'credit-card', 'dizzy', 'dot-circle', 'edit', 'envelope', 'envelope-open', 'eye', 'eye-slash',
+                'file', 'file-alt', 'file-archive', 'file-audio', 'file-code', 'file-excel', 'file-image',
+                'file-pdf', 'file-powerpoint', 'file-video', 'file-word', 'flag', 'folder', 'folder-open',
+                'frown', 'futbol', 'gem', 'hand-lizard', 'hand-paper', 'hand-peace', 'hand-point-down',
+                'hand-point-left', 'hand-point-right', 'hand-point-up', 'hand-pointer', 'hand-rock',
+                'hand-scissors', 'hand-spock', 'handshake', 'heart', 'hospital', 'hourglass', 'id-badge',
+                'id-card', 'image', 'images', 'keyboard', 'kiss', 'kiss-beam', 'kiss-wink-heart', 'laugh',
+                'laugh-beam', 'laugh-squint', 'laugh-wink', 'lemon', 'life-ring', 'lightbulb', 'list-alt',
+                'map', 'meh', 'meh-blank', 'meh-rolling-eyes', 'minus-square', 'money-bill-alt', 'moon',
+                'paper-plane', 'pause-circle', 'play-circle', 'plus-square', 'question-circle', 'registered',
+                'sad-cry', 'sad-tear', 'save', 'share-square', 'smile', 'smile-beam', 'smile-wink',
+                'snowflake', 'square', 'star', 'star-half', 'sticky-note', 'stop-circle', 'sun', 'surprise',
+                'thumbs-down', 'thumbs-up', 'times-circle', 'tired', 'trash-alt', 'user', 'user-circle',
+                'window-close', 'window-maximize', 'window-minimize', 'window-restore'
+            ],
+            brands: [
+                '500px', 'accessible-icon', 'accusoft', 'adn', 'adversal', 'affiliatetheme', 'algolia',
+                'amazon', 'amazon-pay', 'amilia', 'android', 'angellist', 'angrycreative', 'angular',
+                'app-store', 'app-store-ios', 'apper', 'apple', 'apple-pay', 'asymmetrik', 'audible',
+                'autoprefixer', 'avianex', 'aviato', 'aws', 'bandcamp', 'behance', 'behance-square',
+                'bimobject', 'bitbucket', 'bitcoin', 'bity', 'black-tie', 'blackberry', 'blogger',
+                'blogger-b', 'bluetooth', 'bluetooth-b', 'btc', 'buromobelexperte', 'buysellads',
+                'cc-amazon-pay', 'cc-amex', 'cc-apple-pay', 'cc-diners-club', 'cc-discover', 'cc-jcb',
+                'cc-mastercard', 'cc-paypal', 'cc-stripe', 'cc-visa', 'centercode', 'chrome', 'cloudscale',
+                'cloudsmith', 'cloudversify', 'codepen', 'codiepie', 'connectdevelop', 'contao', 'cpanel',
+                'creative-commons', 'creative-commons-by', 'creative-commons-nc', 'creative-commons-nc-eu',
+                'creative-commons-nc-jp', 'creative-commons-nd', 'creative-commons-pd', 'creative-commons-pd-alt',
+                'creative-commons-remix', 'creative-commons-sa', 'creative-commons-sampling',
+                'creative-commons-sampling-plus', 'creative-commons-share', 'creative-commons-zero',
+                'critical-role', 'css3', 'css3-alt', 'cuttlefish', 'd-and-d', 'dashcube', 'delicious',
+                'deploydog', 'deskpro', 'dev', 'deviantart', 'digg', 'digital-ocean', 'discord', 'discourse',
+                'dochub', 'docker', 'draft2digital', 'dribbble', 'dribbble-square', 'dropbox', 'drupal',
+                'dyalog', 'earlybirds', 'ebay', 'edge', 'elementor', 'ello', 'ember', 'empire', 'envira',
+                'erlang', 'ethereum', 'etsy', 'expeditedssl', 'facebook', 'facebook-f', 'facebook-messenger',
+                'facebook-square', 'firefox', 'first-order', 'first-order-alt', 'firstdraft', 'flickr',
+                'flipboard', 'fly', 'font-awesome', 'font-awesome-alt', 'font-awesome-flag', 'font-awesome-logo-full',
+                'fonticons', 'fonticons-fi', 'fort-awesome', 'fort-awesome-alt', 'forumbee', 'foursquare',
+                'free-code-camp', 'freebsd', 'fulcrum', 'galactic-republic', 'galactic-senate', 'get-pocket',
+                'gg', 'gg-circle', 'git', 'git-square', 'github', 'github-alt', 'github-square', 'gitkraken',
+                'gitlab', 'gitter', 'glide', 'glide-g', 'gofore', 'goodreads', 'goodreads-g', 'google',
+                'google-drive', 'google-play', 'google-plus', 'google-plus-g', 'google-plus-square',
+                'google-wallet', 'gratipay', 'grav', 'gripfire', 'grunt', 'gulp', 'hacker-news',
+                'hacker-news-square', 'hackerrank', 'hips', 'hire-a-helper', 'hooli', 'hotjar', 'houzz',
+                'html5', 'hubspot', 'imdb', 'instagram', 'internet-explorer', 'ioxhost', 'itunes',
+                'itunes-note', 'java', 'jedi-order', 'jenkins', 'joget', 'joomla', 'js', 'js-square',
+                'jsfiddle', 'kaggle', 'keybase', 'keycdn', 'kickstarter', 'kickstarter-k', 'korvue',
+                'laravel', 'lastfm', 'lastfm-square', 'leanpub', 'less', 'line', 'linkedin', 'linkedin-in',
+                'linode', 'linux', 'lyft', 'magento', 'mailchimp', 'mandalorian', 'markdown', 'mastodon',
+                'maxcdn', 'medapps', 'medium', 'medium-m', 'medrt', 'meetup', 'megaport', 'microsoft',
+                'mix', 'mixcloud', 'mizuni', 'modx', 'monero', 'napster', 'neos', 'nimbox', 'nintendo-switch',
+                'node', 'node-js', 'npm', 'ns8', 'nutritionix', 'odnoklassniki', 'odnoklassniki-square',
+                'old-republic', 'opencart', 'openid', 'opera', 'optin-monster', 'osi', 'page4', 'pagelines',
+                'palfed', 'patreon', 'paypal', 'penny-arcade', 'periscope', 'phabricator', 'phoenix-framework',
+                'phoenix-squadron', 'php', 'pied-piper', 'pied-piper-alt', 'pied-piper-hat', 'pied-piper-pp',
+                'pinterest', 'pinterest-p', 'pinterest-square', 'playstation', 'product-hunt', 'pushed',
+                'python', 'qq', 'quinscape', 'quora', 'r-project', 'ravelry', 'react', 'readme', 'rebel',
+                'red-river', 'reddit', 'reddit-alien', 'reddit-square', 'redhat', 'renren', 'replyd',
+                'researchgate', 'resolving', 'rev', 'rocketchat', 'rockrms', 'safari', 'salesforce',
+                'sass', 'schlix', 'scribd', 'searchengin', 'sellcast', 'sellsy', 'servicestack', 'shirtsinbulk',
+                'shopware', 'simplybuilt', 'sistrix', 'sith', 'skyatlas', 'skype', 'slack', 'slack-hash',
+                'slideshare', 'snapchat', 'snapchat-ghost', 'snapchat-square', 'soundcloud', 'sourcetree',
+                'speakap', 'spotify', 'squarespace', 'stack-exchange', 'stack-overflow', 'staylinked',
+                'steam', 'steam-square', 'steam-symbol', 'sticker-mule', 'strava', 'stripe', 'stripe-s',
+                'studiovinari', 'stumbleupon', 'stumbleupon-circle', 'superpowers', 'supple', 'teamspeak',
+                'telegram', 'telegram-plane', 'tencent-weibo', 'the-red-yeti', 'themeco', 'themeisle',
+                'think-peaks', 'trade-federation', 'trello', 'tripadvisor', 'tumblr', 'tumblr-square',
+                'twitch', 'twitter', 'twitter-square', 'typo3', 'uber', 'ubuntu', 'uikit', 'uniregistry',
+                'untappd', 'usb', 'ussunnah', 'vaadin', 'viacoin', 'viadeo', 'viadeo-square', 'viber',
+                'vimeo', 'vimeo-square', 'vimeo-v', 'vine', 'vk', 'vnv', 'vuejs', 'waze', 'weebly',
+                'weibo', 'weixin', 'whatsapp', 'whatsapp-square', 'whmcs', 'wikipedia-w', 'windows',
+                'wix', 'wizards-of-the-coast', 'wolf-pack-battalion', 'wordpress', 'wordpress-simple',
+                'wpbeginner', 'wpexplorer', 'wpforms', 'wpressr', 'xbox', 'xing', 'xing-square', 'y-combinator',
+                'yahoo', 'yandex', 'yandex-international', 'yarn', 'yelp', 'yoast', 'youtube', 'youtube-square'
+            ]
+        };
+
+        // 아이콘 생성 함수
+        function createIconCard(prefix, iconName) {
+            const card = document.createElement('div');
+            card.className = 'icon-card';
+            card.setAttribute('data-category', prefix);
+            card.setAttribute('data-name', iconName);
+            
+            card.innerHTML = `
+                <i class="${prefix} fa-${iconName}"></i>
+                <div class="icon-name">${iconName}</div>
+                <div class="icon-class">${prefix} fa-${iconName}</div>
+            `;
+            
+            // 클릭 시 클래스명 복사
+            card.addEventListener('click', () => {
+                const classText = `${prefix} fa-${iconName}`;
+                navigator.clipboard.writeText(classText).then(() => {
+                    card.style.background = 'rgba(74, 222, 128, 0.2)';
+                    setTimeout(() => {
+                        card.style.background = '';
+                    }, 1000);
+                });
+            });
+            
+            return card;
+        }
+
+        // 아이콘 그리드 생성
+        function generateIcons() {
+            const grid = document.getElementById('iconsGrid');
+            grid.innerHTML = '';
+            
+            let totalCount = 0;
+            
+            Object.keys(iconData).forEach(category => {
+                iconData[category].forEach(iconName => {
+                    const prefix = category === 'solid' ? 'fas' : 
+                                 category === 'regular' ? 'far' : 'fab';
+                    const card = createIconCard(prefix, iconName);
+                    grid.appendChild(card);
+                    totalCount++;
+                });
+            });
+            
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('visibleCount').textContent = totalCount;
+        }
+
+        // 검색 기능
+        function filterIcons() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+            const cards = document.querySelectorAll('.icon-card');
+            
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                const category = card.getAttribute('data-category');
+                const matchesSearch = name.includes(searchTerm);
+                const matchesFilter = activeFilter === 'all' || 
+                    (activeFilter === 'solid' && category === 'fas') ||
+                    (activeFilter === 'regular' && category === 'far') ||
+                    (activeFilter === 'brands' && category === 'fab');
+                
+                if (matchesSearch && matchesFilter) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('visibleCount').textContent = visibleCount;
+        }
+
+        // 이벤트 리스너 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            generateIcons();
+            
+            // 검색 이벤트
+            document.getElementById('searchInput').addEventListener('input', filterIcons);
+            
+            // 필터 버튼 이벤트
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterIcons();
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder Python Web Editor</title>
+
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/widget.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/util.css') }}">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- GridStack.js 12.2.2 -->
+    <link href="https://cdn.jsdelivr.net/npm/gridstack@12.2.2/dist/gridstack.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/gridstack@12.2.2/dist/gridstack-all.js"></script>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>
+                <i class="fas fa-code"></i>
+                Pathfinder Python Web Editor
+            </h1>
+            <div class="status-info">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>Connected</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="editor-section">
+            <div class="editor-header">
+                <div class="file-controls">
+                    <select class="file-select">
+                        <option value="main.py">main.py</option>
+                        <option value="app.py">app.py</option>
+                        <option value="utils.py">utils.py</option>
+                    </select>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-folder-open"></i>
+                        Open
+                    </button>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-save"></i>
+                        Save
+                    </button>
+                </div>
+
+                <div class="execution-controls">
+                    <span class="execution-status" id="executionStatus">대기 중</span>
+                    <button class="btn btn-success" id="runBtn">
+                        <i class="fas fa-play"></i>
+                        Run
+                    </button>
+                    <button class="btn btn-danger" id="stopBtn">
+                        <i class="fas fa-stop"></i>
+                        Stop
+                    </button>
+                </div>
+            </div>
+
+            <div class="editor-wrapper">
+                <div id="monaco-editor" class="monaco-editor"></div>
+            </div>
+
+            <div class="output-panel">
+                <div class="output-header">
+                    <h4>Output</h4>
+                    <button class="btn btn-small" id="clearOutputBtn">
+                        <i class="fas fa-trash"></i>
+                        Clear
+                    </button>
+                </div>
+                <div class="output-content">
+                    <div class="output-item system">Findee Python Web Editor!</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Widget Section -->
+        <section class="widget-section">
+            <div class="widget-header">
+                <h3>
+                    <i class="far fa-sticky-note"></i>
+                    Widgets
+                </h3>
+                <div class="widget-controls">
+                    <button class="btn btn-primary" id="addWidgetBtn">
+                        <i class="fas fa-plus"></i>
+                        Add Widget
+                    </button>
+                    <button class="btn btn-secondary" id="widgetSettingsBtn">
+                        <i class="fas fa-cog"></i>
+                        Settings
+                    </button>
+                    <button class="btn btn-warning" id="clearAllWidgetsBtn">
+                        <i class="fas fa-trash"></i>
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <div class="widget-grid-container">
+                <div class="grid-stack">
+                    <!-- Widgets will be dynamically added here -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widget.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/action.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
+
+    <script>
+        showWelcomeToast();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded');
+
+            try {
+                // Monaco Editor 초기화
+                if (typeof initializeMonacoEditor === 'function') {
+                    initializeMonacoEditor();
+                } else {
+                    console.error('initializeMonacoEditor function not found');
+                }
+
+                // Socket 초기화
+                if (typeof initializeSocket === 'function') {
+                    initializeSocket();
+                }
+
+                if (typeof setupSocketListeners === 'function') {
+                    setupSocketListeners();
+                }
+
+                // GridStack 초기화
+                if (typeof GridStack !== 'undefined') {
+                    console.log('GridStack is available');
+                    const grid = initializeGridStack();
+                    if (grid) {
+                        console.log('GridStack initialized successfully');
+                        grid.makeWidget(createImageWidget());
+                        //addSampleWidgets(grid);
+                        //addAdvancedWidgets(grid);
+                    } else {
+                        console.error('Failed to initialize GridStack');
+                    }
+                } else {
+                    console.error('GridStack is not loaded');
+                }
+
+                // 버튼 이벤트 리스너 등록
+                const runButton = document.getElementById('runBtn');
+                if (runButton && typeof handleRunButtonClick === 'function') {
+                    runButton.addEventListener('click', handleRunButtonClick);
+                }
+
+                const stopButton = document.getElementById('stopBtn');
+                if (stopButton && typeof handleStopButtonClick === 'function') {
+                    stopButton.addEventListener('click', handleStopButtonClick);
+                }
+
+                const clearOutputBtn = document.getElementById('clearOutputBtn');
+                if (clearOutputBtn && typeof clearOutput === 'function') {
+                    clearOutputBtn.addEventListener('click', clearOutput);
+                }
+
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        });
+    </script>
+</body>
+</html>
