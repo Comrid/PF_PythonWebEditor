@@ -11,7 +11,7 @@ function handleAddWidgetClick() {
     if (widgetId) {
         console.log(`Widget created successfully: ${widgetId}`);
         // 성공 메시지 표시 (선택사항)
-        showToast('이미지 디스플레이 위젯이 생성되었습니다:' + widgetId, 'success');
+        showToast('이미지 디스플레이 위젯이 생성되었습니다: ' + widgetId, 'success');
     } else {
         console.error('Failed to create widget');
         showToast('위젯 생성에 실패했습니다.', 'error');
@@ -38,11 +38,6 @@ function handleClearAllWidgetsClick() {
         showToast('모든 위젯이 제거되었습니다.', 'info');
     }
 }
-
-
-
-
-
 
 // 위젯 설정 버튼 클릭 이벤트
 function handleWidgetSettingsClick() {
