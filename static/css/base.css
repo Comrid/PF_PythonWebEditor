@@ -68,7 +68,7 @@ body {
 /* Toast Container */
 #toastContainer {
     position: fixed;
-    top: 20px;
+    bottom: 20px;  /* top에서 bottom으로 변경 */
     right: 20px;
     z-index: 1000;
     display: flex;

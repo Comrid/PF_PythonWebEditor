@@ -3,30 +3,22 @@
  * ========
  * Main Layout
  * Header
- * Main Content
- * Editor Section
- * Output Panel
- * Widget Section
+ * GridStack Section
  * Responsive Design
  */
 
 /* Main Layout */
 .main-container {
-    display: grid;
-    grid-template-columns: 2fr 3fr;
-    grid-template-rows: 80px 1fr;
-    grid-template-areas:
-        "header header"
-        "editor widgets";
+    display: flex;
+    flex-direction: column;
     height: 100vh;
-    width: 100%; /* 전체 화면 너비 차지 */
+    width: 100%;
     gap: 10px;
     padding: 10px;
 }
 
 /* Header */
 .header {
-    grid-area: header;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 15px;
@@ -34,8 +26,9 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 30px;
-    padding-right: 40px; /* 헤더의 오른쪽 여백 */
     border: 1px solid rgba(255, 255, 255, 0.2);
+    height: 80px;
+    min-height: 80px;
 }
 
 .header h1 {
@@ -49,149 +42,40 @@
     color: #ffd700;
 }
 
-/* Main Content */
-.main-content {
-    display: grid;
-    grid-template-columns: 3fr 1fr;
-    grid-template-areas: "editor widgets";
+.header-controls {
+    display: flex;
     gap: 10px;
-    height: calc(100vh - 100px); /* 헤더 높이(80px) + gap(10px) + padding(10px) 제외 */
-    min-height: 0; /* Grid 아이템이 축소될 수 있도록 */
-    width: 100%; /* 전체 너비 차지 */
+    align-items: center;
 }
 
-/* Editor Section */
-.editor-section {
-    grid-area: editor;
-    background: rgba(255, 255, 255, 0.1);
+/* GridStack Section */
+.gridstack-section {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
     border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0; /* Flex 아이템이 축소될 수 있도록 */
-    min-width: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px;
     overflow: hidden;
+    min-height: 0;
 }
 
-.editor-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    gap: 40px;
-}
-
-.file-controls, .execution-controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.file-select {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    color: #fff;
-    padding: 8px 12px;
-    font-size: 14px;
-    min-width: 150px;
-}
-
-.file-select option {
-    background: #2d3748;
-    color: #fff;
-}
-
-.editor-wrapper {
-    flex: 1;
-    position: relative;
-    padding: 5px;
-    min-height: 0px;
-}
-
-.monaco-editor {
+/* GridStack Container */
+.grid-stack {
+    height: 100%;
     width: 100%;
-    height: 100%;
-    border-radius: 8px;
-    overflow: hidden;
 }
 
-.output-panel {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    margin: 5px;
-    max-height: 300px;
-    min-height: 0px;
-    height: 200px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.output-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    background: rgba(0, 0, 0, 0.2);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.output-header h4 {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.output-status {
-    font-size: 12px;
-    color: #a0aec0;
-    overflow: hidden;
-}
-
-.output-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 15px;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.output-item {
-    margin-bottom: 5px;
-    padding: 2px 0;
-}
-
-.output-item.system {
-    color: #68d391;
-}
-
-.output-item.success {
-    color: #4ade80;
-}
-
-.output-item.error {
-    color: #f87171;
-}
-
-.output-item.warning {
-    color: #fbbf24;
-}
-
-/* Widget Section */
-.widget-section {
-    grid-area: widgets;
+/* Widget Content Styles */
+.widget-content {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    border-radius: 15px;
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    height: 100%;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    min-height: 0; /* Flex 아이템이 축소될 수 있도록 */
+    overflow: hidden;
 }
 
 .widget-header {
@@ -200,91 +84,141 @@
     align-items: center;
     padding: 10px 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px 10px 0 0;
 }
 
-.widget-header h3 {
-    font-size: 18px;
+.widget-header h4 {
+    font-size: 16px;
     font-weight: 600;
     color: #fff;
+    margin: 0;
 }
 
-.widget-header h3 i {
+.widget-header h4 i {
     margin-right: 8px;
     color: #ffd700;
 }
 
 .widget-controls {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    flex-direction: row; /* 가로 배치 명시적 설정 */
+    gap: 5px;
     align-items: center;
 }
 
-.widget-grid-container {
+.widget-body {
     flex: 1;
     padding: 10px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Monaco Editor in Widget */
+.widget-body .monaco-editor {
+    flex: 1;
+    min-height: 0;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+/* Output Content in Widget */
+.widget-body .output-content {
+    flex: 1;
+    background: #0d1117;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #fff;
+    min-height: 0;
+}
+
+/* Image Display Widget */
+.image-display {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.image-display img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.placeholder-text {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    text-align: center;
+}
+
+/* Data Display Widget */
+.data-display {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    color: #fff;
 }
 
 /* Responsive Design */
-/* @media (max-width: 1200px) {
-    .editor-container {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "header"
-            "main";
-        grid-template-rows: 80px 1fr;
-    }
-    
-    .main-content {
-        grid-template-columns: 1fr;
-        grid-template-areas: 
-            "editor"
-            "widgets";
-        grid-template-rows: 1fr 1fr;
-    }
-    
-    .widget-controls {
-        flex-wrap: wrap;
-    }
-    
-    .widget-controls .btn {
-        font-size: 12px;
-        padding: 6px 12px;
-    }
-}
-
 @media (max-width: 768px) {
-    .editor-container {
+    .main-container {
         padding: 5px;
         gap: 5px;
     }
-    
+
     .header {
         padding: 0 15px;
+        height: 60px;
+        min-height: 60px;
     }
-    
+
+    .header h1 {
+        font-size: 20px;
+    }
+
+    .header-controls {
+        gap: 5px;
+    }
+
+    .header-controls .btn {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+
+    .gridstack-section {
+        padding: 5px;
+    }
+
+    .widget-header {
+        padding: 8px 10px;
+    }
+
+    .widget-header h4 {
+        font-size: 14px;
+    }
+
+    .widget-body {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
     .header h1 {
         font-size: 18px;
     }
-    
-    .status-info {
-        gap: 8px;
-    }
-    
-    .status-item {
+
+    .header-controls .btn {
+        padding: 4px 6px;
         font-size: 11px;
     }
-    
-    .widget-header {
-        flex-direction: column;
-        gap: 8px;
-        align-items: flex-start;
-    }
-    
-    .widget-controls {
-        width: 100%;
-        justify-content: center;
-    }
-} */
+}

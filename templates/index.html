@@ -37,87 +37,93 @@
             </h1>
             <div class="status-info">
                 <div class="status-item">
-                    <div class="status-dot"></div>
-                    <span>Connected</span>
+                    <div class="status-dot error" id="statusDot"></div>
+                    <span id="statusText">Disconnected</span>
                 </div>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-primary" id="addWidgetBtn">
+                    <i class="fas fa-plus"></i>
+                    Add Widget
+                </button>
+                <button class="btn btn-secondary" id="widgetSettingsBtn">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </button>
+                <button class="btn btn-warning" id="clearAllWidgetsBtn">
+                    <i class="fas fa-trash"></i>
+                    Clear All
+                </button>
             </div>
         </header>
 
-        <section class="editor-section">
-            <div class="editor-header">
-                <div class="file-controls">
-                    <select class="file-select">
-                        <option value="main.py">main.py</option>
-                        <option value="app.py">app.py</option>
-                        <option value="utils.py">utils.py</option>
-                    </select>
-                    <button class="btn btn-secondary">
-                        <i class="fas fa-folder-open"></i>
-                        Open
-                    </button>
-                    <button class="btn btn-secondary">
-                        <i class="fas fa-save"></i>
-                        Save
-                    </button>
+        <!-- GridStack Container -->
+        <section class="gridstack-section">
+            <div class="grid-stack" id="mainGridStack">
+                <!-- Code Editor Widget -->
+                <div class="grid-stack-item" id="codeEditorWidget" gs-w="17" gs-h="20" gs-x="0" gs-y="0" gs-min-w="10" gs-min-h="5" gs-auto-position="false" gs-locked="true"> <!-- 위치 변경 금지 -->
+                    <div class="grid-stack-item-content widget-content">
+                        <div class="widget-header">
+                            <h4><i class="fas fa-code"></i> Code Editor</h4>
+                            <div class="widget-controls">
+                                <span class="execution-status" id="executionStatus">대기 중</span>
+                                <button class="btn btn-small btn-success" id="runBtn">
+                                    <i class="fas fa-play"></i> Run
+                                </button>
+                                <button class="btn btn-small btn-danger" id="stopBtn">
+                                    <i class="fas fa-stop"></i> Stop
+                                </button>
+                                <button class="btn btn-small btn-secondary">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                            </div>
+                        </div>
+                        <div class="widget-body">
+                            <div id="monaco-editor" class="monaco-editor"></div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="execution-controls">
-                    <span class="execution-status" id="executionStatus">대기 중</span>
-                    <button class="btn btn-success" id="runBtn">
-                        <i class="fas fa-play"></i>
-                        Run
-                    </button>
-                    <button class="btn btn-danger" id="stopBtn">
-                        <i class="fas fa-stop"></i>
-                        Stop
-                    </button>
+                <!-- Output Panel Widget -->
+                <div class="grid-stack-item" id="outputPanelWidget" gs-w="17" gs-h="10" gs-x="0" gs-y="20" gs-min-w="10" gs-min-h="5" gs-locked="true"> <!-- 위치 변경 금지 -->
+                    <div class="grid-stack-item-content widget-content">
+                        <div class="widget-header">
+                            <h4><i class="fas fa-terminal"></i> Output</h4>
+                            <div class="widget-controls">
+                                <button class="btn btn-small" id="clearOutputBtn">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="widget-body">
+                            <div class="output-content" id="outputContent">
+                                <div class="output-item system">Findee Python Web Editor!</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="editor-wrapper">
-                <div id="monaco-editor" class="monaco-editor"></div>
-            </div>
-
-            <div class="output-panel">
-                <div class="output-header">
-                    <h4>Output</h4>
-                    <button class="btn btn-small" id="clearOutputBtn">
-                        <i class="fas fa-trash"></i>
-                        Clear
-                    </button>
-                </div>
-                <div class="output-content">
-                    <div class="output-item system">Findee Python Web Editor!</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Widget Section -->
-        <section class="widget-section">
-            <div class="widget-header">
-                <h3>
-                    <i class="far fa-sticky-note"></i>
-                    Widgets
-                </h3>
-                <div class="widget-controls">
-                    <button class="btn btn-primary" id="addWidgetBtn">
-                        <i class="fas fa-plus"></i>
-                        Add Widget
-                    </button>
-                    <button class="btn btn-secondary" id="widgetSettingsBtn">
-                        <i class="fas fa-cog"></i>
-                        Settings
-                    </button>
-                    <button class="btn btn-warning" id="clearAllWidgetsBtn">
-                        <i class="fas fa-trash"></i>
-                        Clear All
-                    </button>
-                </div>
-            </div>
-
-            <div class="widget-grid-container">
-                <div class="grid-stack">
-                    <!-- Widgets will be dynamically added here -->
+                <!-- Image Display Widget -->
+                <div class="grid-stack-item" id="imageDisplayWidget" gs-w="17" gs-h="15" gs-x="0" gs-y="30" gs-min-w="8" gs-min-h="8" gs-locked="false">
+                    <div class="grid-stack-item-content widget-content">
+                        <div class="widget-header">
+                            <h4><i class="fas fa-image"></i> Image Display</h4>
+                            <div class="widget-controls">
+                                <button class="btn btn-small btn-secondary" onclick="refreshImageWidget()">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                                <button class="btn btn-small btn-secondary" onclick="clearImageWidget()">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="widget-body">
+                            <div class="image-display" id="imageDisplay">
+                                <div class="placeholder-text">이미지가 여기에 표시됩니다</div>
+                                <img id="displayImage" src="" alt="Display Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -126,44 +132,38 @@
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/util.js') }}"></script>
     <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widget.js') }}"></script>
     <script src="{{ url_for('static', filename='js/action.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/widget.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
 
     <script>
-        showWelcomeToast();
+        showWelcomeToast(0); // util.js
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM Content Loaded');
+            console.info('DOM Content Loaded');
 
             try {
                 // Monaco Editor 초기화
                 if (typeof initializeMonacoEditor === 'function') {
-                    initializeMonacoEditor();
+                    initializeMonacoEditor(); // editor.js
                 } else {
                     console.error('initializeMonacoEditor function not found');
                 }
 
                 // Socket 초기화
                 if (typeof initializeSocket === 'function') {
-                    initializeSocket();
-                }
-
-                if (typeof setupSocketListeners === 'function') {
-                    setupSocketListeners();
+                    initializeSocket(); // socket-handler.js
                 }
 
                 // GridStack 초기화
                 if (typeof GridStack !== 'undefined') {
                     console.log('GridStack is available');
-                    const grid = initializeGridStack();
+                    const grid = initializeMainGridStack();
                     if (grid) {
-                        console.log('GridStack initialized successfully');
-                        grid.makeWidget(createImageWidget());
-                        //addSampleWidgets(grid);
-                        //addAdvancedWidgets(grid);
+                        console.log('Main GridStack initialized successfully');
                     } else {
-                        console.error('Failed to initialize GridStack');
+                        console.error('Failed to initialize Main GridStack');
                     }
                 } else {
                     console.error('GridStack is not loaded');

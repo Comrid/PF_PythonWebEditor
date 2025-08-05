@@ -1,13 +1,14 @@
+import traceback
 from flask import Flask, render_template, request, jsonify, Response
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
 
 # Modules for code execution
-import subprocess, sys, os, tempfile, threading
-from tempfile import NamedTemporaryFile
-from pathlib import Path
+import threading
 import json
-from util import get_flask_url, get_wrapper_code
+from util import get_flask_url
+from traceback import format_exc
+
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
@@ -22,159 +23,113 @@ socketio = SocketIO(
     transports=['websocket', 'polling']     # 전송 방식 설정
 )
 
-# 실행 중인 프로세스를 추적하는 딕셔너리
-running_processes: dict[str, subprocess.Popen] = {}
+# 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
+running_threads: dict[str, threading.Thread] = {}
+
+# 실행 중지 플래그를 추적하는 딕셔너리
+stop_flags: dict[str, bool] = {}
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 #region Code Execution
-def execute_code_with_direct_emit(code: str, sid: str):
-    enhanced_code = get_wrapper_code(code)
+def execute_code(code: str, sid: str):
+    # 중지 플래그 초기화
+    stop_flags[sid] = False
+    print(stop_flags)
+
+    # 원본 함수들 저장
+    original_print = print
 
 
-    # 임시 파일로 실행
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as tmp:
-        tmp.write(enhanced_code)
-        tmp_path = tmp.name
-        print(f"DEBUG: 임시 파일 생성: {tmp_path}")
+    # 실시간 출력을 위한 커스텀 print 함수
+    def realtime_print(*args, **kwargs):
+        #original_print(*args, **kwargs)
+
+        output = ' '.join(str(arg) for arg in args)
+        if output:  # 빈 문자열이 아닌 경우만 전송
+            socketio.emit('stdout', {'output': output}, room=sid)
 
     try:
-        print(f"DEBUG: 프로세스 시작")
-        process = subprocess.Popen(
-            [sys.executable, '-u', tmp_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=0
-        )
+        # print 함수를 안전하게 오버라이드
+        import builtins
+        builtins.print = realtime_print
 
-        # 프로세스를 추적 딕셔너리에 저장
-        running_processes[sid] = process
+        # 사용자 코드에서 socketio와 sid를 사용할 수 있도록 전역 변수 설정
+        import __main__
+        __main__.socketio = socketio
+        __main__.sid = sid
+        __main__.stop_flags = stop_flags
 
-        # stdout과 stderr를 별도 스레드에서 모니터링 (기존 방식과 동일)
-
-        def monitor_stdout_with_emit():
-            try:
-                for line in iter(process.stdout.readline, ''):
-                    if line:
-                        #print(f"DEBUG: 서브 프로세스 stdout: {line.strip()}")
-                        if line.startswith('EMIT_MESSAGE:'):
-                            # emit 메시지 처리
-                            try:
-                                import time
-                                start_time = time.time()
-
-                                message_data = line.strip().split(':', 1)[1]
-                                message = json.loads(message_data)
-
-                                parse_time = time.time() - start_time
-                                print(f"DEBUG: 메시지 파싱 완료 - 타입: {message['type']}, 파싱 시간: {parse_time*1000:.2f}ms")
-
-                                if message['type'] == 'emit_image':
-                                    # 이미지 emit 처리
-                                    print(f"DEBUG: 이미지 emit 처리 시작")
-                                    emit_start = time.time()
-                                    socketio.emit(message['event'], {
-                                        'image': message['image'],
-                                        'format': 'jpg',
-                                        'shape': message['shape']
-                                    }, room=sid)
-                                    emit_time = time.time() - emit_start
-                                    print(f"DEBUG: 이미지 emit 처리 완료 - emit 시간: {emit_time*1000:.2f}ms")
-                                elif message['type'] == 'emit_data':
-                                    # 데이터 emit 처리
-                                    print(f"DEBUG: 데이터 emit 처리 시작")
-                                    socketio.emit(message['event'], message['data'], room=sid)
-                                    print(f"DEBUG: 데이터 emit 처리 완료")
-
-                            except Exception as e:
-                                print(f"DEBUG: Emit 처리 오류: {str(e)}")
-                                socketio.emit('stderr', {'output': f'Emit 처리 오류: {str(e)}'}, room=sid)
-                        else:
-                            # 일반 출력
-                            socketio.emit('stdout', {'output': line.strip()}, room=sid)
-            except Exception as e:
-                print(f"DEBUG: stdout 모니터링 오류: {str(e)}")
-
-        def monitor_stderr():
-            try:
-                for line in iter(process.stderr.readline, ''):
-                    if line:
-                        print(f"DEBUG: 서브 프로세스 stderr: {line.strip()}")
-                        socketio.emit('stderr', {'output': line.strip()}, room=sid)
-            except Exception as e:
-                print(f"DEBUG: stderr 모니터링 오류: {str(e)}")
-
-        # 스레드 시작
-        stdout_thread = threading.Thread(target=monitor_stdout_with_emit, daemon=True)
-        stderr_thread = threading.Thread(target=monitor_stderr, daemon=True)
-        stdout_thread.start()
-        stderr_thread.start()
-
-        print(f"DEBUG: 프로세스 완료 대기")
-        process.wait()
-        print(f"DEBUG: 프로세스 완료 - 종료 코드: {process.returncode}")
-
-        # 종료 코드가 0이 아니면 오류
-        if process.returncode != 0:
-            print(f"DEBUG: 프로세스가 오류로 종료됨 - 종료 코드: {process.returncode}")
-            socketio.emit('stderr', {'output': f'프로세스가 오류로 종료됨 (종료 코드: {process.returncode})'}, room=sid)
-
-    except Exception as e:
-        print(f"DEBUG: 코드 실행 오류: {str(e)}")
-        socketio.emit('execution_error', {'error': f'코드 실행 중 오류: {str(e)}'}, room=sid)
-    finally:
-        # 프로세스 추적에서 제거
-        if sid in running_processes:
-            del running_processes[sid]
-
-        # 임시 파일 정리
-        try:
-            os.unlink(tmp_path)
-            print(f"DEBUG: 임시 파일 삭제 완료")
-        except OSError:
-            print(f"DEBUG: 임시 파일 삭제 실패")
-
-    # 코드 실행 완료 알림
-    print(f"DEBUG: 실행 완료 알림 전송")
-    socketio.emit('finished', {}, room=sid)
-
-@socketio.on('stop_execution')
-def handle_stop_execution():
-    """실행 중인 코드를 중지"""
-    try:
-        sid = request.sid
-
-        if sid in running_processes:
-            process = running_processes[sid]
-
-            # 프로세스와 자식 프로세스들을 모두 종료
-            try:
-                process.terminate()
-
-                import time
-                for _ in range(10):
-                    if process.poll() is not None:
-                        break
-                    time.sleep(0.1)
-
-                if process.poll() is None:
-                    process.kill()
-
-            except Exception as e:
-                print(f"프로세스 종료 중 오류: {str(e)}")
-                socketio.emit('execution_error', {'error': f'프로세스 종료 중 오류: {str(e)}'}, room=sid)
+        # emit 함수들을 사용자 코드에서 사용할 수 있도록 전역 변수로 설정
+        def emit_image(image, event='image_data'):
+            # 중지 플래그 확인
+            if stop_flags.get(sid, False):
                 return
 
-            running_processes.pop(sid, None)  # KeyError 방지
-            socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
-        else:
-            socketio.emit('execution_error', {'error': '실행 중인 코드가 없습니다.'}, room=sid)
+            print(f"DEBUG: emit_image 호출됨 - event: {event}")
+            if hasattr(image, 'shape'):  # numpy 배열인지 확인
+                import time
+                import base64
+                import cv2
+                original_print("emit_image 호출됨")
+                start_time = time.time()
 
-    except Exception as e:
-        emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
+                # 이미지를 base64로 인코딩
+                _, buffer = cv2.imencode('.jpg', image)
+                encode_time = time.time() - start_time
+                print(f"DEBUG: JPEG 인코딩 완료 - 시간: {encode_time*1000:.2f}ms")
+
+                image_base64 = base64.b64encode(buffer).decode()
+                base64_time = time.time() - start_time - encode_time
+                print(f"DEBUG: Base64 인코딩 완료 - 시간: {base64_time*1000:.2f}ms, 크기: {len(image_base64)}")
+
+                # socketio.emit() 사용
+                socketio.emit(event, {
+                    'image': image_base64,
+                    'format': 'jpg',
+                    'shape': image.shape
+                }, room=sid)
+
+                total_time = time.time() - start_time
+                print(f"DEBUG: 이미지 메시지 전송 완료 - 총 시간: {total_time*1000:.2f}ms")
+            else:
+                print(f"DEBUG: 이미지가 numpy 배열이 아님 - 타입: {type(image)}")
+
+        def emit_data(data, event='custom_data'):
+            # 중지 플래그 확인
+            if stop_flags.get(sid, False):
+                return
+
+            print(f"DEBUG: emit_data 호출됨 - event: {event}")
+            socketio.emit(event, data, room=sid)
+            print(f"DEBUG: 데이터 메시지 전송 완료")
+
+        # emit 함수들을 전역 변수로 설정
+        __main__.emit_image = emit_image
+        __main__.emit_data = emit_data
+
+        compiled_code = compile(code, '<string>', 'exec')
+        exec(compiled_code, {'socketio': socketio, 'sid': sid, 'stop_flags': stop_flags, 'emit_image': emit_image, 'emit_data': emit_data})
+
+
+    except Exception:
+        # 오류 출력
+        for line in format_exc().splitlines():
+            socketio.emit('stderr', {'output': line}, room=sid)
+
+    finally:
+        # 반드시 원본 함수들 복원 (안전성 보장)
+        import builtins
+        builtins.print = original_print
+
+        # 추적 딕셔너리에서 제거
+        running_threads.pop(sid, None)
+        stop_flags.pop(sid, None)
+
+    # 코드 실행 완료 알림
+    socketio.emit('finished', {}, room=sid)
 
 @socketio.on('execute_code')
 def handle_execute_code(data):
@@ -192,35 +147,81 @@ def handle_execute_code(data):
 
         # 별도 스레드에서 코드 실행
         thread = threading.Thread(
-            target=execute_code_with_direct_emit,
-            args=(code, sid)
+            target=execute_code,
+            args=(code, sid),
+            daemon=True
         )
-        thread.daemon = True
+
+        # 스레드를 추적 딕셔너리에 저장
+        running_threads[sid] = thread
+
         thread.start()
 
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
+
+@socketio.on('stop_execution')
+def handle_stop_execution():
+    """실행 중인 코드를 중지"""
+    try:
+        sid = request.sid
+
+        # 메인 프로세스에서 실행 중인 스레드 확인
+        if sid in running_threads:
+            # 중지 플래그 설정
+            stop_flags[sid] = True
+
+            # 스레드가 아직 실행 중인지 확인
+            thread = running_threads[sid]
+            if thread.is_alive():
+                # 스레드 종료 대기 (최대 5초)
+                import time
+                for _ in range(50):  # 0.1초씩 50번 = 5초
+                    if not thread.is_alive():
+                        break
+                    time.sleep(0.1)
+
+                # 스레드가 여전히 실행 중이면 강제 종료 시도
+                if thread.is_alive():
+                    print(f"DEBUG: 스레드 강제 종료 시도")
+                    # Python에서는 스레드를 강제 종료할 수 없으므로
+                    # 중지 플래그로만 제어하고 클라이언트에 알림
+                    socketio.emit('execution_stopped', {'message': '코드 실행 중지 요청이 완료되었습니다.'}, room=sid)
+                else:
+                    socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
+            else:
+                socketio.emit('execution_stopped', {'message': '코드 실행이 이미 완료되었습니다.'}, room=sid)
+
+            # 추적 딕셔너리에서 제거
+            running_threads.pop(sid, None)
+            stop_flags.pop(sid, None)
+
+        else:
+            socketio.emit('execution_error', {'error': '실행 중인 코드가 없습니다.'}, room=sid)
+
+    except Exception as e:
+        emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
 #endregion
 
 #region SocketIO connect/disconnect
 @socketio.on('connect')
 def handle_connect():
-    """클라이언트가 연결되었을 때 호출"""
     print('클라이언트가 연결되었습니다.')
     emit('connected', {'message': '서버에 연결되었습니다.'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    """클라이언트가 연결을 해제했을 때 호출"""
     print('클라이언트가 연결을 해제했습니다.')
 
-    # 연결 해제 시 실행 중인 프로세스 정리
+    # 연결 해제 시 실행 중인 스레드 정리
     sid = request.sid
-    if sid in running_processes:
+
+    # 메인 프로세스 스레드 정리
+    if sid in running_threads:
         try:
-            process = running_processes[sid]
-            process.terminate()
-            del running_processes[sid]
+            stop_flags[sid] = True
+            running_threads.pop(sid, None)
+            stop_flags.pop(sid, None)
         except Exception:
             pass
 #endregion

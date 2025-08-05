@@ -3,6 +3,8 @@
  * ========
  * Modal Styles
  * Form Elements
+ * Output Styles
+ * Widget Styles
  */
 
 /* Modal Styles */
@@ -93,29 +95,177 @@
     color: #fff;
 }
 
+/* Output Styles */
+.output-content {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #fff;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    user-select: text;  /* 텍스트 선택 가능 */
+    -webkit-user-select: text;  /* Safari 지원 */
+    -moz-user-select: text;  /* Firefox 지원 */
+    -ms-user-select: text;  /* IE 지원 */
+}
+
+.output-item {
+    margin-bottom: 5px;
+    padding: 2px 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    width: 100%;
+    user-select: text;  /* 텍스트 선택 가능 */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    cursor: text;  /* 텍스트 커서 표시 */
+}
+
+.output-item.system {
+    color: #68d391;
+}
+
+.output-item.success {
+    color: #4ade80;
+}
+
+.output-item.error {
+    color: #f87171;
+}
+
+.output-item.warning {
+    color: #fbbf24;
+}
+
+.output-item.info {
+    color: #ffffff;
+}
+
+/* Widget Styles */
+.widget-content {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px 10px 0 0;
+}
+
+.widget-header h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.widget-header h4 i {
+    margin-right: 8px;
+    color: #ffd700;
+}
+
+.widget-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.widget-body {
+    flex: 1;
+    padding: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Image Display Widget */
+.image-display {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.image-display img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.placeholder-text {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* Data Display Widget */
+.data-display {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    color: #fff;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 /* Execution Status Styles */
 .execution-status {
-    color: #a0aec0;
+    color: #ffffff;  /* 더 밝은 흰색으로 변경 */
     font-size: 14px;
     font-weight: 500;
     margin-left: 10px;
-    padding: 5px 10px;
+    padding: 1px 8px;
     border-radius: 5px;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
 }
 
 .execution-controls {
     display: flex;
-    align-items: center;
     gap: 10px;
+    align-items: center;
 }
 
 .execution-controls .btn {
-    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 12px;
 }
 
 .execution-controls .btn:disabled {
-    cursor: not-allowed;
     opacity: 0.5;
+    cursor: not-allowed;
 }

@@ -1,16 +1,3 @@
-/*
- * CONTENTS
- * ========
- * Monaco Editor Initialization
- * Editor Configuration
- * IntelliSense Configuration
- * Editor Event Handlers
- */
-
-// Monaco Editor 인스턴스 전역 변수
-let monacoEditor = null;
-
-// Monaco Editor 로더 동적 로드
 function loadMonacoEditor() {
     return new Promise((resolve, reject) => {
         // 이미 Monaco Editor가 로드되어 있는지 확인
@@ -47,8 +34,7 @@ async function initializeMonacoEditor() {
         await loadMonacoEditor();
         createEditor();
     } catch (error) {
-        console.error('Monaco Editor 초기화 실패:', error);
-        showToast('에디터 초기화에 실패했습니다.', 'error');
+        showToast(messages.editor_init_failed_msg, 'error', useConsoleDebug);
     }
 }
 
@@ -143,7 +129,7 @@ function createEditor() {
         'pandas'
     ];
 
-    // 자동완성 프로바이더 등록
+    // Python 자동완성 제공자 등록
     monaco.languages.registerCompletionItemProvider('python', {
         provideCompletionItems: function(model, position) {
             const suggestions = [
@@ -246,20 +232,15 @@ function createEditor() {
         editor.layout();
     });
 
+    // GridStack 위젯 리사이즈 시 에디터 크기 조정
+    if (window.mainGridStack) {
+        window.mainGridStack.on('resize', () => {
+            setTimeout(() => {
+                editor.layout();
+            }, 100);
+        });
+    }
+
     // 전역 변수로 에디터 인스턴스 저장
     monacoEditor = editor;
-    
-    // action.js에서 사용할 수 있도록 설정
-    if (window.setMonacoEditor) {
-        window.setMonacoEditor(editor);
-    }
-}
-
-function getInitialCode() {
-    return `from time import sleep
-i = 1
-while(1):
-    print(i)
-    i += 1
-    sleep(0.1)`;
 }
