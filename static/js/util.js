@@ -134,7 +134,7 @@ function updateConnectionStatus(connected) {
 }
 
 function getInitialCode() {
-    return getCode2();
+    return getCode5();
 }
 
 function getCode1(){
@@ -182,4 +182,51 @@ function getCode3(){
 for i in range(20):
     print(i)
     sleep(0.1)`;
+}
+
+function getCode4(){
+    return `import cv2
+from findee import Findee
+
+robot = Findee()
+
+from time import sleep
+
+while(1):
+    frame = robot.camera.get_frame()
+    height, width = frame.shape[:2]
+    center = (width // 2, height // 2)
+    cv2.circle(frame, center, 50, (0, 255, 0), 2)
+    emit_image(frame)
+    sleep(0.05)`;
+}
+
+function getCode5(){
+    return `import numpy as np
+import cv2
+import time
+
+# 30fps = 1/30초 간격
+fps = 30
+interval = 1.0 / fps
+
+print(f"30fps 랜덤 이미지 전송 시작 (간격: {interval:.3f}초)")
+
+try:
+    while True:
+        # 640x480 1채널 랜덤 이미지 생성
+        start = time.time()
+        random_image1 = np.random.randint(0, 256, (480, 640), dtype=np.uint8)
+        random_image2 = np.random.randint(50, 100, (100, 100), dtype=np.uint8)
+
+        # 이미지 전송
+        emit_image(random_image1, 'imageDisplayWidget_0')
+        emit_image(random_image2, 'imageDisplayWidget_1')
+
+        time.sleep(interval)
+        #time.sleep(1)
+
+
+except KeyboardInterrupt:
+    print("전송 중지됨")`;
 }

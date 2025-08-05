@@ -12,13 +12,13 @@ function initializeMainGridStack() {
             return null;
         }
 
-        const grid = GridStack.init({
-            float: true,
+    const grid = GridStack.init({
+        float: true,
             cellHeight: 40,
             margin: '0px',
             disableOneColumnMode: false,
-            animate: true,
-            resizable: {
+        animate: true,
+        resizable: {
                 handles: 'se, s, w, e'
             },
             draggable: {
@@ -26,76 +26,127 @@ function initializeMainGridStack() {
             },
             column: 50,  // 더 많은 열로 셀 너비를 작게 만듦
             minRow: 1,
-            removable: true
-        });
+            removable: false
+    });
 
-        // Store grid instance globally
+    // Store grid instance globally
         window.mainGridStack = grid;
 
         console.log('Main GridStack initialized successfully');
-        return grid;
+    return grid;
     } catch (error) {
         console.error('Error initializing Main GridStack:', error);
         return null;
     }
 }
 
-// Initialize GridStack (Legacy function for backward compatibility)
-function initializeGridStack() {
-    return initializeMainGridStack();
-}
 
-function isCollidingWithOthers(grid, node) {
-    const items = grid.engine.nodes;
+// 우선 위젯 종류: 이미지 디스플레이 위젯, 텍스트 디스플레이 위젯, 버튼 위젯
+// 후순위 위젯 종류: 텍스트 입력 위젯, 그래프? 위젯
 
-    return items.some(other => {
-        if (other === node) return false;
+let numImageDisplayWidget = 0;
 
-        return (
-            node.x < other.x + other.w &&
-            node.x + node.w > other.x &&
-            node.y < other.y + other.h &&
-            node.y + node.h > other.y
-        );
-    });
-}
+function createImageDisplayWidget(){
+    const widgetId = `imageDisplayWidget_${numImageDisplayWidget++}`;
 
-// Image Widget Functions
-function refreshImageWidget() {
-    console.log('Refreshing image widget...');
-    // 이미지 위젯 새로고침 로직
-    const placeholder = document.querySelector('#imageDisplay .placeholder-text');
-    const image = document.getElementById('displayImage');
-    
-    if (placeholder && image) {
-        image.style.display = 'none';
-        placeholder.style.display = 'block';
-        placeholder.textContent = '이미지를 새로고침했습니다';
+    // 위젯 HTML 구조 생성
+    const widgetHTML = `
+        <div class="grid-stack-item" id="${widgetId}" gs-w="8" gs-h="10" gs-min-w="4" gs-min-h="6" gs-locked="false">
+            <div class="grid-stack-item-content widget-content">
+                <div class="widget-header">
+                    <h4>
+                        <i class="fas fa-image"></i>
+                        <input type="text" class="widget-id-editor" value="${widgetId}"
+                               onblur="updateWidgetId(this)"
+                               onkeypress="handleWidgetIdKeyPress(event, this, '${widgetId}')"
+                               onfocus="handleWidgetIdFocus(this)">
+                    </h4>
+                    <button class="widget-close-btn" onclick="removeWidget('${widgetId}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="widget-body">
+                    <div class="image-display" id="imageDisplay_${widgetId}">
+                        <div class="placeholder-text">이미지가 여기에 표시됩니다</div>
+                        <img id="displayImage_${widgetId}" src="" alt="Display Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // GridStack에 위젯 추가
+    if (window.mainGridStack) {
+        // // HTML을 DOM 요소로 변환
+        // const tempDiv = document.createElement('div');
+        // tempDiv.innerHTML = widgetHTML.trim();
+        // const widgetElement = tempDiv.firstChild;
+
+        // // GridStack에 위젯 추가
+        // window.mainGridStack.addWidget(widgetElement);
+
+        // console.log(`Image display widget created with ID: ${widgetId}`);
+        // return widgetId;
+        // GridStack 컨테이너 요소 가져오기
+        const gridContainer = document.getElementById('mainGridStack');
+
+        if (gridContainer) {
+            // HTML을 DOM 요소로 변환
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = widgetHTML.trim();
+            const widgetElement = tempDiv.firstChild;
+
+            // 디버깅: 위젯 요소 확인
+            console.log('Widget element created:', widgetElement);
+            console.log('Widget HTML:', widgetHTML);
+
+            // 직접 DOM에 추가
+            gridContainer.appendChild(widgetElement);
+
+            // GridStack 버전 확인 및 위젯 등록
+            console.log('GridStack version:', GridStack.version);
+
+            try {
+                if (GridStack.version && GridStack.version.startsWith('11')) {
+                    // GridStack v11: makeWidget() 사용
+                    const addedWidget = window.mainGridStack.makeWidget(widgetElement);
+                    console.log('Widget added using makeWidget (v11):', addedWidget);
+                } else {
+                    // GridStack v10 이하: addWidget() 사용
+                    window.mainGridStack.makeWidget(widgetElement);
+                    console.log('Widget added using makeWidget (v10 or below)');
+                }
+    } catch (error) {
+                console.error('GridStack widget registration error:', error);
+                console.log('Widget added to DOM only');
+            }
+
+            // 디버깅: 추가된 위젯 확인
+            console.log('Widget added to DOM and grid');
+            console.log('Current grid items:', window.mainGridStack.getGridItems());
+            console.log('Grid container children:', gridContainer.children);
+
+            console.log(`Image display widget created with ID: ${widgetId}`);
+            return widgetId;
+        } else {
+            console.error('Grid container not found');
+            return null;
+        }
+    } else {
+        console.error('GridStack is not initialized');
+        return null;
     }
 }
 
-function clearImageWidget() {
-    console.log('Clearing image widget...');
-    const placeholder = document.querySelector('#imageDisplay .placeholder-text');
-    const image = document.getElementById('displayImage');
-    
-    if (placeholder && image) {
-        image.style.display = 'none';
-        image.src = '';
-        placeholder.style.display = 'block';
-        placeholder.textContent = '이미지가 여기에 표시됩니다';
-    }
-}
+// 특정 위젯에 이미지 업데이트하는 함수
+function handleImageUpdate(imageData, widgetId) {
+    const placeholder = document.querySelector(`#imageDisplay_${widgetId} .placeholder-text`);
+    const image = document.getElementById(`displayImage_${widgetId}`);
 
-// Socket.IO 이미지 수신 함수
-function handleImageUpdate(imageData) {
-    console.log('Received image update');
-    
-    const placeholder = document.querySelector('#imageDisplay .placeholder-text');
-    const image = document.getElementById('displayImage');
-    
     if (!placeholder || !image) {
-        console.error('Image widget elements not found');
+        console.error(`Image widget elements not found for widget: ${widgetId}`);
+        console.log('Available image displays:', document.querySelectorAll('[id^="imageDisplay_"]'));
+        console.log('Available display images:', document.querySelectorAll('[id^="displayImage_"]'));
         return;
     }
 
@@ -104,11 +155,10 @@ function handleImageUpdate(imageData) {
         image.onload = function() {
             image.style.display = 'block';
             placeholder.style.display = 'none';
-            console.log('Image loaded successfully');
         };
 
         image.onerror = function() {
-            console.error('Failed to load image');
+            console.error(`Failed to load image for widget: ${widgetId}`);
             image.style.display = 'none';
             placeholder.style.display = 'block';
             placeholder.textContent = '이미지 로드 실패';
@@ -118,366 +168,109 @@ function handleImageUpdate(imageData) {
         image.src = `data:image/jpeg;base64,${imageData}`;
 
     } catch (error) {
-        console.error('Error processing image:', error);
+        console.error(`Error processing image for widget ${widgetId}:`, error);
         image.style.display = 'none';
         placeholder.style.display = 'block';
         placeholder.textContent = '이미지 처리 오류';
     }
 }
 
-// 카메라 피드 업데이트 함수
-function handleCameraFeedUpdate(widgetName, imageData) {
-    console.log(`Received camera feed update for widget: ${widgetName}`);
 
-    const imageElement = document.getElementById(`display-image-${widgetName.toLowerCase()}`);
-    const placeholder = document.getElementById(`image-placeholder-${widgetName.toLowerCase()}`);
+// 공용용
 
-    if (!imageElement || !placeholder) {
-        console.error(`Camera widget elements not found for: ${widgetName}`);
+// 위젯 삭제 함수
+function removeWidget(widgetId) {
+    try {
+        if (window.mainGridStack) {
+            const widgetElement = document.getElementById(widgetId);
+            if (widgetElement) {
+                window.mainGridStack.removeWidget(widgetElement);
+            } else {
+                console.error(`Widget element not found: ${widgetId}`);
+            }
+        } else {
+            console.error('GridStack is not initialized');
+        }
+    } catch (error) {
+        console.error(`Error removing widget ${widgetId}:`, error);
+    }
+}
+
+
+
+
+// ID 편집 관련
+// 위젯 ID 업데이트 함수
+function updateWidgetId(inputElement) {
+    const newWidgetId = inputElement.value.trim();
+
+    if (!newWidgetId) {
+        // 빈 값이면 원래 ID로 복원
+        inputElement.value = inputElement.closest('.grid-stack-item').id;
         return;
     }
 
-    try {
-        // base64 이미지 데이터를 직접 설정
-        imageElement.onload = function() {
-            imageElement.style.display = 'block';
-            placeholder.style.display = 'none';
-        };
-
-        imageElement.onerror = function() {
-            console.error(`Failed to load camera feed for widget: ${widgetName}`);
-            imageElement.style.display = 'none';
-            placeholder.style.display = 'block';
-        };
-
-        // base64 데이터를 직접 src에 설정
-        imageElement.src = imageData;
-
-    } catch (error) {
-        console.error(`Error processing camera feed for widget ${widgetName}:`, error);
-        imageElement.style.display = 'none';
-        placeholder.style.display = 'block';
-    }
-}
-
-function createImageWidget() {
-    const widgetName = `Image_Display_${imageWidgetCounter}`;
-    imageWidgetCounter++;
-
-    const imageWidget = document.createElement('div');
-    imageWidget.className = 'grid-stack-item';
-    imageWidget.setAttribute('gs-x', '0');
-    imageWidget.setAttribute('gs-y', '0');
-    imageWidget.setAttribute('gs-w', '6');
-    imageWidget.setAttribute('gs-h', '4');
-    imageWidget.innerHTML = `
-        <div class="widget-content">
-            <div class="widget-header">
-                <h4>
-                    <i class="fas fa-image"></i>
-                    <span class="widget-title" contenteditable="true" data-widget-name="${widgetName}">${widgetName}</span>
-                </h4>
-                <div class="widget-controls">
-                    <button class="btn-icon" onclick="refreshImage(this)"><i class="fas fa-sync"></i></button>
-                    <button class="btn-icon" onclick="removeWidget(this)"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            <div class="widget-body">
-                <div class="image-widget">
-                    <div class="image-container" id="image-container-${widgetName.toLowerCase()}">
-                        <img id="display-image-${widgetName.toLowerCase()}" src="" alt="No image loaded" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;">
-                        <div class="image-placeholder" id="image-placeholder-${widgetName.toLowerCase()}">
-                            <i class="fas fa-image" style="font-size: 48px; color: rgba(255, 255, 255, 0.3);"></i>
-                            <p style="color: rgba(255, 255, 255, 0.5); margin-top: 8px;">No image loaded</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 제목 편집 이벤트 리스너 추가
-    setTimeout(() => {
-        const titleElement = imageWidget.querySelector('.widget-title');
-        if (titleElement) {
-            titleElement.addEventListener('blur', function() {
-                const newName = this.textContent.trim();
-                console.log(`Widget name changed to: ${newName}`);
-            });
-
-            titleElement.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.blur();
-                }
-            });
-        }
-    }, 100);
-
-    return imageWidget;
-}
-
-function refreshImage(button) {
-    const widgetContent = button.closest('.widget-content');
-    const titleElement = widgetContent.querySelector('.widget-title');
-    const widgetName = titleElement ? titleElement.textContent.trim() : 'Image_Display_1';
-
-    const imageContainer = document.getElementById(`image-container-${widgetName.toLowerCase()}`);
-    const imageElement = document.getElementById(`display-image-${widgetName.toLowerCase()}`);
-    const placeholder = document.getElementById(`image-placeholder-${widgetName.toLowerCase()}`);
-
-    if (!imageElement || !placeholder) {
-        console.error('Image widget elements not found');
-        return;
+    if (newWidgetId === inputElement.closest('.grid-stack-item').id) {
+        return; // 변경사항이 없음
     }
 
-    // 위젯 이름을 URL 파라미터로 전달
-    const apiUrl = `/api/get-image?widget=${encodeURIComponent(widgetName)}`;
-
-    // Flask에서 이미지를 가져오는 API 호출
-    fetch(apiUrl)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch image');
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            const imageUrl = URL.createObjectURL(blob);
-
-            // 이미지 로드 완료 후 처리
-            imageElement.onload = function() {
-                imageElement.style.display = 'block';
-                placeholder.style.display = 'none';
-
-                // 메모리 정리
-                setTimeout(() => {
-                    URL.revokeObjectURL(imageUrl);
-                }, 1000);
-            };
-
-            imageElement.onerror = function() {
-                imageElement.style.display = 'none';
-                placeholder.style.display = 'block';
-            };
-
-            imageElement.src = imageUrl;
-        })
-        .catch(error => {
-            console.error('Error fetching image:', error);
-            imageElement.style.display = 'none';
-            placeholder.style.display = 'block';
-        });
-}
-
-// Widget Utility Functions for Individual Addition
-
-/*
- * 사용 예시:
- *
- * // 개별 위젯 추가
- * addWidgetByName('cpu');           // CPU 위젯 추가
- * addWidgetByName('memory');        // 메모리 위젯 추가
- * addWidgetByName('weather');       // 날씨 위젯 추가
- *
- * // 여러 위젯 한번에 추가
- * addMultipleWidgets(['cpu', 'memory', 'clock']);
- *
- * // 위젯 제거
- * removeWidgetByName('cpu');        // CPU 위젯 제거
- *
- * // 현재 위젯 목록 확인
- * listCurrentWidgets();
- *
- * // 사용 가능한 위젯 목록 확인
- * getAvailableWidgets();
- *
- * // 모든 위젯 제거
- * clearAllWidgets();
- *
- * // 위젯 개수 확인
- * getWidgetCount();
- */
-
-function addWidgetByName(widgetName, grid = null) {
-    const targetGrid = grid || window.gridStack;
-    if (!targetGrid) {
-        console.error('Grid instance is null');
-        return false;
-    }
-
-    const widgetMap = {
-        'cpu': createCPUWidget,
-        'memory': createMemoryWidget,
-        'network': createNetworkWidget,
-        'system': createSystemInfoWidget,
-        'actions': createQuickActionsWidget,
-        'code-stats': createCodeStatsWidget,
-        'weather': createWeatherWidget,
-        'clock': createClockWidget,
-        'progress': createProgressWidget,
-        'image': createImageWidget
-    };
-
-    const createFunction = widgetMap[widgetName.toLowerCase()];
-    if (!createFunction) {
-        console.error(`Unknown widget type: ${widgetName}`);
-        return false;
-    }
+    //console.log(`Updating widget ID from ${inputElement.closest('.grid-stack-item').id} to ${newWidgetId}`);
 
     try {
-        const widget = createFunction();
-        targetGrid.addWidget(widget);
-        console.log(`${widgetName} widget added successfully`);
-        return true;
+        // 위젯 요소를 현재 DOM에서 찾기 (부모 요소를 통해)
+        const widgetElement = inputElement.closest('.grid-stack-item');
+        if (!widgetElement) {
+            console.error(`Widget element not found for input:`, inputElement);
+            inputElement.value = inputElement.closest('.grid-stack-item').id;
+            return;
+        }
+
+        const currentWidgetId = widgetElement.id;
+        //console.log(`Found widget with current ID: ${currentWidgetId}`);
+
+        // 위젯 요소의 ID 업데이트
+        widgetElement.id = newWidgetId;
+
+        // 내부 요소들의 ID도 업데이트
+        const imageDisplay = widgetElement.querySelector(`#imageDisplay_${currentWidgetId}`);
+        const displayImage = widgetElement.querySelector(`#displayImage_${currentWidgetId}`);
+
+        if (imageDisplay) {
+            imageDisplay.id = `imageDisplay_${newWidgetId}`;
+            //console.log(`Updated imageDisplay ID: imageDisplay_${currentWidgetId} -> imageDisplay_${newWidgetId}`);
+        }
+
+        if (displayImage) {
+            displayImage.id = `displayImage_${newWidgetId}`;
+            //console.log(`Updated displayImage ID: displayImage_${currentWidgetId} -> displayImage_${newWidgetId}`);
+        }
+
+        console.log(`Widget ID updated successfully: ${currentWidgetId} -> ${newWidgetId}`);
+
     } catch (error) {
-        console.error(`Error adding ${widgetName} widget:`, error);
-        return false;
+        console.error(`Error updating widget ID:`, error);
+        inputElement.value = inputElement.closest('.grid-stack-item').id;
     }
 }
 
-function addMultipleWidgets(widgetNames, grid = null) {
-    const targetGrid = grid || window.gridStack;
-    if (!targetGrid) {
-        console.error('Grid instance is null');
-        return false;
-    }
-
-    const results = [];
-    widgetNames.forEach(name => {
-        const success = addWidgetByName(name, targetGrid);
-        results.push({ name, success });
-    });
-
-    console.log('Widget addition results:', results);
-    return results;
-}
-
-function removeWidgetByName(widgetName) {
-    const grid = window.gridStack;
-    if (!grid) {
-        console.error('Grid instance is null');
-        return false;
-    }
-
-    const widgets = grid.getGridItems();
-    for (let widget of widgets) {
-        const header = widget.querySelector('.widget-header h4');
-        if (header && header.textContent.toLowerCase().includes(widgetName.toLowerCase())) {
-            grid.removeWidget(widget);
-            console.log(`${widgetName} widget removed successfully`);
-            return true;
+// 위젯 ID 편집 시 키보드 이벤트 처리
+function handleWidgetIdKeyPress(event, inputElement, oldWidgetId) {
+    if (event.key === 'Enter') {
+        // Enter 키를 누르면 포커스 해제하여 업데이트 함수 호출
+        inputElement.blur();
+    } else if (event.key === 'Escape') {
+        // Escape 키를 누르면 원래 값으로 복원
+        // 현재 위젯의 실제 ID를 가져와서 복원
+        const widgetElement = inputElement.closest('.grid-stack-item');
+        if (widgetElement) {
+            inputElement.value = widgetElement.id;
+        } else {
+            inputElement.value = oldWidgetId;
         }
+        inputElement.blur();
     }
-
-    console.log(`Widget ${widgetName} not found`);
-    return false;
 }
 
-function getAvailableWidgets() {
-    return [
-        { name: 'CPU', key: 'cpu', description: 'CPU 사용률 게이지' },
-        { name: 'Memory', key: 'memory', description: '메모리 사용률 바' },
-        { name: 'Network', key: 'network', description: '네트워크 활동 모니터링' },
-        { name: 'System Info', key: 'system', description: '시스템 정보 표시' },
-        { name: 'Quick Actions', key: 'actions', description: '빠른 실행 버튼들' },
-        { name: 'Code Statistics', key: 'code-stats', description: '코드 통계 정보' },
-        { name: 'Weather', key: 'weather', description: '날씨 정보 표시' },
-        { name: 'Clock', key: 'clock', description: '실시간 시계' },
-        { name: 'Progress', key: 'progress', description: '프로젝트 진행률' },
-        { name: 'Image Display', key: 'image', description: '이미지 표시' }
-    ];
-}
-
-function clearAllWidgets() {
-    const grid = window.gridStack;
-    if (!grid) {
-        console.error('Grid instance is null');
-        return false;
-    }
-
-    const widgets = grid.getGridItems();
-    widgets.forEach(widget => {
-        grid.removeWidget(widget);
-    });
-
-    console.log('All widgets cleared');
-    return true;
-}
-
-function getWidgetCount() {
-    const grid = window.gridStack;
-    if (!grid) {
-        return 0;
-    }
-
-    return grid.getGridItems().length;
-}
-
-function listCurrentWidgets() {
-    const grid = window.gridStack;
-    if (!grid) {
-        console.error('Grid instance is null');
-        return [];
-    }
-
-    const widgets = grid.getGridItems();
-    const widgetList = widgets.map(widget => {
-        const header = widget.querySelector('.widget-header h4');
-        return header ? header.textContent.trim() : 'Unknown Widget';
-    });
-
-    console.log('Current widgets:', widgetList);
-    return widgetList;
-}
-
-// Widget Name Utility Functions
-
-function getWidgetName(widgetElement) {
-    const titleElement = widgetElement.querySelector('.widget-title');
-    return titleElement ? titleElement.textContent.trim() : 'Unknown Widget';
-}
-
-function getAllImageWidgetNames() {
-    const grid = window.gridStack;
-    if (!grid) {
-        return [];
-    }
-
-    const widgets = grid.getGridItems();
-    const imageWidgetNames = [];
-
-    widgets.forEach(widget => {
-        const header = widget.querySelector('.widget-header h4');
-        if (header && header.textContent.includes('Image_Display')) {
-            const titleElement = widget.querySelector('.widget-title');
-            if (titleElement) {
-                imageWidgetNames.push(titleElement.textContent.trim());
-            }
-        }
-    });
-
-    return imageWidgetNames;
-}
-
-function refreshAllImageWidgets() {
-    const imageWidgetNames = getAllImageWidgetNames();
-    console.log('Refreshing all image widgets:', imageWidgetNames);
-
-    imageWidgetNames.forEach(widgetName => {
-        // 각 위젯의 새로고침 버튼을 찾아서 클릭
-        const grid = window.gridStack;
-        if (grid) {
-            const widgets = grid.getGridItems();
-            widgets.forEach(widget => {
-                const titleElement = widget.querySelector('.widget-title');
-                if (titleElement && titleElement.textContent.trim() === widgetName) {
-                    const refreshButton = widget.querySelector('.btn-icon[onclick*="refreshImage"]');
-                    if (refreshButton) {
-                        refreshButton.click();
-                    }
-                }
-            });
-        }
-    });
+function handleWidgetIdFocus(inputElement) {
+    inputElement.select();
 }

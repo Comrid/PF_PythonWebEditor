@@ -63,37 +63,37 @@ def execute_code(code: str, sid: str):
         __main__.stop_flags = stop_flags
 
         # emit 함수들을 사용자 코드에서 사용할 수 있도록 전역 변수로 설정
-        def emit_image(image, event='image_data'):
+        def emit_image(image, widget_id,event='image_data'):
             # 중지 플래그 확인
             if stop_flags.get(sid, False):
                 return
-
-            print(f"DEBUG: emit_image 호출됨 - event: {event}")
+            debug_on = False
+            if debug_on: print(f"DEBUG: emit_image 호출됨 - event: {event}")
             if hasattr(image, 'shape'):  # numpy 배열인지 확인
                 import time
                 import base64
                 import cv2
-                original_print("emit_image 호출됨")
                 start_time = time.time()
 
                 # 이미지를 base64로 인코딩
                 _, buffer = cv2.imencode('.jpg', image)
                 encode_time = time.time() - start_time
-                print(f"DEBUG: JPEG 인코딩 완료 - 시간: {encode_time*1000:.2f}ms")
+                if debug_on: print(f"DEBUG: JPEG 인코딩 완료 - 시간: {encode_time*1000:.2f}ms")
 
                 image_base64 = base64.b64encode(buffer).decode()
                 base64_time = time.time() - start_time - encode_time
-                print(f"DEBUG: Base64 인코딩 완료 - 시간: {base64_time*1000:.2f}ms, 크기: {len(image_base64)}")
+                if debug_on: print(f"DEBUG: Base64 인코딩 완료 - 시간: {base64_time*1000:.2f}ms, 크기: {len(image_base64)}")
 
                 # socketio.emit() 사용
                 socketio.emit(event, {
                     'image': image_base64,
                     'format': 'jpg',
-                    'shape': image.shape
+                    'shape': image.shape,
+                    'widget_id': widget_id
                 }, room=sid)
 
                 total_time = time.time() - start_time
-                print(f"DEBUG: 이미지 메시지 전송 완료 - 총 시간: {total_time*1000:.2f}ms")
+                if debug_on: print(f"DEBUG: 이미지 메시지 전송 완료 - 총 시간: {total_time*1000:.2f}ms")
             else:
                 print(f"DEBUG: 이미지가 numpy 배열이 아님 - 타입: {type(image)}")
 
@@ -230,3 +230,6 @@ def handle_disconnect():
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 #endregion
+
+
+
