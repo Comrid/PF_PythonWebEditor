@@ -7,7 +7,9 @@ function initializeSocket() {
 
         socket = window.io();
 
-        //connect and disconnect events
+        // Listener
+
+        //#region connect and disconnect events
         socket.on('connect', function() {
             isConnected = true;
             updateRunButtons(false);
@@ -20,10 +22,9 @@ function initializeSocket() {
             updateConnectionStatus(false);
             showToast(messages.server_disconnected_msg, 'error', useConsoleDebug);
         });
+        //#endregion
 
-
-
-        // execution events
+        //#region execution events
         socket.on('execution_started', function() {
             codeRunning = true;
             updateRunButtons(true);
@@ -49,34 +50,27 @@ function initializeSocket() {
             updateExecutionStatus('오류');
             showToast(messages.code_execution_error_msg + data.error, 'error', useConsoleDebug);
         });
+        //#endregion
 
-
-
-        // stdout and stderr events
+        //#region stdout and stderr events
         socket.on('stdout', function(data) {
             addOutput(data.output, 'info');
         });
         socket.on('stderr', function(data) {
             addOutput(data.output, 'error');
         });
+        //#endregion
 
-
-
-
-
-        // 이미지 데이터 이벤트 (emit_image로 전송된 이미지)
+        //#region image_data event, custom_data event
         socket.on('image_data', function(data) {
             console.log('Received image_data event for widget:', data.widget_id);
-            if (data.image) {
-                handleImageUpdate(data.image, data.widget_id);
-            }
+            if (data.image) {handleImageUpdate(data.image, data.widget_id);}
         });
-
-        // 커스텀 데이터 이벤트 (emit_data로 전송된 데이터)
-        socket.on('custom_data', function(data) {
-            console.log('Received custom_data event:', data);
-            handleCustomData(data);
+        socket.on('text_data', function(data) {
+            console.log('Received text_data event:', data);
+            if(data.text) {handleTextUpdate(data.text, data.widget_id);}
         });
+        //#endregion
 
     } catch (error) {
         showToast(messages.socketio_connecting_error_msg, 'error', useConsoleDebug);
@@ -131,15 +125,3 @@ function handleStopButtonClick() {
     socket.emit('stop_execution');
 }
 
-// 커스텀 데이터 처리 함수
-function handleCustomData(data) {
-    try {
-        console.log('커스텀 데이터 수신:', data);
-
-        // 출력 패널에 데이터 표시
-        addOutput('📊 커스텀 데이터: ' + JSON.stringify(data), 'info');
-    } catch (error) {
-        console.error('커스텀 데이터 처리 오류:', error);
-        addOutput('❌ 데이터 처리 오류: ' + error.message, 'error');
-    }
-}

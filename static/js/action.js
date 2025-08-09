@@ -6,7 +6,7 @@ function handleAddWidgetClick() {
 
     // 현재는 이미지 디스플레이 위젯만 생성
     // 나중에 위젯 선택 모달이나 드롭다운으로 확장 가능
-    const widgetId = createImageDisplayWidget();
+    const widgetId = createWidget_ImageDisplay();
 
     if (widgetId) {
         console.log(`Widget created successfully: ${widgetId}`);
@@ -34,6 +34,7 @@ function handleClearAllWidgetsClick() {
 
         // 카운터 초기화
         numImageDisplayWidget = 0;
+        numTextDisplayWidget = 0;
 
         showToast('모든 위젯이 제거되었습니다.', 'info');
     }
@@ -44,4 +45,36 @@ function handleWidgetSettingsClick() {
     console.log('Widget Settings button clicked');
     // 위젯 설정 모달이나 패널 표시 (향후 구현)
     showToast('위젯 설정 기능은 준비 중입니다.', 'info');
+}
+
+
+
+function initializeButtonAction(){
+    // 버튼 이벤트 리스너 등록
+    const runButton = document.getElementById('runBtn');
+    if (runButton && typeof handleRunButtonClick === 'function') {
+        runButton.addEventListener('click', handleRunButtonClick);
+    }
+
+    const stopButton = document.getElementById('stopBtn');
+    if (stopButton && typeof handleStopButtonClick === 'function') {
+        stopButton.addEventListener('click', handleStopButtonClick);
+    }
+
+    const clearOutputBtn = document.getElementById('clearOutputBtn');
+    if (clearOutputBtn && typeof clearOutput === 'function') {
+        clearOutputBtn.addEventListener('click', clearOutput);
+    }
+
+    // Clear All 버튼
+    const clearAllWidgetsBtn = document.getElementById('clearAllWidgetsBtn');
+    if (clearAllWidgetsBtn) {
+        clearAllWidgetsBtn.addEventListener('click', handleClearAllWidgetsClick);
+    }
+
+    // Widget Settings 버튼
+    const widgetSettingsBtn = document.getElementById('widgetSettingsBtn');
+    if (widgetSettingsBtn) {
+        widgetSettingsBtn.addEventListener('click', handleWidgetSettingsClick);
+    }
 }

@@ -6,6 +6,11 @@ const useConsoleDebug = true;
 let isConnected = false;
 let codeRunning = false;
 let monacoEditor = null;
+let fontSize = 16;
+
+// Widget Variables
+let numImageDisplayWidget = 0;
+let numTextDisplayWidget = 0;
 
 // messages
 const messages = {
@@ -134,9 +139,10 @@ function updateConnectionStatus(connected) {
 }
 
 function getInitialCode() {
-    return getCode5();
+    return getCode6();
 }
 
+//#region Custom Code
 function getCode1(){
     return `from time import sleep
 i = 1
@@ -229,4 +235,50 @@ try:
 
 except KeyboardInterrupt:
     print("전송 중지됨")`;
+}
+
+function getCode6(){
+    return `import numpy as np
+import cv2
+import time
+
+# 30fps = 1/30초 간격
+fps = 30
+interval = 1.0 / fps
+
+print(f"30fps 랜덤 이미지 전송 시작 (간격: {interval:.3f}초)")
+cnt = 1
+
+while True:
+    # 640x480 1채널 랜덤 이미지 생성
+    start = time.time()
+    random_image1 = np.random.randint(0, 256, (480, 640), dtype=np.uint8)
+    random_image2 = np.random.randint(50, 100, (100, 100), dtype=np.uint8)
+
+    # 이미지 전송
+    emit_image(random_image1, 'imageDisplayWidget_0')
+    emit_image(random_image2, 'imageDisplayWidget_1')
+    print(f"{cnt}: Display Success!")
+    cnt += 1
+
+    time.sleep(interval)`;
+}
+//#endregion
+
+function getMotorExample(){
+    return `from findee import Findee
+
+robot = Findee()
+
+robot.motor.move_forward(100)
+robot.motor.move_backward(100)
+robot.motor.move_left(100)
+robot.motor.move_right(100)
+robot.motor.stop()
+
+robot.motor.move_forward(100, 100)
+robot.motor.move_backward(100, 100)
+robot.motor.move_left(100, 100)
+robot.motor.move_right(100, 100)
+robot.motor.stop()`;
 }

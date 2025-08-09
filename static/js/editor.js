@@ -40,9 +40,7 @@ async function initializeMonacoEditor() {
 
 // Monaco Editor 생성 함수
 function createEditor() {
-    // Monaco Editor의 내장 Python 지원 사용
-    // 토큰화 규칙은 내장 지원 사용, 자동완성만 추가
-
+    //#region Python 키워드, 함수, 클래스, 변수, 모듈
     const pythonKeywords = [
         'and', 'assert', 'async', 'await',
         'break',
@@ -128,6 +126,7 @@ function createEditor() {
         'math', 'random', 'os', 'sys', 'time', 'findee', 'cv2', 'numpy',
         'pandas'
     ];
+    //#endregion
 
     // Python 자동완성 제공자 등록
     monaco.languages.registerCompletionItemProvider('python', {
@@ -183,11 +182,11 @@ function createEditor() {
         value: getInitialCode(),
         language: 'python',  // Monaco Editor의 내장 Python 지원 사용
         theme: 'vs-dark',
-        automaticLayout: true,
-        fontSize: 16,
+        automaticLayout: false,
+        fontSize: fontSize,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
-        wordWrap: 'on',
+        wordWrap: 'off',
 
         // IntelliSense 설정
         wordBasedSuggestions: true,

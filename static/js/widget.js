@@ -40,94 +40,23 @@ function initializeMainGridStack() {
     }
 }
 
-
-// 우선 위젯 종류: 이미지 디스플레이 위젯, 텍스트 디스플레이 위젯, 버튼 위젯
-// 후순위 위젯 종류: 텍스트 입력 위젯, 그래프? 위젯
-
-let numImageDisplayWidget = 0;
-
-function createImageDisplayWidget(){
-    const widgetId = `imageDisplayWidget_${numImageDisplayWidget++}`;
-
-    // 위젯 HTML 구조 생성
-    const widgetHTML = `
-        <div class="grid-stack-item" id="${widgetId}" gs-w="8" gs-h="10" gs-min-w="4" gs-min-h="6" gs-locked="false">
-            <div class="grid-stack-item-content widget-content">
-                <div class="widget-header">
-                    <h4>
-                        <i class="fas fa-image"></i>
-                        <input type="text" class="widget-id-editor" value="${widgetId}"
-                               onblur="updateWidgetId(this)"
-                               onkeypress="handleWidgetIdKeyPress(event, this, '${widgetId}')"
-                               onfocus="handleWidgetIdFocus(this)">
-                    </h4>
-                    <button class="widget-close-btn" onclick="removeWidget('${widgetId}')">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="widget-body">
-                    <div class="image-display" id="imageDisplay_${widgetId}">
-                        <div class="placeholder-text">이미지가 여기에 표시됩니다</div>
-                        <img id="displayImage_${widgetId}" src="" alt="Display Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
+//#region 위젯 공용 함수
+function createWidgetByHTML(widgetHTML){
     // GridStack에 위젯 추가
     if (window.mainGridStack) {
-        // // HTML을 DOM 요소로 변환
-        // const tempDiv = document.createElement('div');
-        // tempDiv.innerHTML = widgetHTML.trim();
-        // const widgetElement = tempDiv.firstChild;
-
-        // // GridStack에 위젯 추가
-        // window.mainGridStack.addWidget(widgetElement);
-
-        // console.log(`Image display widget created with ID: ${widgetId}`);
-        // return widgetId;
-        // GridStack 컨테이너 요소 가져오기
         const gridContainer = document.getElementById('mainGridStack');
 
         if (gridContainer) {
-            // HTML을 DOM 요소로 변환
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = widgetHTML.trim();
-            const widgetElement = tempDiv.firstChild;
-
-            // 디버깅: 위젯 요소 확인
-            console.log('Widget element created:', widgetElement);
-            console.log('Widget HTML:', widgetHTML);
-
-            // 직접 DOM에 추가
-            gridContainer.appendChild(widgetElement);
-
-            // GridStack 버전 확인 및 위젯 등록
-            console.log('GridStack version:', GridStack.version);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(widgetHTML.trim(), 'text/html');
+            const widgetElement = doc.body.firstElementChild;
 
             try {
-                if (GridStack.version && GridStack.version.startsWith('11')) {
-                    // GridStack v11: makeWidget() 사용
-                    const addedWidget = window.mainGridStack.makeWidget(widgetElement);
-                    console.log('Widget added using makeWidget (v11):', addedWidget);
-                } else {
-                    // GridStack v10 이하: addWidget() 사용
-                    window.mainGridStack.makeWidget(widgetElement);
-                    console.log('Widget added using makeWidget (v10 or below)');
-                }
-    } catch (error) {
+                gridContainer.appendChild(widgetElement);
+                window.mainGridStack.makeWidget(widgetElement);
+            } catch (error) {
                 console.error('GridStack widget registration error:', error);
-                console.log('Widget added to DOM only');
             }
-
-            // 디버깅: 추가된 위젯 확인
-            console.log('Widget added to DOM and grid');
-            console.log('Current grid items:', window.mainGridStack.getGridItems());
-            console.log('Grid container children:', gridContainer.children);
-
-            console.log(`Image display widget created with ID: ${widgetId}`);
-            return widgetId;
         } else {
             console.error('Grid container not found');
             return null;
@@ -138,8 +67,124 @@ function createImageDisplayWidget(){
     }
 }
 
-// 특정 위젯에 이미지 업데이트하는 함수
+function removeWidget(widgetId) {
+    // 위젯 삭제 함수
+    try {
+        if (window.mainGridStack) {
+            const widgetElement = document.getElementById(widgetId);
+            if (widgetElement) {
+                window.mainGridStack.removeWidget(widgetElement);
+            } else {
+                console.error(`Widget element not found: ${widgetId}`);
+            }
+        } else {
+            console.error('GridStack is not initialized');
+        }
+    } catch (error) {
+        console.error(`Error removing widget ${widgetId}:`, error);
+    }
+}
+//#endregion
+
+//#region ID 편집 관련
+function updateWidgetId(inputElement) {
+    // 위젯 ID 업데이트 함수
+    const newWidgetId = inputElement.value.trim();
+
+    if (!newWidgetId) { // 빈 값이면 원래 ID로 복원
+        inputElement.value = inputElement.closest('.grid-stack-item').id;
+        return;
+    }
+
+    if (newWidgetId === inputElement.closest('.grid-stack-item').id) {
+        return; // 변경사항이 없음
+    }
+
+    try { // 위젯 요소를 현재 DOM에서 찾기 (부모 요소를 통해)
+        const widgetElement = inputElement.closest('.grid-stack-item');
+        if (!widgetElement) {
+            inputElement.value = inputElement.closest('.grid-stack-item').id;
+            return;
+        }
+
+        const currentWidgetId = widgetElement.id;
+        widgetElement.id = newWidgetId;
+
+        // ImageDisplayWidget
+        const imageDisplay = widgetElement.querySelector(`#imageDisplay_${currentWidgetId}`);
+        const displayImage = widgetElement.querySelector(`#displayImage_${currentWidgetId}`);
+        if (imageDisplay) {imageDisplay.id = `imageDisplay_${newWidgetId}`;}
+        if (displayImage) {displayImage.id = `displayImage_${newWidgetId}`;}
+
+        // TextDisplayWidget
+        const textDisplay = widgetElement.querySelector(`#textDisplay_${currentWidgetId}`);
+        const displayText = widgetElement.querySelector(`#displayText_${currentWidgetId}`);
+        if (textDisplay) {textDisplay.id = `textDisplay_${newWidgetId}`;}
+        if (displayText) {displayText.id = `displayText_${newWidgetId}`;}
+
+    } catch (error) {
+        console.error(`Error updating widget ID:`, error);
+        inputElement.value = inputElement.closest('.grid-stack-item').id;
+    }
+}
+
+function handleWidgetId_KeyPress(event, inputElement, oldWidgetId) {
+    // 위젯 ID 편집 시 키보드 이벤트 처리
+    if (event.key === 'Enter') {
+        inputElement.blur();
+    } else if (event.key === 'Escape') {
+        const widgetElement = inputElement.closest('.grid-stack-item');
+        if (widgetElement) {
+            inputElement.value = widgetElement.id;
+        } else {
+            inputElement.value = oldWidgetId;
+        }
+        inputElement.blur();
+    }
+}
+
+function handleWidgetId_Focus(inputElement) {
+    // 커서 올리면 하이라이트 상태
+    inputElement.select();
+}
+//#endregion
+
+//#region ImageDisplayWidget 관련 함수
+function createWidget_ImageDisplay(){
+    // 이미지 위젯 생성
+    const widgetId = `imageDisplayWidget_${numImageDisplayWidget++}`;
+
+    const widgetHTML = `
+        <div class="grid-stack-item" id="${widgetId}" gs-w="8" gs-h="10" gs-min-w="6" gs-min-h="8" gs-locked="true">
+            <div class="grid-stack-item-content widget-content">
+                <div class="widget-header">
+                    <h4>
+                        <i class="fas fa-image"></i>
+                        <input type="text" class="widget-id-editor" value="${widgetId}"
+                               onblur="updateWidgetId(this)"
+                               onkeydown="handleWidgetId_KeyPress(event, this, '${widgetId}')"
+                               onfocus="handleWidgetId_Focus(this)">
+                    </h4>
+                    <button class="widget-close-btn" onclick="removeWidget('${widgetId}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="widget-body">
+                    <div class="image-display" id="imageDisplay_${widgetId}">
+                        <div class="placeholder-text">이미지가 여기에 표시됩니다</div>
+                        <img id="displayImage_${widgetId}" src="">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    createWidgetByHTML(widgetHTML);
+    return widgetId;
+}
+
 function handleImageUpdate(imageData, widgetId) {
+    // 특정 위젯에 이미지 업데이트하는 함수
     const placeholder = document.querySelector(`#imageDisplay_${widgetId} .placeholder-text`);
     const image = document.getElementById(`displayImage_${widgetId}`);
 
@@ -174,103 +219,67 @@ function handleImageUpdate(imageData, widgetId) {
         placeholder.textContent = '이미지 처리 오류';
     }
 }
+//#endregion
 
+//#region TextDisplayWidget 관련 함수
+// TODO: 여러 줄 전달 시 제대로 출력되도록. 지금은 한줄로 다 나옴
+function createWidget_TextDisplay(){
+    // 텍스트 위젯 생성
+    const widgetId = `textDisplayWidget_${numTextDisplayWidget++}`;
 
-// 공용용
+    const widgetHTML = `
+        <div class="grid-stack-item" id="${widgetId}" gs-w="8" gs-h="2" gs-min-w="4" gs-min-h="2" gs-locked="true">
+            <div class="grid-stack-item-content widget-content">
+                <div class="widget-header">
+                    <h4>
+                        <i class="fas fa-font"></i>
+                        <input type="text" class="widget-id-editor" value="${widgetId}"
+                               onblur="updateWidgetId(this)"
+                               onkeydown="handleWidgetId_KeyPress(event, this, '${widgetId}')"
+                               onfocus="handleWidgetId_Focus(this)">
+                    </h4>
+                    <button class="widget-close-btn" onclick="removeWidget('${widgetId}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="widget-body">
+                    <div class="text-display" id="textDisplay_${widgetId}">
+                        <div class="placeholder-text">텍스트가 여기에 표시됩니다</div>
+                        <div id="displayText_${widgetId}" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 
-// 위젯 삭제 함수
-function removeWidget(widgetId) {
-    try {
-        if (window.mainGridStack) {
-            const widgetElement = document.getElementById(widgetId);
-            if (widgetElement) {
-                window.mainGridStack.removeWidget(widgetElement);
-            } else {
-                console.error(`Widget element not found: ${widgetId}`);
-            }
-        } else {
-            console.error('GridStack is not initialized');
-        }
-    } catch (error) {
-        console.error(`Error removing widget ${widgetId}:`, error);
-    }
+    createWidgetByHTML(widgetHTML);
+    return widgetId;
 }
 
+// 텍스트 업데이트 핸들러
+function handleTextUpdate(textData, widgetId) {
+    const placeholder = document.querySelector(`#textDisplay_${widgetId} .placeholder-text`);
+    const textElem = document.getElementById(`displayText_${widgetId}`);
 
-
-
-// ID 편집 관련
-// 위젯 ID 업데이트 함수
-function updateWidgetId(inputElement) {
-    const newWidgetId = inputElement.value.trim();
-
-    if (!newWidgetId) {
-        // 빈 값이면 원래 ID로 복원
-        inputElement.value = inputElement.closest('.grid-stack-item').id;
+    if (!placeholder || !textElem) {
+        console.error(`Text widget elements not found for widget: ${widgetId}`);
         return;
     }
 
-    if (newWidgetId === inputElement.closest('.grid-stack-item').id) {
-        return; // 변경사항이 없음
-    }
-
-    //console.log(`Updating widget ID from ${inputElement.closest('.grid-stack-item').id} to ${newWidgetId}`);
-
     try {
-        // 위젯 요소를 현재 DOM에서 찾기 (부모 요소를 통해)
-        const widgetElement = inputElement.closest('.grid-stack-item');
-        if (!widgetElement) {
-            console.error(`Widget element not found for input:`, inputElement);
-            inputElement.value = inputElement.closest('.grid-stack-item').id;
-            return;
-        }
-
-        const currentWidgetId = widgetElement.id;
-        //console.log(`Found widget with current ID: ${currentWidgetId}`);
-
-        // 위젯 요소의 ID 업데이트
-        widgetElement.id = newWidgetId;
-
-        // 내부 요소들의 ID도 업데이트
-        const imageDisplay = widgetElement.querySelector(`#imageDisplay_${currentWidgetId}`);
-        const displayImage = widgetElement.querySelector(`#displayImage_${currentWidgetId}`);
-
-        if (imageDisplay) {
-            imageDisplay.id = `imageDisplay_${newWidgetId}`;
-            //console.log(`Updated imageDisplay ID: imageDisplay_${currentWidgetId} -> imageDisplay_${newWidgetId}`);
-        }
-
-        if (displayImage) {
-            displayImage.id = `displayImage_${newWidgetId}`;
-            //console.log(`Updated displayImage ID: displayImage_${currentWidgetId} -> displayImage_${newWidgetId}`);
-        }
-
-        console.log(`Widget ID updated successfully: ${currentWidgetId} -> ${newWidgetId}`);
-
+        textElem.textContent = typeof textData === 'string' ? textData : JSON.stringify(textData);
+        textElem.style.display = 'block';
+        placeholder.style.display = 'none';
     } catch (error) {
-        console.error(`Error updating widget ID:`, error);
-        inputElement.value = inputElement.closest('.grid-stack-item').id;
+        console.error(`Error processing text for widget ${widgetId}:`, error);
+        textElem.style.display = 'none';
+        placeholder.style.display = 'block';
+        placeholder.textContent = '텍스트 처리 오류';
     }
 }
+//#endregion
 
-// 위젯 ID 편집 시 키보드 이벤트 처리
-function handleWidgetIdKeyPress(event, inputElement, oldWidgetId) {
-    if (event.key === 'Enter') {
-        // Enter 키를 누르면 포커스 해제하여 업데이트 함수 호출
-        inputElement.blur();
-    } else if (event.key === 'Escape') {
-        // Escape 키를 누르면 원래 값으로 복원
-        // 현재 위젯의 실제 ID를 가져와서 복원
-        const widgetElement = inputElement.closest('.grid-stack-item');
-        if (widgetElement) {
-            inputElement.value = widgetElement.id;
-        } else {
-            inputElement.value = oldWidgetId;
-        }
-        inputElement.blur();
-    }
-}
 
-function handleWidgetIdFocus(inputElement) {
-    inputElement.select();
-}
+
+
+

@@ -1,12 +1,8 @@
-/*
- * CONTENTS
- * ========
- * Font Import
- * Reset
- * Body
- * Status Indicators
- * Toast Container
- */
+:root {
+    --success-color: #4ade80;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+}
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -16,16 +12,139 @@
     box-sizing: border-box;
 }
 
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    color: #fff;
+/* html {
+    height: 100vh;
+    margin: 0;
+    background: #000;               여백 배경
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
-    user-select: none;
 }
 
-/* Status Indicators */
+body {
+    margin: 0;
+    min-height: 100vh;
+    width: 1920px;
+    height: 1080px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    user-select: none;
+    overflow: hidden;
+} */
+
+/* 뷰포트(레터박스 배경) */
+/* html이 body를 중앙에 배치 */
+html {
+    height: 100vh;
+    margin: 0;
+    background: #000;               /* 여백 배경 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  
+  /* body를 고정 1920x1080로 */
+  body {
+    margin: 0;
+    /* width: 1920px;
+    height: 1080px; */
+    width: 100%;
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    user-select: none;
+    overflow: hidden;
+  }
+
+/* #region Animation */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+/* #endregion */
+
+/* #region Main Layout */
+.main-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    gap: 10px;
+    padding: 10px;
+}
+/* #endregion */
+
+/* #region Main Layout - Header */
+.header {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    height: 80px;
+}
+
+.header h1 {
+    font-size: 30px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.header h1 i {
+    margin-right: 10px;
+    color: #ffd700;
+}
+
+.header-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+/* #endregion */
+
+/* #region Main Layout - GridStack Section */
+.gridstack-section {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.grid-stack {
+    height: 100%;
+    width: 100%;
+}
+/* #endregion */
+
+/* #region Status Indicators */
 .status-info {
     display: flex;
     align-items: center;
@@ -54,21 +173,12 @@ body {
 .status-dot.error {
     background: #ef4444;
 }
+/* #endregion */
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-
-
-
-
-
-/* Toast Container */
+/* #region Toast Container */
 #toastContainer {
     position: fixed;
-    bottom: 20px;  /* top에서 bottom으로 변경 */
+    bottom: 20px; /* 위치 */
     right: 20px;
     z-index: 1000;
     display: flex;
@@ -99,16 +209,500 @@ body {
 .toast.error {
     border-left: 4px solid #ef4444;
 }
+/* #endregion */
 
-
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+/* #region Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
 }
+
+.modal-content {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    margin: 10% auto;
+    padding: 0;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h3 {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+/* #endregion */
+
+/* #region Config Form */
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group label {
+    color: #a0aec0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.form-input, .form-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: #4ade80;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+}
+
+.form-select option {
+    background: #2d3748;
+    color: #fff;
+}
+/* #endregion */
+
+/* #region Output Content */
+.output-content {
+    flex: 1;
+    background: #0d1117;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #fff;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    user-select: text;  /* 텍스트 선택 가능 */
+    -webkit-user-select: text;  /* Safari 지원 */
+    -moz-user-select: text;  /* Firefox 지원 */
+    -ms-user-select: text;  /* IE 지원 */
+}
+
+.output-item {
+    margin-bottom: 5px;
+    padding: 2px 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    width: 100%;
+    user-select: text;  /* 텍스트 선택 가능 */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    cursor: text;  /* 텍스트 커서 표시 */
+}
+
+.output-item.system {
+    color: #68d391;
+}
+
+.output-item.success {
+    color: #4ade80;
+}
+
+.output-item.error {
+    color: #f87171;
+}
+
+.output-item.warning {
+    color: #fbbf24;
+}
+
+.output-item.info {
+    color: #ffffff;
+}
+/* #endregion */
+
+/* #region Widget Styles */
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    /* border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px 10px 0 0; */
+}
+
+/* .widget-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #4ade80, #22c55e, #16a34a);
+    animation: shimmer 2s ease-in-out infinite;
+} */
+
+.widget-header h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.widget-header h4 i {
+    margin-right: 8px;
+    /* color: #ffd700; */
+    color: #4ade80;
+    font-size: 16px;
+}
+
+.widget-body {
+    flex: 1;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.widget-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.widget-content:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    border-color: rgba(74, 222, 128, 0.3);
+}
+/* #endregion */
+
+/* #region Widget Utils */
+.widget-id-editor {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    margin-left: 5px;
+    width: 200px;
+    outline: none;
+    cursor: text;
+    transition: all 0.2s ease;
+    border-radius: 0px;
+    padding: 0px;
+    box-shadow: none;
+    transform: scale(1);
+}
+
+.widget-id-editor:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    padding: 2px 4px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+    transform: scale(1.02);
+}
+
+.widget-id-editor:focus {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    padding: 3px 6px;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: scale(1.03);
+    border: 1px solid rgba(0, 123, 255, 0.5);
+}
+
+.widget-close-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgb(239, 68, 68, 0.2);
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.widget-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: rgb(239, 68, 68);
+    transform: scale(1.1);
+}
+
+.widget-close-btn:active {
+    transform: scale(0.95);
+}
+
+.widget-close-btn i {
+    font-size: 12px;
+}
+
+/* Editable Widget Title */
+.widget-title {
+    cursor: text;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    outline: none;
+}
+
+.widget-title:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.widget-title:focus {
+    background: rgba(74, 222, 128, 0.2);
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.3);
+}
+
+.widget-title:empty::before {
+    content: 'Enter title...';
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.widget-controls {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-icon {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    backdrop-filter: blur(5px);
+}
+
+.btn-icon:hover {
+    background: rgba(74, 222, 128, 0.2);
+    transform: scale(1.05);
+}
+/* #endregion */
+
+/* #region Common Widget */
+.placeholder-text {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    text-align: center;
+    font-size: 14px;
+}
+/* #endregion */
+
+/* #region Image Display Widget */
+.image-display {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.image-display img {
+    display: none;
+    /* 아래 두 코드는 이미지 자체의 크기를 지정 */
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 5px;
+    image-rendering: pixelated;
+}
+/* #endregion */
+
+/* #region Text Display Widget */
+.text-display {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* #endregion */
+
+/* #region Execution Status Styles */
+.execution-status {
+    color: #ffffff;  /* 더 밝은 흰색으로 변경 */
+    font-size: 14px;
+    font-weight: 500;
+    margin-left: 10px;
+    padding: 1px 8px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+}
+/* #endregion */
+
+/* #region Button Styles */
+.btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.btn:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    border-color: transparent;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+    border-color: transparent;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    border-color: transparent;
+}
+
+.btn-settings {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    border-color: transparent;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+/* #endregion */
+
+
+
+
+
+/* #region _ */
+/* #endregion */
+
+/* #region _ */
+/* #endregion */
+
+/* #region _ */
+/* #endregion */
+
+/* #region _ */
+/* #endregion */
+
+/* #region _ */
+/* #endregion */

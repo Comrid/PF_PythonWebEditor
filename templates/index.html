@@ -10,11 +10,9 @@
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/widget.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/util.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/popover.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/new.css') }}">
 
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -26,6 +24,85 @@
 <body>
     <!-- Toast Container -->
     <div id="toastContainer"></div>
+    <section class="popover-container">
+        <!-- Add Widget Popover -->
+        <div class="popover add-widget-popover" id="addWidgetPopover">
+            <div class="popover-content">
+                <div class="popover-header">
+                    <h5><i class="fas fa-layer-group"></i> Add Widget</h5>
+                    <button class="popover-close" id="closeAddWidgetPopover"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="popover-body">
+                    <div class="widget-picker" id="addWidgetGrid"></div>
+                </div>
+            </div>
+        </div>
+        <!-- Editor Settings Popover -->
+        <div class="popover" id="editorSettingsPopover">
+            <div class="popover-content">
+                <div class="popover-header">
+                    <h5><i class="fas fa-cog"></i> 에디터 설정</h5>
+                    <button class="popover-close" id="closeEditorSettings">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="popover-body">
+                    <div class="setting-item">
+                        <label class="setting-label">Font Size</label>
+                        <div class="font-size-controls">
+                            <button class="size-btn size-btn-minus" id="decreaseFontSize">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <span class="current-size" id="currentFontSize">16</span>
+                            <button class="size-btn size-btn-plus" id="increaseFontSize">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">Word Wrap</label>
+                        <div class="toggle-controls">
+                            <button class="toggle-btn" id="wordWrapToggle">
+                                <div class="toggle-slider">
+                                    <div class="toggle-indicator"></div>
+                                </div>
+                                <span class="toggle-label" id="wordWrapLabel">Off</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">Minimap</label>
+                        <div class="toggle-controls">
+                            <button class="toggle-btn" id="minimapToggle">
+                                <div class="toggle-slider">
+                                    <div class="toggle-indicator"></div>
+                                </div>
+                                <span class="toggle-label" id="minimapLabel">Off</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">Example</label>
+                        <div class="dropdown-controls">
+                            <button class="dropdown-btn" id="loadExamDropdown">
+                                <span class="dropdown-text" id="loadExamText">Select Exam</span>
+                                <i class="fas fa-chevron-down dropdown-icon"></i>
+                            </button>
+                            <div class="dropdown-menu" id="loadExamMenu">
+                                <div class="dropdown-item" data-value="exam1">빈 프로젝트</div>
+                                <div class="dropdown-item" data-value="exam2">Motor</div>
+                                <div class="dropdown-item" data-value="exam3">Camera</div>
+                                <div class="dropdown-item" data-value="exam4">Ultrasonic</div>
+                                <div class="dropdown-item" data-value="exam5">Obstacle Avoidance</div>
+                                <div class="dropdown-item" data-value="exam6">Line Tracking</div>
+                                <div class="dropdown-item" data-value="exam7">Color Detection</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Main Container -->
     <div class="main-container">
@@ -54,6 +131,7 @@
                     <i class="fas fa-trash"></i>
                     Clear All
                 </button>
+
             </div>
         </header>
 
@@ -73,8 +151,8 @@
                                 <button class="btn btn-small btn-danger" id="stopBtn">
                                     <i class="fas fa-stop"></i> Stop
                                 </button>
-                                <button class="btn btn-small btn-secondary">
-                                    <i class="fas fa-save"></i> Save
+                                <button class="btn btn-small btn-settings" id="editorSettingsBtn">
+                                    <i class="fas fa-cog"></i>
                                 </button>
                             </div>
                         </div>
@@ -112,6 +190,7 @@
     <script src="{{ url_for('static', filename='js/widget.js') }}"></script>
     <script src="{{ url_for('static', filename='js/action.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popover.js') }}"></script>
 
     <script>
         showWelcomeToast(0); // util.js
@@ -121,62 +200,20 @@
 
             try {
                 // Monaco Editor 초기화
-                if (typeof initializeMonacoEditor === 'function') {
-                    initializeMonacoEditor(); // editor.js
-                } else {
-                    console.error('initializeMonacoEditor function not found');
-                }
+                initializeMonacoEditor(); // editor.js
 
                 // Socket 초기화
-                if (typeof initializeSocket === 'function') {
-                    initializeSocket(); // socket-handler.js
-                }
+                initializeSocket(); // socket-handler.js
 
                 // GridStack 초기화
-                if (typeof GridStack !== 'undefined') {
-                    console.log('GridStack is available');
-                    const grid = initializeMainGridStack();
-                    if (grid) {
-                        console.log('Main GridStack initialized successfully');
-                    } else {
-                        console.error('Failed to initialize Main GridStack');
-                    }
-                } else {
-                    console.error('GridStack is not loaded');
-                }
+                initializeMainGridStack(); // widget.js
+
+                // Popover 초기화
+                initializePopover(); // popover.js
 
                 // 버튼 이벤트 리스너 등록
-                const runButton = document.getElementById('runBtn');
-                if (runButton && typeof handleRunButtonClick === 'function') {
-                    runButton.addEventListener('click', handleRunButtonClick);
-                }
+                initializeButtonAction(); // action.js
 
-                const stopButton = document.getElementById('stopBtn');
-                if (stopButton && typeof handleStopButtonClick === 'function') {
-                    stopButton.addEventListener('click', handleStopButtonClick);
-                }
-
-                const clearOutputBtn = document.getElementById('clearOutputBtn');
-                if (clearOutputBtn && typeof clearOutput === 'function') {
-                    clearOutputBtn.addEventListener('click', clearOutput);
-                }
-
-                const addWidgetBtn = document.getElementById('addWidgetBtn');
-                if (addWidgetBtn) {
-                    addWidgetBtn.addEventListener('click', handleAddWidgetClick);
-                }
-
-                // Clear All 버튼
-                const clearAllWidgetsBtn = document.getElementById('clearAllWidgetsBtn');
-                if (clearAllWidgetsBtn) {
-                    clearAllWidgetsBtn.addEventListener('click', handleClearAllWidgetsClick);
-                }
-
-                // Widget Settings 버튼
-                const widgetSettingsBtn = document.getElementById('widgetSettingsBtn');
-                if (widgetSettingsBtn) {
-                    widgetSettingsBtn.addEventListener('click', handleWidgetSettingsClick);
-                }
 
             } catch (error) {
                 console.error('Error during initialization:', error);
