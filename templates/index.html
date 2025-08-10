@@ -108,6 +108,20 @@
                 </div>
             </div>
         </div>
+        <!-- Webcam Settings Popover (empty body as requested) -->
+        <div class="popover" id="webcamSettingsPopover">
+            <div class="popover-content">
+                <div class="popover-header">
+                    <h5><i class="fas fa-cog"></i> 웹캠 설정</h5>
+                    <button class="popover-close" id="closeWebcamSettingsPopover">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="popover-body" id="webcamSettingsBody">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+        </div>
     </section>
 
     <!-- Main Container -->
@@ -197,6 +211,7 @@
     <script src="{{ url_for('static', filename='js/action.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
     <script src="{{ url_for('static', filename='js/popover.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
 
     <script>
         showWelcomeToast(0); // util.js
@@ -213,6 +228,9 @@
 
                 // GridStack 초기화
                 initializeMainGridStack(); // widget.js
+
+                // 비디오 입력 장치 목록 로드
+                loadVideoDevices(); // util.js
 
                 // Popover 초기화
                 initializePopover(); // popover.js

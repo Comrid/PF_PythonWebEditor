@@ -11,6 +11,37 @@ let fontSize = 16;
 // Widget Variables
 let numImageDisplayWidget = 0;
 let numTextDisplayWidget = 0;
+let numWebcamDisplayWidget = 0;
+
+// Webcam globals
+let webcamStreams = new Map(); // widgetId -> { stream, deviceIndex }
+let videoInputDevices = [];
+let maxWebcamCount = 0;
+
+// Hand Gesture globals (per-widget control)
+window.handGestureEnabledByWidget = window.handGestureEnabledByWidget || new Map();
+window.handGestureHandsByWidget = window.handGestureHandsByWidget || new Map();
+window.handGestureRafByWidget = window.handGestureRafByWidget || new Map();
+window.mediapipeHandsLibLoaded = window.mediapipeHandsLibLoaded || false;
+// Latest gesture result storage (per widget)
+window.gestureLastResultByWidget = window.gestureLastResultByWidget || new Map();
+
+async function loadVideoDevices() {
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            showToast('이 브라우저는 카메라 열거를 지원하지 않습니다.', 'warning', useConsoleDebug);
+            return;
+        }
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+        maxWebcamCount = videoInputDevices.length;
+        if (maxWebcamCount === 0) {
+            showToast('연결된 카메라를 찾을 수 없습니다.', 'warning', useConsoleDebug);
+        }
+    } catch (e) {
+        showToast('카메라 장치 목록을 가져오는 중 오류가 발생했습니다.', 'error', useConsoleDebug);
+    }
+}
 
 // messages
 const messages = {
@@ -43,6 +74,9 @@ const messages = {
 
     // editor.js
     'editor_init_failed_msg': 'Monaco Editor 초기화에 실패했습니다.',
+
+    // socket-handler missing key fix
+    'socketio_not_connected_msg': 'Socket.IO가 연결되어 있지 않습니다.'
 }
 
 

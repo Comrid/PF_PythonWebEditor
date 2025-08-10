@@ -576,7 +576,7 @@ html {
     height: 100%;
 }
 
-.image-display img {
+.image-display img, .image-display video {
     display: none;
     /* 아래 두 코드는 이미지 자체의 크기를 지정 */
     width: 100%;
@@ -584,6 +584,13 @@ html {
     object-fit: contain;
     border-radius: 5px;
     image-rendering: pixelated;
+}
+
+.image-display .placeholder-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
 }
 /* #endregion */
 

@@ -8,6 +8,7 @@ import threading
 from traceback import format_exc
 import builtins
 from typing import Type
+import re
 
 
 
@@ -42,6 +43,9 @@ running_threads: dict[str, threading.Thread] = {}
 
 # 실행 중지 플래그를 추적하는 딕셔너리
 stop_flags: dict[str, bool] = {}
+
+# 제스처 최신 상태 저장: 세션별 → 위젯별
+gesture_states: dict[str, dict[str, dict]] = {}
 
 # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
 def raise_in_thread(thread: threading.Thread, exc_type: Type[BaseException] = SystemExit) -> bool:
@@ -140,16 +144,43 @@ def execute_code(code: str, sid: str):
                 'widget_id': widget_id
             }, room=sid)
 
-        # emit 함수들을 전역 변수로 설정
+        # Helper: normalize widget key from CamN to internal id
+        def _normalize_widget_key(key: str) -> str:
+            if key.startswith('webcamDisplayWidget_'):
+                return key
+            m = re.fullmatch(r"Cam(\d+)", key)
+            if m:
+                return f"webcamDisplayWidget_{m.group(1)}"
+            return key
+
+        # gesture helper for Python user code
+        def get_gesture(widget_id: str | None = None):
+            state = gesture_states.get(sid, {})
+            if widget_id is None:
+                return state
+            key = _normalize_widget_key(widget_id)
+            return state.get(key)
+
+        def get_gesture_label(widget_id: str) -> str | None:
+            data = get_gesture(widget_id)
+            if not data:
+                return None
+            return data.get('label')
+
+        # emit 함수들과 제스처 헬퍼를 전역 변수로 설정
         __main__.emit_image = emit_image
         __main__.emit_text = emit_text
+        __main__.get_gesture = get_gesture
+        __main__.get_gesture_label = get_gesture_label
 
         compiled_code = compile(code, '<string>', 'exec')
         exec(compiled_code, {'socketio': socketio,
                              'sid': sid,
                              'stop_flags': stop_flags,
                              'emit_image': emit_image,
-                             'emit_text': emit_text})
+                             'emit_text': emit_text,
+                             'get_gesture': get_gesture,
+                             'get_gesture_label': get_gesture_label})
 
 
     except Exception:
@@ -282,19 +313,23 @@ def handle_disconnect():
             pass
 #endregion
 
+# Gesture updates from frontend
+@socketio.on('gesture_update')
+def handle_gesture_update(data):
+    try:
+        sid = request.sid
+        widget_id = data.get('widgetId')
+        label = data.get('label')
+        ts = data.get('ts')
+        if not widget_id or not label:
+            return
+        state = gesture_states.setdefault(sid, {})
+        state[widget_id] = {'label': label, 'ts': ts}
+    except Exception as e:
+        print(f"DEBUG: gesture_update error: {e}")
+
 #region Main
-import multiprocessing as mp
-import psutil
-def monitor_cpu():
-    while True:
-        usage = psutil.cpu_percent(interval=1, percpu=True)
-        print(" | ".join(f"CPU{i}: {u:5.1f}%" for i, u in enumerate(usage)))
-
-
 if __name__ == '__main__':
-    monitor = mp.Process(target=monitor_cpu, daemon=True).start()
-
-
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 #endregion
 

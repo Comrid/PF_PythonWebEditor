@@ -7,6 +7,7 @@ function positionPopover(anchorEl, popoverEl){
 function initializePopover(){
     initializeEditorSettingsPopover();
     initializeAddWidgetPopover();
+    initializeWebcamSettingsPopover();
 }
 
 //#region Editor Settings Popover
@@ -220,6 +221,7 @@ function initializeAddWidgetPopover(){
     const items = [
         { key: 'image', icon: 'fa-image', label: 'Image Display', handler: createWidget_ImageDisplay },
         { key: 'text', icon: 'fa-font', label: 'Text Display', handler: createWidget_TextDisplay },
+        { key: 'webcam', icon: 'fa-camera', label: 'Webcam', handler: createWidget_WebcamDisplay },
     ];
     grid.innerHTML = items.map(item => `
         <div class="widget-picker-item" data-key="${item.key}">
@@ -254,18 +256,16 @@ function initializeAddWidgetPopover(){
     // 닫기 버튼
     if (closeBtn) closeBtn.addEventListener('click', hide);
 
-    // 항목 클릭 → 위젯 생성
-    grid.querySelectorAll('.widget-picker-item').forEach((el, idx) => {
-        el.addEventListener('click', () => {
-            const key = el.getAttribute('data-key');
-            const item = items.find(i => i.key === key);
-            if (item && typeof item.handler === 'function') {
-                const widgetId = item.handler();
-                if (widgetId) {
-                    showToast(`${item.label} 위젯이 생성되었습니다: ${widgetId}`, 'success');
-                }
-            }
-        });
+    // 항목 클릭 → 위젯 생성 (이벤트 위임)
+    grid.addEventListener('click', (e) => {
+        const el = e.target.closest('.widget-picker-item');
+        if (!el || !grid.contains(el)) return;
+        const key = el.getAttribute('data-key');
+        const item = items.find(i => i.key === key);
+        if (item && typeof item.handler === 'function') {
+            const widgetId = item.handler();
+            if (widgetId) showToast(`${item.label} 위젯이 생성되었습니다: ${widgetId}`, 'success');
+        }
     });
 
     // 윈도우 리사이즈 시 재배치
@@ -274,5 +274,138 @@ function initializeAddWidgetPopover(){
             positionPopover(addBtn, popover);
         }
     });
+}
+//#endregion
+
+//#region Webcam Settings Popover
+function initializeWebcamSettingsPopover(){
+    const popover = document.getElementById('webcamSettingsPopover');
+    const closeBtn = document.getElementById('closeWebcamSettingsPopover');
+    if (!popover) return;
+
+    let outsideClickHandler = null;
+    let keydownHandler = null;
+
+    const hide = () => {
+        popover.classList.remove('show');
+        if (outsideClickHandler) {
+            document.removeEventListener('click', outsideClickHandler);
+            outsideClickHandler = null;
+        }
+        if (keydownHandler) {
+            document.removeEventListener('keydown', keydownHandler);
+            keydownHandler = null;
+        }
+    };
+
+    // 외부 참조를 위해 저장
+    window.__hideWebcamSettingsPopover = hide;
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            hide();
+        });
+    }
+
+    // 리사이즈 시 재배치 (열려있는 경우)
+    window.addEventListener('resize', () => {
+        if (popover.classList.contains('show') && initializeWebcamSettingsPopover.__anchor) {
+            positionPopover(initializeWebcamSettingsPopover.__anchor, popover);
+        }
+    });
+}
+
+function toggleWebcamSettingsPopover(anchorBtn, widgetId){
+    const popover = document.getElementById('webcamSettingsPopover');
+    if (!popover || !anchorBtn) return;
+
+    // 이미 열려있고 같은 버튼이면 닫기
+    if (popover.classList.contains('show') && initializeWebcamSettingsPopover.__anchor === anchorBtn) {
+        window.__hideWebcamSettingsPopover && window.__hideWebcamSettingsPopover();
+        return;
+    }
+
+    // 내용 초기화/주입
+    const body = document.getElementById('webcamSettingsBody');
+    if (body) {
+        body.innerHTML = `
+            <div class="setting-item">
+                <label class="setting-label">Hand Gesture</label>
+                <div class="toggle-controls">
+                    <button class="toggle-btn" id="handGestureToggle_${widgetId}">
+                        <div class="toggle-slider">
+                            <div class="toggle-indicator"></div>
+                        </div>
+                        <span class="toggle-label" id="handGestureLabel_${widgetId}">Off</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // 바인딩
+        const toggle = document.getElementById(`handGestureToggle_${widgetId}`);
+        const label = document.getElementById(`handGestureLabel_${widgetId}`);
+        if (toggle && label) {
+            // 초기 상태 동기화
+            const enabled = !!(window.handGestureEnabledByWidget && window.handGestureEnabledByWidget.get && window.handGestureEnabledByWidget.get(widgetId));
+            if (enabled) {
+                toggle.classList.add('active');
+                label.textContent = 'On';
+            }
+
+            toggle.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isActive = toggle.classList.toggle('active');
+                label.textContent = isActive ? 'On' : 'Off';
+                try {
+                    if (isActive) {
+                        if (typeof window.enableHandGesture !== 'function') {
+                            // 지연 로드 hand_gesture.js
+                            const s = document.createElement('script');
+                            s.src = `${window.STATIC_BASE || ''}/static/js/hand_gesture.js`;
+                            s.async = true;
+                            await new Promise((res, rej) => { s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+                        }
+                        window.enableHandGesture && window.enableHandGesture(widgetId);
+                    } else {
+                        window.disableHandGesture && window.disableHandGesture(widgetId);
+                    }
+                } catch (err) {
+                    console.error('Hand gesture script load/enable failed:', err);
+                    toggle.classList.remove('active');
+                    label.textContent = 'Off';
+                }
+            });
+        }
+    }
+
+    // 위치 및 표시
+    positionPopover(anchorBtn, popover);
+    popover.classList.add('show');
+
+    // 현재 앵커 저장
+    initializeWebcamSettingsPopover.__anchor = anchorBtn;
+
+    // 외부 클릭/ESC로 닫기
+    const outsideClickHandler = (e) => {
+        const isInside = popover.contains(e.target) || anchorBtn.contains(e.target);
+        if (!isInside) {
+            window.__hideWebcamSettingsPopover && window.__hideWebcamSettingsPopover();
+        }
+    };
+    setTimeout(() => document.addEventListener('click', outsideClickHandler), 0);
+
+    const keydownHandler = (e) => { if (e.key === 'Escape') { window.__hideWebcamSettingsPopover && window.__hideWebcamSettingsPopover(); }};
+    document.addEventListener('keydown', keydownHandler);
+
+    // 현재 핸들러를 교체 저장하여 initialize에서 해제 가능하도록
+    window.__hideWebcamSettingsPopover = () => {
+        popover.classList.remove('show');
+        document.removeEventListener('click', outsideClickHandler);
+        document.removeEventListener('keydown', keydownHandler);
+    };
 }
 //#endregion
