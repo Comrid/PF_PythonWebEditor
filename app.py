@@ -7,6 +7,21 @@ from secrets import token_hex
 import threading
 from traceback import format_exc
 import builtins
+from typing import Type
+
+
+
+# 개발 환경 설정 (프로덕션에서는 제거)
+import sys; import os
+if __name__ == "__main__":
+    project_root = os.path.abspath(__file__)
+    while not project_root.endswith("findee"):
+        project_root = os.path.dirname(project_root)
+    sys.path.insert(0, project_root)
+from findee import Findee, FindeeFormatter
+
+
+
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -27,6 +42,25 @@ running_threads: dict[str, threading.Thread] = {}
 
 # 실행 중지 플래그를 추적하는 딕셔너리
 stop_flags: dict[str, bool] = {}
+
+# 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
+def raise_in_thread(thread: threading.Thread, exc_type: Type[BaseException] = SystemExit) -> bool:
+    if thread is None or not thread.is_alive():
+        return False
+
+    func = ctypes.pythonapi.PyThreadState_SetAsyncExc
+    func.argtypes = [ctypes.c_ulong, ctypes.py_object]
+    func.restype = ctypes.c_int
+
+    tid = ctypes.c_ulong(thread.ident)
+    res = func(tid, ctypes.py_object(exc_type))
+
+    if res > 1:
+        # 롤백
+        func(tid, ctypes.py_object(0))
+        return False
+
+    return res == 1
 
 @app.route('/')
 def index():
@@ -199,10 +233,8 @@ def handle_stop_execution():
             safety_thread.start()
             safety_thread.join(timeout=1.0)  # 1초 대기
 
-            # 강제 종료 실행
-            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, ctypes.py_object(SystemExit))
-            if res > 1:
-                ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, 0)
+            # 강제 종료 실행 (안전 헬퍼 사용)
+            ok = raise_in_thread(thread, SystemExit)
 
             thread.join(timeout=2.0)  # 2초 대기
 
@@ -251,7 +283,18 @@ def handle_disconnect():
 #endregion
 
 #region Main
+import multiprocessing as mp
+import psutil
+def monitor_cpu():
+    while True:
+        usage = psutil.cpu_percent(interval=1, percpu=True)
+        print(" | ".join(f"CPU{i}: {u:5.1f}%" for i, u in enumerate(usage)))
+
+
 if __name__ == '__main__':
+    monitor = mp.Process(target=monitor_cpu, daemon=True).start()
+
+
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
 #endregion
 
