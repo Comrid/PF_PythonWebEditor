@@ -265,20 +265,106 @@ while True:
 }
 //#endregion
 
-function getMotorExample(){
-    return `from findee import Findee
+function getEditorDefaultCode(){
+    return `# Pathfinder Python Web Editor
+from findee import Findee
 
 robot = Findee()
 
-robot.motor.move_forward(100)
-robot.motor.move_backward(100)
-robot.motor.move_left(100)
-robot.motor.move_right(100)
-robot.motor.stop()
+try:
+    # 여기에 코드를 작성해주세요.
+except Exception as e:
+    print(e)
+finally:
+    robot.cleanup()`;
+}
 
-robot.motor.move_forward(100, 100)
-robot.motor.move_backward(100, 100)
-robot.motor.move_left(100, 100)
-robot.motor.move_right(100, 100)
-robot.motor.stop()`;
+function getEditorExampleCode(){
+    return `# Editor Example Code
+from findee import Findee
+import time
+
+robot = Findee()
+
+try:
+    while True:
+        time.sleep(1)
+    `;
+}
+
+function getCameraExampleCode(){
+    return `# Camera Example Code
+from findee import Findee
+import time
+
+robot = Findee()
+robot.camera.start_frame_capture()
+
+fps = 30
+interval = 1 / fps
+
+try:
+    while True:
+        start = time.time()
+        emit_image(robot.camera.current_frame, 'Camera')
+        emit_text(f"Time for 1 frmae: {(time.time() - start)*1000:.3f}ms", 'Text')
+        time.sleep(interval)
+except Exception as e:
+    print(e)
+finally:
+    robot.cleanup()`;
+}
+
+function getMotorExampleCode(){
+    return `# Motor Example Code
+from findee import Findee
+import time
+
+robot = Findee()
+
+try:
+    robot.motor.move_forward(100, 1) # 100%의 속도로 1초 동안 전진
+
+    robot.motor.move_backward(100) # 100%의 속도로 후진
+    time.sleep(1)
+    robot.motor.stop() # 방향만 반대이고 첫 줄과 동일한 시간 효과
+
+    robot.motor.turn_left(50, 2) # 50%의 속도로 2초 동안 제자리 좌회전
+    robot.motor.turn_right(70, 1.5) # 70%의 속도로 1.5초 동안 제자리 우회전
+
+    robot.motor.curve_left(100, 30, 2) # 100%의 속도로 30도 각도로 왼쪽 커브
+    robot.motor.curve_right(70, 10, 1) # 70%의 속도로 10도 각도로 오른쪽 커브
+except Exception as e:
+    print(e)
+finally:
+    robot.cleanup()`;
+}
+
+function getUltrasonicExampleCode(){
+    return `# Ultrasonic Example Code
+from findee import Findee
+import time
+
+robot = Findee()
+close_threshold = 5
+far_threshold = 20
+
+try:
+    while True:
+        distance = robot.ultrasonic.get_distance()
+        emit_text(f"Distance: {distance}cm", "Dis")
+        
+        if(distance <= close_threshold):
+            text = f"{close_threshold}cm 이하"
+        elif(distance < far_threshold):
+            text = f"{close_threshold}cm 이상 {far_threshold}cm 이하"
+        else:
+            text = f"{far_threshold}cm 이상"
+        emit_text(f"거리 상태: {text}", "State")
+
+        time.sleep(0.1)
+except Exception as e:
+    print(e)
+finally:
+    robot.cleanup()`;
 }

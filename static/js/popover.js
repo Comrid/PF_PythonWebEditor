@@ -174,13 +174,19 @@ function dropdownExample(){
             dropdown.classList.remove('active');
 
             const codes = {
-                exam1: `#Welcome to the Pathfinder Editor!`,
-                exam2: getCode1(),
-                exam3: getCode2(),
-                exam4: getCode3(),
-                exam5: getCode4(),
-                exam6: getCode5(),
-                exam7: getCode6()
+                Empty: "",
+                Default: getEditorDefaultCode(),
+                EditorExam: getEditorExampleCode(),
+                CameraExam: getCameraExampleCode(),
+                MotorExam: getMotorExampleCode(),
+                UltrasonicExam: getUltrasonicExampleCode(),
+
+                exam1: getCode1(),
+                exam2: getCode2(),
+                exam3: getCode3(),
+                exam4: getCode4(),
+                exam5: getCode5(),
+                exam6: getCode6(),
             }
             monacoEditor.setValue(codes[selectedValue]);
         });

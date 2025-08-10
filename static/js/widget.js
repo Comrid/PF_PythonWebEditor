@@ -84,6 +84,26 @@ function removeWidget(widgetId) {
         console.error(`Error removing widget ${widgetId}:`, error);
     }
 }
+
+// TODO: 레이아웃 저장/불러오기 기능 추가
+// 레이아웃 저장
+function saveLayout() {
+    if (!window.mainGridStack) return;
+    const layout = window.mainGridStack.save(true); // 위젯 HTML까지 저장
+    localStorage.setItem('gridstack_layout', JSON.stringify(layout));
+    showToast('레이아웃이 저장되었습니다.', 'success');
+}
+
+// 레이아웃 복원
+function loadLayout() {
+    if (!window.mainGridStack) return;
+    const raw = localStorage.getItem('gridstack_layout');
+    if (!raw) { showToast('저장된 레이아웃이 없습니다.', 'warning'); return; }
+    const layout = JSON.parse(raw);
+    window.mainGridStack.removeAll(); // 현재 위젯 비우기(선택)
+    window.mainGridStack.load(layout);
+    showToast('레이아웃을 복원했습니다.', 'success');
+}
 //#endregion
 
 //#region ID 편집 관련
@@ -155,7 +175,7 @@ function createWidget_ImageDisplay(){
     const widgetId = `imageDisplayWidget_${numImageDisplayWidget++}`;
 
     const widgetHTML = `
-        <div class="grid-stack-item" id="${widgetId}" gs-w="8" gs-h="10" gs-min-w="6" gs-min-h="8" gs-locked="true">
+        <div class="grid-stack-item" id="${widgetId}" gs-w="8" gs-h="10" gs-min-w="4" gs-min-h="6" gs-locked="true">
             <div class="grid-stack-item-content widget-content">
                 <div class="widget-header">
                     <h4>
@@ -165,14 +185,14 @@ function createWidget_ImageDisplay(){
                                onkeydown="handleWidgetId_KeyPress(event, this, '${widgetId}')"
                                onfocus="handleWidgetId_Focus(this)">
                     </h4>
-                    <button class="widget-close-btn" onclick="removeWidget('${widgetId}')">
+                    <button class="widget-close-btn" onclick="removeWidget(this.closest('.grid-stack-item').id)">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="widget-body">
                     <div class="image-display" id="imageDisplay_${widgetId}">
                         <div class="placeholder-text">이미지가 여기에 표시됩니다</div>
-                        <img id="displayImage_${widgetId}" src="">
+                        <img id="displayImage_${widgetId}" src="" alt="Display Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
                     </div>
                 </div>
             </div>
@@ -238,7 +258,7 @@ function createWidget_TextDisplay(){
                                onkeydown="handleWidgetId_KeyPress(event, this, '${widgetId}')"
                                onfocus="handleWidgetId_Focus(this)">
                     </h4>
-                    <button class="widget-close-btn" onclick="removeWidget('${widgetId}')">
+                    <button class="widget-close-btn" onclick="removeWidget(this.closest('.grid-stack-item').id)">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
