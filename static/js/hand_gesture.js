@@ -122,6 +122,68 @@
         return perHand.length > 0 ? perHand.join(' | ') : '-';
     }
 
+    function formatGestureData(results){
+        if (!results || !results.gestures || results.gestures.length === 0) {
+            return {
+                Hand1: {
+                    isExist: false,
+                    gesture: '-',
+                    confidence: 0,
+                    landmarks: []
+                },
+                Hand2: {
+                    isExist: false,
+                    gesture: '-',
+                    confidence: 0,
+                    landmarks: []
+                }
+            };
+        }
+
+        // 기본 구조 생성 (2개 손 모두)
+        const gestureData = {
+            Hand1: {
+                isExist: false,
+                gesture: '-',
+                confidence: 0,
+                landmarks: []
+            },
+            Hand2: {
+                isExist: false,
+                gesture: '-',
+                confidence: 0,
+                landmarks: []
+            }
+        };
+
+        // 인식된 손 데이터 처리
+        results.gestures.forEach((cands, idx) => {
+            if (!cands || cands.length === 0) return;
+
+            const top = cands[0];
+            const name = top.categoryName || top.CategoryName || 'unknown';
+            const score = typeof top.score === 'number' ? top.score : (top.score || 0);
+
+            // Hand1 또는 Hand2에 데이터 할당
+            const handKey = `Hand${idx + 1}`;
+            if (gestureData[handKey]) {
+                // landmark 추출 로직 수정
+                let landmarks = [];
+
+                landmarks = results.worldLandmarks[idx]
+
+                gestureData[handKey] = {
+                    isExist: true,
+                    gesture: name,
+                    confidence: score,
+                    landmarks: landmarks
+                };
+            }
+        });
+
+        return gestureData;
+    }
+
     async function setupRecognizer(widgetId){
         await ensureGestureTasksLoaded();
         await ensureDrawingUtilsLoaded();
@@ -199,6 +261,8 @@
                 drawLabel(ctx, label);
                 ctx.restore();
 
+                const data = formatGestureData(results);
+
                 // Save latest result and dispatch event
                 try {
                     if (window.gestureLastResultByWidget && window.gestureLastResultByWidget.set) {
@@ -208,7 +272,7 @@
                     window.dispatchEvent(evt);
                     // Forward to backend via Socket.IO if available
                     if (window.socket && window.socket.connected) {
-                        window.socket.emit('gesture_update', { widgetId, label, ts: Date.now() });
+                        window.socket.emit('gesture_update', { data: data });
                     }
                 } catch (_) { /* no-op */ }
             }
@@ -269,6 +333,7 @@
                 return;
             }
             const summary = formatGestureLabel(results);
+            const data = formatGestureData(results);
             // store and emit one-shot event as well
             try {
                 if (window.gestureLastResultByWidget && window.gestureLastResultByWidget.set) {
@@ -276,9 +341,9 @@
                 }
                 const evt = new CustomEvent('hand_gesture_update', { detail: { widgetId, label: summary } });
                 window.dispatchEvent(evt);
-                if (window.socket && window.socket.connected) {
-                    window.socket.emit('gesture_update', { widgetId, label: summary, ts: Date.now() });
-                }
+                // if (window.socket && window.socket.connected) {
+                //     window.socket.emit('gesture_update', { label: data });
+                // }
             } catch (_) { /* no-op */ }
             console.log('[hand_gesture]', summary);
         } catch (e) {

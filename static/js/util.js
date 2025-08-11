@@ -1,6 +1,20 @@
+// Import Util.js First
+// # Function List
+// - showWelcomeToast()
+// - addOutput()
+// - clearOutput()
+// - updateExecutionStatus()
+// - updateRunButtons()
+// - updateConnectionStatus()
+// 나머진 코드 관련
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.info('DOM Content Loaded');
+    showToast(messages.welcome_msg, 'success');
+});
+
 // Toast with console debug
 const useConsoleDebug = true;
-//window.messages = messages;
 
 // global variables
 let isConnected = false;
@@ -14,9 +28,28 @@ let numTextDisplayWidget = 0;
 let numWebcamDisplayWidget = 0;
 
 // Webcam globals
-let webcamStreams = new Map(); // widgetId -> { stream, deviceIndex }
+let webcamStreams = new Map();
 let videoInputDevices = [];
-let maxWebcamCount = 0;
+
+let webcamRunning = false;
+let mediapipeRunning = false;
+
+async function loadVideoDevices() {
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            showToast(messages.navigator_media_devices_not_supported_msg, 'warning', useConsoleDebug);
+            return;
+        }
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+        maxWebcamCount = videoInputDevices.length;
+        if (maxWebcamCount === 0) {
+            showToast(messages.navigator_no_camera_found_msg, 'warning', useConsoleDebug);
+        }
+    } catch (e) {
+        showToast(messages.navigator_media_devices_enumerate_devices_error_msg, 'error', useConsoleDebug);
+    }
+}
 
 // Hand Gesture globals (per-widget control)
 window.handGestureEnabledByWidget = window.handGestureEnabledByWidget || new Map();
@@ -26,25 +59,16 @@ window.mediapipeHandsLibLoaded = window.mediapipeHandsLibLoaded || false;
 // Latest gesture result storage (per widget)
 window.gestureLastResultByWidget = window.gestureLastResultByWidget || new Map();
 
-async function loadVideoDevices() {
-    try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-            showToast('이 브라우저는 카메라 열거를 지원하지 않습니다.', 'warning', useConsoleDebug);
-            return;
-        }
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        videoInputDevices = devices.filter(d => d.kind === 'videoinput');
-        maxWebcamCount = videoInputDevices.length;
-        if (maxWebcamCount === 0) {
-            showToast('연결된 카메라를 찾을 수 없습니다.', 'warning', useConsoleDebug);
-        }
-    } catch (e) {
-        showToast('카메라 장치 목록을 가져오는 중 오류가 발생했습니다.', 'error', useConsoleDebug);
-    }
-}
+
+
 
 // messages
 const messages = {
+    // navigator
+    'navigator_media_devices_not_supported_msg': '이 브라우저는 카메라 열거를 지원하지 않습니다.',
+    'navigator_no_camera_found_msg': '연결된 카메라를 찾을 수 없습니다.',
+    'navigator_media_devices_enumerate_devices_error_msg': '카메라 장치 목록을 가져오는 중 오류가 발생했습니다.',
+
     'welcome_msg': 'Welcome to Findee Python Web Editor!',
     'error_msg': 'An error occurred',
     'warning_msg': 'A warning occurred',
@@ -73,6 +97,7 @@ const messages = {
     'code_execution_error_msg': '코드 실행 중 오류가 발생했습니다.',
 
     // editor.js
+    'monaco_edirtor_loader_load_fail_msg': 'Monaco Editor 로더 로드 실패',
     'editor_init_failed_msg': 'Monaco Editor 초기화에 실패했습니다.',
 
     // socket-handler missing key fix
@@ -106,10 +131,6 @@ function showToast(message, type = 'info', console_debug = false) {
     setTimeout(() => {toast.remove();}, 3000);
 }
 
-function showWelcomeToast() {
-    setTimeout(() => {showToast(messages.welcome_msg, 'success');}, 1000);
-}
-
 function addOutput(message, type = 'info') {
     // outputContent에 출력 메시지 추가
     const outputContent = document.getElementById('outputContent');
@@ -122,14 +143,6 @@ function addOutput(message, type = 'info') {
     outputContent.appendChild(outputItem);
 
     outputContent.scrollTop = outputContent.scrollHeight;
-}
-
-function clearOutput() {
-    // 출력 패널 초기화
-    const outputContent = document.getElementById('outputContent');
-    if (outputContent) {
-        outputContent.innerHTML = '';
-    }
 }
 
 function updateExecutionStatus(status) {
@@ -173,7 +186,7 @@ function updateConnectionStatus(connected) {
 }
 
 function getInitialCode() {
-    return getCode6();
+    return getEditorDefaultCode();
 }
 
 //#region Custom Code
@@ -299,6 +312,7 @@ while True:
 }
 //#endregion
 
+// 기본 코드
 function getEditorDefaultCode(){
     return `# Pathfinder Python Web Editor
 from findee import Findee
@@ -313,19 +327,31 @@ finally:
     robot.cleanup()`;
 }
 
+// 에디터 사용 예제 코드
 function getEditorExampleCode(){
     return `# Editor Example Code
-from findee import Findee
-import time
+import numpy
 
-robot = Findee()
+# 이 에디터에서만 사용 가능한 함수인 emit_image(), emit_text()
+# 를 사용하는 방법에 대한 예제입니다.
+# Run 버튼을 눌러 결과를 확인해보세요!
 
-try:
-    while True:
-        time.sleep(1)
-    `;
+random_image = numpy.random.randint(0, 255, (50, 50, 3), dtype=numpy.uint8)
+emit_image(random_image, "imageDisplayWidget_0") # 전달할 이미지, 이미지를 띄울 위젯의 이름
+
+random_image = numpy.random.randint(0, 255, (48, 64, 3), dtype=numpy.uint8)
+emit_image(random_image, "Random_Image") # 이미지 위젯의 이름은 변경 가능
+
+random_number = numpy.random.randint(0, 100)
+text = f"Random Number1: {random_number}"
+emit_text(text, "textDisplayWidget_0") # 전달할 텍스트, 텍스트를 띄울 위젯의 이름
+
+random_number = numpy.random.randint(0, 100)
+text = f"Random Number2: {random_number}"
+emit_text(text, "Random_Text") # 텍스트 위젯의 이름은 변경 가능`;
 }
 
+// 카메라 예제 코드
 function getCameraExampleCode(){
     return `# Camera Example Code
 from findee import Findee
@@ -349,6 +375,7 @@ finally:
     robot.cleanup()`;
 }
 
+// 모터 예제 코드
 function getMotorExampleCode(){
     return `# Motor Example Code
 from findee import Findee
@@ -374,6 +401,7 @@ finally:
     robot.cleanup()`;
 }
 
+// 초음파 예제 코드
 function getUltrasonicExampleCode(){
     return `# Ultrasonic Example Code
 from findee import Findee
@@ -387,7 +415,7 @@ try:
     while True:
         distance = robot.ultrasonic.get_distance()
         emit_text(f"Distance: {distance}cm", "Dis")
-        
+
         if(distance <= close_threshold):
             text = f"{close_threshold}cm 이하"
         elif(distance < far_threshold):
@@ -402,3 +430,5 @@ except Exception as e:
 finally:
     robot.cleanup()`;
 }
+
+

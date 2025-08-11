@@ -1,5 +1,83 @@
-// 위젯 생성 관련 이벤트 핸들러들
+// Action.js
+document.addEventListener('DOMContentLoaded', function() {
+    // 버튼 이벤트 리스너 등록
+    initializeButtonAction();
+});
 
+function initializeButtonAction(){
+    // Editor Buttons
+    const runButton = document.getElementById('runBtn');
+    runButton.addEventListener('click', handleRunButtonClick);
+
+    const stopButton = document.getElementById('stopBtn');
+    stopButton.addEventListener('click', handleStopButtonClick);
+
+    const clearOutputBtn = document.getElementById('clearOutputBtn');
+    clearOutputBtn.addEventListener('click', clearOutput);
+
+    // Widget Buttons
+    const clearAllWidgetsBtn = document.getElementById('clearAllWidgetsBtn');
+    clearAllWidgetsBtn.addEventListener('click', handleClearAllWidgetsClick);
+
+    const widgetSettingsBtn = document.getElementById('widgetSettingsBtn');
+    widgetSettingsBtn.addEventListener('click', handleWidgetSettingsClick);
+}
+
+//#region Editor(Run, Stop, Clear Output Button) Event Handler
+// Run 버튼 클릭 이벤트 핸들러
+function handleRunButtonClick() {
+    if (!monacoEditor) {
+        showToast(messages.editor_not_ready_msg, 'error', useConsoleDebug);
+        return;
+    }
+
+    const code = monacoEditor.getValue();
+
+    if (!code || code.trim() === '') {
+        showToast(messages.code_execution_empty_msg, 'warning', useConsoleDebug);
+        return;
+    }
+
+    if (socket && socket.connected) {
+        socket.emit('execute_code', {code: code});
+    } else {
+        showToast(messages.socketio_not_loaded_msg, 'error', useConsoleDebug);
+        setTimeout(() => {
+            if (socket && socket.connected) {
+                handleRunButtonClick();
+            } else {
+                showToast(messages.socketio_connect_failed_msg, 'error', useConsoleDebug);
+            }
+        }, 2000);
+    }
+}
+
+// Stop 버튼 클릭 이벤트 핸들러
+function handleStopButtonClick() {
+    if (!socket || !socket.connected) {
+        showToast(messages.socketio_not_connected_msg, 'error', useConsoleDebug);
+        return;
+    }
+
+    if (!codeRunning) {
+        showToast(messages.code_execution_not_running_msg, 'warning', useConsoleDebug);
+        return;
+    }
+
+    showToast(messages.code_execution_stop_msg, 'info', useConsoleDebug);
+    socket.emit('stop_execution');
+}
+
+// Clear Output 버튼 이벤트 핸들러 - 출력 패널 초기화
+function clearOutput() {
+    const outputContent = document.getElementById('outputContent');
+    if (outputContent) {
+        outputContent.innerHTML = '';
+    }
+}
+//#endregion
+
+//#region Widget(Add Widget, Clear All Widgets, Widget Settings Button) Event Handler
 // Add Widget 버튼 클릭 이벤트
 function handleAddWidgetClick() {
     console.log('Add Widget button clicked');
@@ -50,35 +128,4 @@ function handleWidgetSettingsClick() {
     // 위젯 설정 모달이나 패널 표시 (향후 구현)
     showToast('위젯 설정 기능은 준비 중입니다.', 'info');
 }
-
-
-
-function initializeButtonAction(){
-    // 버튼 이벤트 리스너 등록
-    const runButton = document.getElementById('runBtn');
-    if (runButton && typeof handleRunButtonClick === 'function') {
-        runButton.addEventListener('click', handleRunButtonClick);
-    }
-
-    const stopButton = document.getElementById('stopBtn');
-    if (stopButton && typeof handleStopButtonClick === 'function') {
-        stopButton.addEventListener('click', handleStopButtonClick);
-    }
-
-    const clearOutputBtn = document.getElementById('clearOutputBtn');
-    if (clearOutputBtn && typeof clearOutput === 'function') {
-        clearOutputBtn.addEventListener('click', clearOutput);
-    }
-
-    // Clear All 버튼
-    const clearAllWidgetsBtn = document.getElementById('clearAllWidgetsBtn');
-    if (clearAllWidgetsBtn) {
-        clearAllWidgetsBtn.addEventListener('click', handleClearAllWidgetsClick);
-    }
-
-    // Widget Settings 버튼
-    const widgetSettingsBtn = document.getElementById('widgetSettingsBtn');
-    if (widgetSettingsBtn) {
-        widgetSettingsBtn.addEventListener('click', handleWidgetSettingsClick);
-    }
-}
+//#endregion

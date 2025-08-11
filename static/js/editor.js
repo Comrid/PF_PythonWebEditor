@@ -1,3 +1,14 @@
+// Editor.js
+// # Function List
+// - loadMonacoEditor()
+// - initializeMonacoEditor()
+// - createEditor()
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Monaco Editor 초기화
+    initializeMonacoEditor();
+});
+
 function loadMonacoEditor() {
     return new Promise((resolve, reject) => {
         // 이미 Monaco Editor가 로드되어 있는지 확인
@@ -22,7 +33,7 @@ function loadMonacoEditor() {
             });
         };
         script.onerror = () => {
-            reject(new Error('Monaco Editor 로더 로드 실패'));
+            reject(new Error(messages.monaco_edirtor_loader_load_fail_msg));
         };
         document.head.appendChild(script);
     });

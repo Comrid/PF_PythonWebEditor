@@ -1,3 +1,9 @@
+// Socket-Handler.js
+document.addEventListener('DOMContentLoaded', function() {
+    // Socket 초기화
+    initializeSocket();
+});
+
 function initializeSocket() {
     try {
         if (typeof window.io === 'undefined') {
@@ -8,7 +14,6 @@ function initializeSocket() {
         socket = window.io();
 
         // Listener
-
         //#region connect and disconnect events
         socket.on('connect', function() {
             isConnected = true;
@@ -64,11 +69,11 @@ function initializeSocket() {
         //#region image_data event, custom_data event
         socket.on('image_data', function(data) {
             console.log('Received image_data event for widget:', data.widget_id);
-            if (data.image) {handleImageUpdate(data.image, data.widget_id);}
+            if (data.image) {handleImageUpdate(data.image, data.widget_id);} // Widget.js
         });
         socket.on('text_data', function(data) {
             console.log('Received text_data event:', data);
-            if(data.text) {handleTextUpdate(data.text, data.widget_id);}
+            if(data.text) {handleTextUpdate(data.text, data.widget_id);} // Widget.js
         });
         //#endregion
 
@@ -76,52 +81,3 @@ function initializeSocket() {
         showToast(messages.socketio_connecting_error_msg, 'error', useConsoleDebug);
     }
 }
-
-
-
-
-
-// Run 버튼 클릭 이벤트 핸들러
-function handleRunButtonClick() {
-    if (!monacoEditor) {
-        showToast(messages.editor_not_ready_msg, 'error', useConsoleDebug);
-        return;
-    }
-
-    const code = monacoEditor.getValue();
-
-    if (!code || code.trim() === '') {
-        showToast(messages.code_execution_empty_msg, 'warning', useConsoleDebug);
-        return;
-    }
-
-    if (socket && socket.connected) {
-        socket.emit('execute_code', {code: code});
-    } else {
-        showToast(messages.socketio_not_loaded_msg, 'error', useConsoleDebug);
-        setTimeout(() => {
-            if (socket && socket.connected) {
-                handleRunButtonClick();
-            } else {
-                showToast(messages.socketio_connect_failed_msg, 'error', useConsoleDebug);
-            }
-        }, 2000);
-    }
-}
-
-// Stop 버튼 클릭 이벤트 핸들러
-function handleStopButtonClick() {
-    if (!socket || !socket.connected) {
-        showToast(messages.socketio_not_connected_msg, 'error', useConsoleDebug);
-        return;
-    }
-
-    if (!codeRunning) {
-        showToast(messages.code_execution_not_running_msg, 'warning', useConsoleDebug);
-        return;
-    }
-
-    showToast(messages.code_execution_stop_msg, 'info', useConsoleDebug);
-    socket.emit('stop_execution');
-}
-

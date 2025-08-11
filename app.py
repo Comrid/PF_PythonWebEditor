@@ -1,5 +1,5 @@
-import ctypes
-from flask import Flask, render_template, request, jsonify, Response
+
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
 
@@ -7,23 +7,15 @@ from secrets import token_hex
 import threading
 from traceback import format_exc
 import builtins
-from typing import Type
 import re
 
 
+import time
 
-# 개발 환경 설정 (프로덕션에서는 제거)
-import sys; import os
-if __name__ == "__main__":
-    project_root = os.path.abspath(__file__)
-    while not project_root.endswith("findee"):
-        project_root = os.path.dirname(project_root)
-    sys.path.insert(0, project_root)
+import sys, platform
+if platform.system() == "Windows":
+    sys.path.insert(0, "F:/Git/findee")
 from findee import Findee, FindeeFormatter
-
-
-
-
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
@@ -45,10 +37,11 @@ running_threads: dict[str, threading.Thread] = {}
 stop_flags: dict[str, bool] = {}
 
 # 제스처 최신 상태 저장: 세션별 → 위젯별
-gesture_states: dict[str, dict[str, dict]] = {}
+gesture_states = {}
 
 # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
-def raise_in_thread(thread: threading.Thread, exc_type: Type[BaseException] = SystemExit) -> bool:
+def raise_in_thread(thread: threading.Thread, exc_type = SystemExit) -> bool:
+    import ctypes
     if thread is None or not thread.is_alive():
         return False
 
@@ -154,12 +147,8 @@ def execute_code(code: str, sid: str):
             return key
 
         # gesture helper for Python user code
-        def get_gesture(widget_id: str | None = None):
-            state = gesture_states.get(sid, {})
-            if widget_id is None:
-                return state
-            key = _normalize_widget_key(widget_id)
-            return state.get(key)
+        def get_gesture():
+            return gesture_states.get(sid, {})
 
         def get_gesture_label(widget_id: str) -> str | None:
             data = get_gesture(widget_id)
@@ -316,17 +305,9 @@ def handle_disconnect():
 # Gesture updates from frontend
 @socketio.on('gesture_update')
 def handle_gesture_update(data):
-    try:
-        sid = request.sid
-        widget_id = data.get('widgetId')
-        label = data.get('label')
-        ts = data.get('ts')
-        if not widget_id or not label:
-            return
-        state = gesture_states.setdefault(sid, {})
-        state[widget_id] = {'label': label, 'ts': ts}
-    except Exception as e:
-        print(f"DEBUG: gesture_update error: {e}")
+    sid = request.sid
+    data = data.get('data')
+    if data: gesture_states[sid] = data
 
 #region Main
 if __name__ == '__main__':

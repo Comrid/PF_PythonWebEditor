@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pathfinder Python Web Editor</title>
 
     <!-- Socket.IO -->
@@ -13,6 +13,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/popover.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/new.css') }}">
+
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -158,87 +162,29 @@
         <!-- GridStack Container -->
         <section class="gridstack-section">
             <div class="grid-stack" id="mainGridStack">
-                <!-- Code Editor Widget -->
-                <div class="grid-stack-item" id="codeEditorWidget" gs-w="17" gs-h="20" gs-x="0" gs-y="0" gs-min-w="10" gs-min-h="5" gs-auto-position="false" gs-locked="true"> <!-- 위치 변경 금지 -->
-                    <div class="grid-stack-item-content widget-content">
-                        <div class="widget-header">
-                            <h4><i class="fas fa-code"></i> Code Editor</h4>
-                            <div class="widget-controls">
-                                <span class="execution-status" id="executionStatus">대기 중</span>
-                                <button class="btn btn-small btn-success" id="runBtn">
-                                    <i class="fas fa-play"></i> Run
-                                </button>
-                                <button class="btn btn-small btn-danger" id="stopBtn">
-                                    <i class="fas fa-stop"></i> Stop
-                                </button>
-                                <button class="btn btn-small btn-settings" id="editorSettingsBtn">
-                                    <i class="fas fa-cog"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="widget-body">
-                            <div id="monaco-editor" class="monaco-editor"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Output Panel Widget -->
-                <div class="grid-stack-item" id="outputPanelWidget" gs-w="17" gs-h="10" gs-x="0" gs-y="20" gs-min-w="10" gs-min-h="5" gs-locked="true"> <!-- 위치 변경 금지 -->
-                    <div class="grid-stack-item-content widget-content">
-                        <div class="widget-header">
-                            <h4><i class="fas fa-terminal"></i> Output</h4>
-                            <div class="widget-controls">
-                                <button class="btn btn-small" id="clearOutputBtn">
-                                    <i class="fas fa-trash"></i> Clear
-                                </button>
-                            </div>
-                        </div>
-                        <div class="widget-body">
-                            <div class="output-content" id="outputContent">
-                                <div class="output-item system">Findee Python Web Editor!</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Injected dynamically -->
             </div>
         </section>
     </div>
 
     <!-- Custom JavaScript -->
-    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widget.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/action.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/popover.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/editor.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/widget.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/widget2.js') }}" defer></script>
+
+    <script src="{{ url_for('static', filename='js/socket-handler.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/popover.js') }}" defer></script>
+    <!-- <script src="{{ url_for('static', filename='js/mediapipe.js') }}" defer></script> -->
+     <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
+
+    <script src="{{ url_for('static', filename='js/action.js') }}" defer></script>
 
     <script>
-        showWelcomeToast(0); // util.js
-
         document.addEventListener('DOMContentLoaded', function() {
-            console.info('DOM Content Loaded');
-
             try {
-                // Monaco Editor 초기화
-                initializeMonacoEditor(); // editor.js
-
-                // Socket 초기화
-                initializeSocket(); // socket-handler.js
-
-                // GridStack 초기화
-                initializeMainGridStack(); // widget.js
-
-                // 비디오 입력 장치 목록 로드
-                loadVideoDevices(); // util.js
-
-                // Popover 초기화
-                initializePopover(); // popover.js
-
-                // 버튼 이벤트 리스너 등록
-                initializeButtonAction(); // action.js
-
-
+                initializePopover();
+                loadVideoDevices();
             } catch (error) {
                 console.error('Error during initialization:', error);
             }
