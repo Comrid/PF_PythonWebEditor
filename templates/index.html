@@ -52,7 +52,7 @@
                 </div>
                 <div class="popover-body">
                     <div class="setting-item">
-                        <label class="setting-label">Font Size</label>
+                        <label class="setting-label" for="increaseFontSize">Font Size</label>
                         <div class="font-size-controls">
                             <button class="size-btn size-btn-minus" id="decreaseFontSize">
                                 <i class="fas fa-minus"></i>
@@ -64,7 +64,7 @@
                         </div>
                     </div>
                     <div class="setting-item">
-                        <label class="setting-label">Word Wrap</label>
+                        <label class="setting-label" for="wordWrapToggle">Word Wrap</label>
                         <div class="toggle-controls">
                             <button class="toggle-btn" id="wordWrapToggle">
                                 <div class="toggle-slider">
@@ -75,7 +75,7 @@
                         </div>
                     </div>
                     <div class="setting-item">
-                        <label class="setting-label">Minimap</label>
+                        <label class="setting-label" for="minimapToggle">Minimap</label>
                         <div class="toggle-controls">
                             <button class="toggle-btn" id="minimapToggle">
                                 <div class="toggle-slider">
@@ -86,7 +86,7 @@
                         </div>
                     </div>
                     <div class="setting-item">
-                        <label class="setting-label">Example</label>
+                        <label class="setting-label" for="loadExamDropdown">Example</label>
                         <div class="dropdown-controls">
                             <button class="dropdown-btn" id="loadExamDropdown">
                                 <span class="dropdown-text" id="loadExamText">Select Exam</span>
@@ -171,24 +171,11 @@
     <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/editor.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/widget.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/widget2.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/new.js') }}" defer></script> <!-- 임시 파일 -->
 
     <script src="{{ url_for('static', filename='js/socket-handler.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/popover.js') }}" defer></script>
-    <!-- <script src="{{ url_for('static', filename='js/mediapipe.js') }}" defer></script> -->
-     <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
-
+    <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/action.js') }}" defer></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                initializePopover();
-                loadVideoDevices();
-            } catch (error) {
-                console.error('Error during initialization:', error);
-            }
-        });
-    </script>
 </body>
 </html>

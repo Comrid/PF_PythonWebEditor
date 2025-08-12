@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
@@ -8,6 +8,7 @@ import threading
 from traceback import format_exc
 import builtins
 import re
+import ssl
 
 
 import time
@@ -27,7 +28,8 @@ socketio = SocketIO(
     engineio_logger=False,                  # Engine.IO 로거 비활성화
     ping_timeout=60,                        # 핑 타임아웃 60초
     ping_interval=10,                       # 핑 간격 10초
-    transports=['websocket', 'polling']     # 전송 방식 설정
+    transports=['websocket', 'polling'],     # 전송 방식 설정
+    # allow_upgrades=True
 )
 
 # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
@@ -38,6 +40,10 @@ stop_flags: dict[str, bool] = {}
 
 # 제스처 최신 상태 저장: 세션별 → 위젯별
 gesture_states = {}
+# PID 최신 값 저장: 세션별 → 위젯ID별 {p,i,d}
+pid_states: dict[str, dict[str, dict[str, float]]] = {}
+# Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
+slider_states: dict[str, dict[str, list[float]]] = {}
 
 # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
 def raise_in_thread(thread: threading.Thread, exc_type = SystemExit) -> bool:
@@ -137,30 +143,32 @@ def execute_code(code: str, sid: str):
                 'widget_id': widget_id
             }, room=sid)
 
-        # Helper: normalize widget key from CamN to internal id
-        def _normalize_widget_key(key: str) -> str:
-            if key.startswith('webcamDisplayWidget_'):
-                return key
-            m = re.fullmatch(r"Cam(\d+)", key)
-            if m:
-                return f"webcamDisplayWidget_{m.group(1)}"
-            return key
 
         # gesture helper for Python user code
         def get_gesture():
             return gesture_states.get(sid, {})
 
-        def get_gesture_label(widget_id: str) -> str | None:
-            data = get_gesture(widget_id)
-            if not data:
-                return None
-            return data.get('label')
+        # PID helper for Python user code
+        def get_pid_value(widget_id: str):
+            state = pid_states.get(sid, {}).get(widget_id)
+            if not state:
+                return (0.0, 0.0, 0.0)
+            return (float(state.get('p', 0.0)), float(state.get('i', 0.0)), float(state.get('d', 0.0)))
+
+        def get_slider_value(widget_id: str):
+            values = slider_states.get(sid, {}).get(widget_id)
+            if not values:
+                return 0.0
+            if len(values) == 1:
+                return float(values[0])
+            return [float(v) for v in values]
 
         # emit 함수들과 제스처 헬퍼를 전역 변수로 설정
         __main__.emit_image = emit_image
         __main__.emit_text = emit_text
         __main__.get_gesture = get_gesture
-        __main__.get_gesture_label = get_gesture_label
+        __main__.get_pid_value = get_pid_value
+        __main__.get_slider_value = get_slider_value
 
         compiled_code = compile(code, '<string>', 'exec')
         exec(compiled_code, {'socketio': socketio,
@@ -169,7 +177,8 @@ def execute_code(code: str, sid: str):
                              'emit_image': emit_image,
                              'emit_text': emit_text,
                              'get_gesture': get_gesture,
-                             'get_gesture_label': get_gesture_label})
+                             'get_pid_value': get_pid_value,
+                             'get_slider_value': get_slider_value})
 
 
     except Exception:
@@ -308,6 +317,45 @@ def handle_gesture_update(data):
     sid = request.sid
     data = data.get('data')
     if data: gesture_states[sid] = data
+
+# PID updates from frontend
+@socketio.on('pid_update')
+def handle_pid_update(payload):
+    sid = request.sid
+    try:
+        widget_id = payload.get('widget_id')
+        p = float(payload.get('p', 0.0))
+        i = float(payload.get('i', 0.0))
+        d = float(payload.get('d', 0.0))
+    except Exception:
+        return
+    if not widget_id:
+        return
+    session_map = pid_states.get(sid)
+    if session_map is None:
+        session_map = {}
+        pid_states[sid] = session_map
+    session_map[widget_id] = {'p': p, 'i': i, 'd': d}
+
+# Slider updates from frontend
+@socketio.on('slider_update')
+def handle_slider_update(payload):
+    sid = request.sid
+    try:
+        widget_id = payload.get('widget_id')
+        values = payload.get('values')
+        if not isinstance(values, list):
+            return
+        values = [float(v) for v in values]
+    except Exception:
+        return
+    if not widget_id:
+        return
+    session_map = slider_states.get(sid)
+    if session_map is None:
+        session_map = {}
+        slider_states[sid] = session_map
+    session_map[widget_id] = values
 
 #region Main
 if __name__ == '__main__':

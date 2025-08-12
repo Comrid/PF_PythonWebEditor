@@ -68,11 +68,11 @@ function initializeSocket() {
 
         //#region image_data event, custom_data event
         socket.on('image_data', function(data) {
-            console.log('Received image_data event for widget:', data.widget_id);
+            // console.log('Received image_data event for widget:', data.widget_id);
             if (data.image) {handleImageUpdate(data.image, data.widget_id);} // Widget.js
         });
         socket.on('text_data', function(data) {
-            console.log('Received text_data event:', data);
+            // console.log('Received text_data event:', data);
             if(data.text) {handleTextUpdate(data.text, data.widget_id);} // Widget.js
         });
         //#endregion

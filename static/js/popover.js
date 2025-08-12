@@ -1,13 +1,17 @@
-function positionPopover(anchorEl, popoverEl){
-    const rect = anchorEl.getBoundingClientRect();
-    popoverEl.style.top = `${rect.bottom + window.scrollY + 2}px`;
-    popoverEl.style.right = `${window.scrollX + window.innerWidth - rect.right}px`;
-}
+document.addEventListener('DOMContentLoaded', function() {
+    initializePopover();
+});
 
 function initializePopover(){
     initializeEditorSettingsPopover();
     initializeAddWidgetPopover();
     initializeWebcamSettingsPopover();
+}
+
+function positionPopover(anchorEl, popoverEl){
+    const rect = anchorEl.getBoundingClientRect();
+    popoverEl.style.top = `${rect.bottom + window.scrollY + 2}px`;
+    popoverEl.style.right = `${window.scrollX + window.innerWidth - rect.right}px`;
 }
 
 //#region Editor Settings Popover
@@ -222,6 +226,8 @@ function initializeAddWidgetPopover(){
         { key: 'image', icon: 'fa-image', label: 'Image Display', handler: createWidget_ImageDisplay },
         { key: 'text', icon: 'fa-font', label: 'Text Display', handler: createWidget_TextDisplay },
         { key: 'webcam', icon: 'fa-camera', label: 'Webcam', handler: createWidget_WebcamDisplay },
+        { key: 'pid', icon: 'fas fa-list', label: 'PID Controller', handler: createWidget_PIDController },
+        { key: 'slider', icon: 'fa-sliders-h', label: 'Slider', handler: createWidget_Slider },
     ];
     grid.innerHTML = items.map(item => `
         <div class="widget-picker-item" data-key="${item.key}">

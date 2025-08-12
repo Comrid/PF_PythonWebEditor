@@ -117,6 +117,7 @@ function handleClearAllWidgetsClick() {
         // 웹캠 스트림 중지 및 카운터 초기화
         stopAllWebcamStreams();
         numWebcamDisplayWidget = 0;
+        webcamRunning = false;
 
         showToast('모든 위젯이 제거되었습니다.', 'info');
     }

@@ -11,6 +11,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.info('DOM Content Loaded');
     showToast(messages.welcome_msg, 'success');
+    loadVideoDevices();
 });
 
 // Toast with console debug
@@ -26,6 +27,8 @@ let fontSize = 16;
 let numImageDisplayWidget = 0;
 let numTextDisplayWidget = 0;
 let numWebcamDisplayWidget = 0;
+let numSliderWidget = 0;
+let numPidControllerWidget = 0;
 
 // Webcam globals
 let webcamStreams = new Map();
@@ -273,8 +276,8 @@ try:
         random_image2 = np.random.randint(50, 100, (100, 100), dtype=np.uint8)
 
         # 이미지 전송
-        emit_image(random_image1, 'imageDisplayWidget_0')
-        emit_image(random_image2, 'imageDisplayWidget_1')
+        emit_image(random_image1, 'Image_0')
+        emit_image(random_image2, 'Image_1')
 
         time.sleep(interval)
         #time.sleep(1)
@@ -303,8 +306,8 @@ while True:
     random_image2 = np.random.randint(50, 100, (100, 100), dtype=np.uint8)
 
     # 이미지 전송
-    emit_image(random_image1, 'imageDisplayWidget_0')
-    emit_image(random_image2, 'imageDisplayWidget_1')
+    emit_image(random_image1, 'Image_0')
+    emit_image(random_image2, 'Image_1')
     print(f"{cnt}: Display Success!")
     cnt += 1
 
@@ -337,14 +340,14 @@ import numpy
 # Run 버튼을 눌러 결과를 확인해보세요!
 
 random_image = numpy.random.randint(0, 255, (50, 50, 3), dtype=numpy.uint8)
-emit_image(random_image, "imageDisplayWidget_0") # 전달할 이미지, 이미지를 띄울 위젯의 이름
+emit_image(random_image, "Image_0") # 전달할 이미지, 이미지를 띄울 위젯의 이름
 
 random_image = numpy.random.randint(0, 255, (48, 64, 3), dtype=numpy.uint8)
 emit_image(random_image, "Random_Image") # 이미지 위젯의 이름은 변경 가능
 
 random_number = numpy.random.randint(0, 100)
 text = f"Random Number1: {random_number}"
-emit_text(text, "textDisplayWidget_0") # 전달할 텍스트, 텍스트를 띄울 위젯의 이름
+emit_text(text, "Text_0") # 전달할 텍스트, 텍스트를 띄울 위젯의 이름
 
 random_number = numpy.random.randint(0, 100)
 text = f"Random Number2: {random_number}"
@@ -431,4 +434,52 @@ finally:
     robot.cleanup()`;
 }
 
+function getMediapipeExampleCode(){
+    return `# Mediapipe Example Code
+from findee import Findee
+from time import sleep
+
+robot = Findee()
+interval = 0.2
+
+try:
+    while True:
+        Hand1Gesture = get_gesture().get("Hand1").get("gesture")
+        Hand2Gesture = get_gesture().get("Hand2").get("gesture")
+        emit_text(f"Hand1 : {Hand1Gesture}  |  Hand2 : {Hand2Gesture}", "Gestures")
+        command = "정지"
+        speed = 100
+
+        if Hand1Gesture == "Pointing_Up": # 전진
+            if Hand2Gesture == "Thumb_Up": # 오른쪽 커브
+                command = "오른쪽 커브"
+                robot.motor.curve_right(speed, 30)
+            elif Hand2Gesture == "Thumb_Down": # 왼쪽 커브
+                command = "왼쪽 커브"
+                robot.motor.curve_left(speed, 30)
+            else:
+                command = "전진"
+                robot.motor.move_forward(speed)
+        elif Hand1Gesture == "Victory":
+            command = "후진"
+            robot.motor.move_backward(speed)
+        elif Hand1Gesture == "Thumb_Up":
+            command = "제자리 우회전"
+            robot.motor.turn_right(speed)
+        elif Hand1Gesture == "Thumb_Down":
+            command = "제자리 좌회전"
+            robot.motor.turn_left(speed)
+
+        else:
+            command = "정지"
+            robot.motor.stop()
+
+        emit_text(command, "Command")
+        emit_image(robot.camera.get_frame(), "RobotCam")
+        sleep(interval)
+except Exception as e:
+    print(e)
+finally:
+    robot.cleanup()`;
+}
 
