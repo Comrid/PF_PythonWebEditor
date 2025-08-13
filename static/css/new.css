@@ -1,0 +1,9 @@
+/* Header App Logo */
+.app-logo {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+    display: inline-block;
+    vertical-align: middle;
+    animation: pulse-brightness 2s infinite ease-in-out;
+}

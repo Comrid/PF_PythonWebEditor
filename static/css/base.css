@@ -82,6 +82,18 @@ html {
     0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
 }
+
+@keyframes pulse-brightness {
+    0% {
+      filter: brightness(1);
+    }
+    50% {
+      filter: brightness(1.1); /* 살짝 더 밝게 */
+    }
+    100% {
+      filter: brightness(1);
+    }
+  }
 /* #endregion */
 
 /* #region Main Layout */
@@ -104,8 +116,9 @@ html {
     align-items: center;
     justify-content: space-between;
     padding: 0 30px;
+    padding-left: 20px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    height: 80px;
+    height: 60px;
 }
 
 .header h1 {
