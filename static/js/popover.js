@@ -228,6 +228,7 @@ function initializeAddWidgetPopover(){
         { key: 'webcam', icon: 'fa-camera', label: 'Webcam', handler: createWidget_WebcamDisplay },
         { key: 'pid', icon: 'fas fa-list', label: 'PID Controller', handler: createWidget_PIDController },
         { key: 'slider', icon: 'fa-sliders-h', label: 'Slider', handler: createWidget_Slider },
+        { key: 'ai', icon: 'fa-robot', label: 'AI Assistant', handler: createWidget_AIAssistant },
     ];
     grid.innerHTML = items.map(item => `
         <div class="widget-picker-item" data-key="${item.key}">

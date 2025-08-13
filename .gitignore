@@ -209,3 +209,4 @@ __marimo__/
 # Custom project files
 test/
 test(not included)/
+static/model/

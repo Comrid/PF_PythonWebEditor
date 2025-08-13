@@ -864,3 +864,154 @@ function getPidValueFromUI(widgetId){
     gridContainer.appendChild(widgetElement);
 })();
 //#endregion
+
+//#region AI Assistant Widget 관련 함수 (LLM)
+function removeAIAssistantWidget(widgetId){
+    try {
+        removeWidget(widgetId);
+    } finally {
+        if (typeof window !== 'undefined') {
+            window.aiAssistantRunning = false;
+        }
+    }
+}
+
+function createWidget_AIAssistant(){
+    if (typeof window !== 'undefined' && window.aiAssistantRunning) {
+        showToast('이미 AI Assistant 위젯이 생성되어 있습니다.', 'warning');
+        return null;
+    }
+
+    const widgetId = 'AI_Assistant';
+
+    const widgetHTML = `
+        <div class="grid-stack-item" id="${widgetId}" gs-w="16" gs-h="10" gs-min-w="12" gs-min-h="8" gs-locked="true">
+            <div class="grid-stack-item-content widget-content">
+                <div class="widget-header">
+                    <h4>
+                        <i class="fas fa-robot"></i>
+                        <span class="widget-title" id="title_${widgetId}" draggable="false">${widgetId}</span>
+                        <span class="execution-status" id="llmStatus_${widgetId}">Loading...</span>
+                    </h4>
+                    <div class="widget-controls">
+                        <button class="btn btn-small btn-success" id="btnAsk_${widgetId}" disabled><i class="fas fa-paper-plane"></i> Ask</button>
+                        <button class="btn btn-small" id="btnClear_${widgetId}"><i class="fas fa-eraser"></i> Clear</button>
+                        <button class="widget-close-btn" onclick="removeAIAssistantWidget('${widgetId}')"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="widget-body">
+                    <div class="ai-assistant-container">
+                        <textarea id="ai_input_${widgetId}" class="form-input ai-input" placeholder="질문을 입력하세요..."></textarea>
+                        <div id="ai_output_${widgetId}" class="output-content ai-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    createWidgetByHTML(widgetHTML);
+
+    const bind = () => {
+        const btnAsk = document.getElementById(`btnAsk_${widgetId}`);
+        const btnClear = document.getElementById(`btnClear_${widgetId}`);
+        const title = document.getElementById(`title_${widgetId}`);
+        const inputEl = document.getElementById(`ai_input_${widgetId}`);
+        const outputEl = document.getElementById(`ai_output_${widgetId}`);
+        const statusEl = document.getElementById(`llmStatus_${widgetId}`);
+
+        const updateStatus = (loaded, loading, error) => {
+            if (!statusEl || !btnAsk) return;
+            if (loading) {
+                statusEl.textContent = 'Loading...';
+                btnAsk.disabled = true;
+                return;
+            }
+            if (error) {
+                statusEl.textContent = 'Load Failed';
+                btnAsk.disabled = true;
+                return;
+            }
+            if (loaded) {
+                statusEl.textContent = 'Ready';
+                btnAsk.disabled = false;
+                return;
+            }
+            statusEl.textContent = 'Idle';
+            btnAsk.disabled = true;
+        };
+
+        // Apply current global status immediately
+        try {
+            const s = typeof window.getLlmStatus === 'function' ? window.getLlmStatus() : {loaded:false,loading:true,error:null};
+            updateStatus(!!s.loaded, !!s.loading, s.error || null);
+        } catch(_) {}
+
+        // Subscribe to global llm status events
+        const listener = (e) => {
+            const d = e && e.detail ? e.detail : {};
+            updateStatus(!!d.loaded, !!d.loading, d.error || null);
+        };
+        window.addEventListener('llm_status_changed', listener);
+
+        // Kick off loading if not yet (harmless if already done)
+        try {
+            if (typeof window.loadLLM === 'function') {
+                window.loadLLM().catch(()=>{});
+            }
+        } catch(_) {}
+
+        if (title) title.addEventListener('click', () => copyWidgetId(widgetId));
+
+        if (btnAsk && inputEl && outputEl) {
+            btnAsk.addEventListener('click', async () => {
+                const question = (inputEl.value || '').trim();
+                if (!question) { showToast('질문을 입력하세요.', 'warning'); return; }
+                try {
+                    outputEl.textContent = '';
+                    btnAsk.disabled = true;
+                    await window.askLLM(question, (partial, complete) => {
+                        outputEl.textContent += partial;
+                        if (complete) {
+                            btnAsk.disabled = false;
+                            window.llmLastAnswer = outputEl.textContent;
+                            if (window.socket && window.socket.connected) {
+                                window.socket.emit('llm_answer_update', { answer: window.llmLastAnswer });
+                            }
+                        }
+                    });
+                } catch (e) {
+                    btnAsk.disabled = false;
+                    showToast('LLM 요청 중 오류가 발생했습니다.', 'error');
+                }
+            });
+        }
+
+        if (btnClear && inputEl && outputEl) {
+            btnClear.addEventListener('click', () => {
+                inputEl.value = '';
+                outputEl.textContent = '';
+                window.llmLastAnswer = '';
+                if (window.socket && window.socket.connected) {
+                    window.socket.emit('llm_answer_update', { answer: '' });
+                }
+            });
+        }
+
+        if (typeof window !== 'undefined') window.aiAssistantRunning = true;
+
+        // Cleanup on remove (best-effort)
+        const cleanupObserver = new MutationObserver(() => {
+            const el = document.getElementById(widgetId);
+            if (!el) {
+                try { window.removeEventListener('llm_status_changed', listener); } catch(_) {}
+                cleanupObserver.disconnect();
+            }
+        });
+        cleanupObserver.observe(document.body, { childList: true, subtree: true });
+    };
+
+    setTimeout(bind, 0);
+
+    return widgetId;
+}
+//#endregion
+

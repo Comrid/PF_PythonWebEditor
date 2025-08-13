@@ -44,6 +44,8 @@ gesture_states = {}
 pid_states: dict[str, dict[str, dict[str, float]]] = {}
 # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
 slider_states: dict[str, dict[str, list[float]]] = {}
+# LLM 최신 답변 저장: 세션별 문자열
+llm_answers: dict[str, str] = {}
 
 # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
 def raise_in_thread(thread: threading.Thread, exc_type = SystemExit) -> bool:
@@ -163,12 +165,16 @@ def execute_code(code: str, sid: str):
                 return float(values[0])
             return [float(v) for v in values]
 
+        def get_llm_answer() -> str:
+            return llm_answers.get(sid, '')
+
         # emit 함수들과 제스처 헬퍼를 전역 변수로 설정
         __main__.emit_image = emit_image
         __main__.emit_text = emit_text
         __main__.get_gesture = get_gesture
         __main__.get_pid_value = get_pid_value
         __main__.get_slider_value = get_slider_value
+        __main__.get_llm_answer = get_llm_answer
 
         compiled_code = compile(code, '<string>', 'exec')
         exec(compiled_code, {'socketio': socketio,
@@ -178,7 +184,8 @@ def execute_code(code: str, sid: str):
                              'emit_text': emit_text,
                              'get_gesture': get_gesture,
                              'get_pid_value': get_pid_value,
-                             'get_slider_value': get_slider_value})
+                             'get_slider_value': get_slider_value,
+                             'get_llm_answer': get_llm_answer})
 
 
     except Exception:
@@ -356,6 +363,20 @@ def handle_slider_update(payload):
         session_map = {}
         slider_states[sid] = session_map
     session_map[widget_id] = values
+
+# LLM answer updates from frontend
+@socketio.on('llm_answer_update')
+def handle_llm_answer_update(payload):
+    sid = request.sid
+    try:
+        answer = payload.get('answer', '')
+        if not isinstance(answer, str):
+            answer = str(answer)
+    except Exception:
+        answer = ''
+    llm_answers[sid] = answer
+    # Optionally broadcast back to the same session (frontend listener is optional)
+    socketio.emit('llm_answer', { 'answer': answer }, room=sid)
 
 #region Main
 if __name__ == '__main__':

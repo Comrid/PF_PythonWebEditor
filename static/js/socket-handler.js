@@ -75,6 +75,10 @@ function initializeSocket() {
             // console.log('Received text_data event:', data);
             if(data.text) {handleTextUpdate(data.text, data.widget_id);} // Widget.js
         });
+        // Optional: backend can broadcast latest LLM answer
+        socket.on('llm_answer', function(data){
+            try { window.llmLastAnswer = data && data.answer ? String(data.answer) : ''; } catch(_) {}
+        });
         //#endregion
 
     } catch (error) {

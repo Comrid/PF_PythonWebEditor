@@ -29,6 +29,7 @@ let numTextDisplayWidget = 0;
 let numWebcamDisplayWidget = 0;
 let numSliderWidget = 0;
 let numPidControllerWidget = 0;
+let aiAssistantRunning = false; // single-instance guard for AI Assistant
 
 // Webcam globals
 let webcamStreams = new Map();
@@ -61,6 +62,10 @@ window.handGestureRafByWidget = window.handGestureRafByWidget || new Map();
 window.mediapipeHandsLibLoaded = window.mediapipeHandsLibLoaded || false;
 // Latest gesture result storage (per widget)
 window.gestureLastResultByWidget = window.gestureLastResultByWidget || new Map();
+// Latest LLM answer storage (frontend-side; single instance expected)
+window.llmLastAnswer = window.llmLastAnswer || '';
+// Ensure AI Assistant guard is accessible via window namespace
+window.aiAssistantRunning = window.aiAssistantRunning || aiAssistantRunning;
 
 
 
@@ -432,6 +437,110 @@ except Exception as e:
     print(e)
 finally:
     robot.cleanup()`;
+}
+
+function getObstacleAvoidanceExampleCode(){
+    return `# Obstacle Avoidance Example Code
+from findee import Findee
+from time import sleep, time
+import random
+
+# RORO 스타일 구성/상태
+def get_config() -> dict:
+    return {
+        "loop_hz": 10,
+        "median_samples": 5,
+        "stop_threshold": 8.0,       # cm
+        "avoid_threshold": 20.0,     # cm
+        "clear_threshold": 30.0,     # cm
+        "hysteresis_margin": 2.0,    # cm
+        "speed_fast": 70,
+        "speed_slow": 40,
+        "t_turn": 0.5,               # s
+        "t_back": 0.3,               # s
+        "stuck_timeout": 3.0,        # s (이 시간 동안 개선 없으면 복구)
+        "max_avoid_tries": 4,
+    }
+
+def read_distance(robot: "Findee", *, samples: int) -> dict:
+    vals = []
+    for _ in range(samples):
+        d = robot.ultrasonic.get_distance()
+        if d and 1.0 <= d <= 400.0: vals.append(float(d))
+        sleep(0.001)
+    if not vals: return {"is_valid": False, "distance_cm": None}
+    vals.sort()
+    mid = vals[len(vals)//2]
+    return {"is_valid": True, "distance_cm": mid}
+
+def classify(distance_cm: float, cfg: dict) -> str:
+    m = cfg["hysteresis_margin"]
+    if distance_cm < cfg["stop_threshold"]: return "TOO_CLOSE"
+    if distance_cm < cfg["avoid_threshold"] - m: return "APPROACHING"
+    if distance_cm >= cfg["clear_threshold"]: return "CLEAR"
+    return "APPROACHING"
+
+def decide_action(state: dict, reading: dict, cfg: dict) -> dict:
+    if not reading["is_valid"]:
+        return {"command": "STOP"}  # 센서 불가 → 보수적으로 정지
+    d = reading["distance_cm"]
+    phase = classify(d, cfg)
+    if phase == "CLEAR":
+        state["approach_since"] = None
+        state["avoid_tries"] = 0
+        return {"command": "FORWARD", "speed": cfg["speed_fast"], "note": f"{d:.1f}cm"}
+    if phase == "APPROACHING":
+        state.setdefault("approach_since", time())
+        return {"command": "FORWARD", "speed": cfg["speed_slow"], "note": f"{d:.1f}cm"}
+    # TOO_CLOSE: 회피
+    dir_pref = state.get("last_turn", random.choice(["LEFT", "RIGHT"]))
+    # 번갈아 + 랜덤 소량
+    turn_dir = "RIGHT" if dir_pref == "LEFT" else "LEFT" if random.random() < 0.5 else dir_pref
+    state["last_turn"] = turn_dir
+    state["avoid_tries"] = state.get("avoid_tries", 0) + 1
+    if state["avoid_tries"] > cfg["max_avoid_tries"] or (state.get("stuck_since") and time()-state["stuck_since"] > cfg["stuck_timeout"]):
+        state["avoid_tries"] = 0
+        state["stuck_since"] = None
+        return {"command": "RECOVER"}  # 후진+대회전
+    state.setdefault("stuck_since", time())
+    return {"command": "AVOID", "dir": turn_dir, "t": cfg["t_turn"], "note": f"{d:.1f}cm"}
+
+def apply_action(robot: "Findee", action: dict, cfg: dict) -> None:
+    cmd = action["command"]
+    if cmd == "FORWARD":
+        robot.motor.move_forward(action["speed"])
+    elif cmd == "STOP":
+        robot.motor.stop()
+    elif cmd == "AVOID":
+        robot.motor.stop()
+        sleep(0.05)
+        if action["dir"] == "LEFT": robot.motor.turn_left(cfg["speed_slow"], action["t"])
+        else: robot.motor.turn_right(cfg["speed_slow"], action["t"])
+    elif cmd == "RECOVER":
+        robot.motor.move_backward(cfg["speed_slow"], cfg["t_back"])
+        robot.motor.turn_right(cfg["speed_slow"], cfg["t_turn"] * 2.0)
+
+def loop():
+    cfg = get_config()
+    robot = Findee()
+    hz = cfg["loop_hz"]
+    dt = 1.0 / hz
+    state = {"last_turn": "LEFT", "avoid_tries": 0, "stuck_since": None, "approach_since": None}
+    try:
+        while True:
+            reading = read_distance(robot, samples=cfg["median_samples"])
+            action = decide_action(state, reading, cfg)
+            apply_action(robot, action, cfg)
+            msg = f"{action['command']} | note={action.get('note','-')} | tries={state.get('avoid_tries',0)}"
+            emit_text(msg, "State")
+            sleep(dt)
+    except Exception as e:
+        emit_text(f"ERR: {e}", "State")
+    finally:
+        robot.motor.stop()
+        robot.cleanup()
+
+loop()`;
 }
 
 function getMediapipeExampleCode(){

@@ -873,7 +873,11 @@ html {
 }
 /* #endregion */
 
-/* #region _ */
+/* #region AI Assistant Widget */
+.ai-assistant-container { display: flex; flex-direction: column; gap: 10px; width: 100%; height: 100%; }
+.ai-input { width: 100%; min-height: 80px; resize: vertical; }
+.ai-output { flex: 1; min-height: 0; white-space: pre-wrap; }
+
 /* #endregion */
 
 /* #region _ */
