@@ -2,21 +2,14 @@ from __future__ import annotations
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
+from util import import_findee_by_platform
 
 # Modules for code execution
 import threading
 from traceback import format_exc
 import builtins
-import re
-import ssl
 
-
-import time
-
-import sys, platform
-if platform.system() == "Windows":
-    sys.path.insert(0, "F:/Git/findee")
-from findee import Findee, FindeeFormatter
+import_findee_by_platform()
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
@@ -27,9 +20,9 @@ socketio = SocketIO(
     logger=False,                           # SocketIO 로거 비활성화
     engineio_logger=False,                  # Engine.IO 로거 비활성화
     ping_timeout=60,                        # 핑 타임아웃 60초
-    ping_interval=10,                       # 핑 간격 10초
+    ping_interval=25,                       # 핑 간격 25초
     transports=['websocket', 'polling'],     # 전송 방식 설정
-    # allow_upgrades=True
+    allow_upgrades=True
 )
 
 # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
@@ -111,23 +104,19 @@ def execute_code(code: str, sid: str):
             if debug_on: print(f"DEBUG: emit_image 호출됨 : {widget_id}")
             if hasattr(image, 'shape'):  # numpy 배열인지 확인
                 import time
-                import base64
                 import cv2
                 start_time = time.time()
 
-                # 이미지를 base64로 인코딩
-                _, buffer = cv2.imencode('.jpg', image)
-                encode_time = time.time() - start_time
-                if debug_on: print(f"DEBUG: JPEG 인코딩 완료 - 시간: {encode_time*1000:.2f}ms")
+                # 이미지를 JPEG 바이트로 인코딩 (바이너리 전송)
+                ok, buffer = cv2.imencode('.jpg', image)
+                if not ok:
+                    if debug_on: print("DEBUG: JPEG 인코딩 실패")
+                    return
 
-                image_base64 = base64.b64encode(buffer).decode()
-                base64_time = time.time() - start_time - encode_time
-                if debug_on: print(f"DEBUG: Base64 인코딩 완료 - 시간: {base64_time*1000:.2f}ms, 크기: {len(image_base64)}")
-
-                # socketio.emit() 사용
+                # socketio.emit() 사용 - 바이너리 첨부 전송
                 socketio.emit('image_data', {
-                    'image': image_base64,
-                    'format': 'jpg',
+                    'image': buffer.tobytes(),
+                    'format': 'jpeg',
                     'shape': image.shape,
                     'widget_id': widget_id
                 }, room=sid)
@@ -259,8 +248,6 @@ def handle_stop_execution():
             def safe_termination():
                 try:
                     builtins.print = getattr(builtins, '_original_print', print)
-                    running_threads.pop(sid, None)
-                    stop_flags.pop(sid, None)
                 except Exception as e:
                     print(f"DEBUG: 안전장치 실행 중 오류: {str(e)}")
 
@@ -286,9 +273,13 @@ def handle_stop_execution():
         else:
             socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
 
-        # 최종 정리 (이중 안전장치)
-        running_threads.pop(sid, None)
-        stop_flags.pop(sid, None)
+        # 최종 정리: 스레드가 실제로 종료된 경우에만 정리 (그 외에는 execute_code()의 finally에 위임)
+        try:
+            if not thread.is_alive():
+                running_threads.pop(sid, None)
+                stop_flags.pop(sid, None)
+        except Exception:
+            pass
 
     except Exception as e:
         print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")

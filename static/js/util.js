@@ -67,6 +67,9 @@ window.llmLastAnswer = window.llmLastAnswer || '';
 // Ensure AI Assistant guard is accessible via window namespace
 window.aiAssistantRunning = window.aiAssistantRunning || aiAssistantRunning;
 
+// Blob URL cache for image widgets to revoke old URLs and avoid leaks
+window.__imageBlobUrlByWidget = window.__imageBlobUrlByWidget || new Map();
+
 
 
 
@@ -592,3 +595,44 @@ finally:
     robot.cleanup()`;
 }
 
+function getSliderExampleCode(){
+    return `# Slider Example Code
+import numpy as np
+import cv2
+import math
+import time
+
+# 출력할 위젯 ID
+IMAGE_WIDGET = "Image_0"
+
+H, W = 200, 200
+cx, cy = W // 2, H // 2
+radius = 70
+
+while True:
+    # Slider_0: 꼭짓점 개수(3~100)
+    n = int(get_slider_value("Slider_0"))
+    if n < 3: n = 3
+    if n > 100: n = 100
+
+    # Slider_1: 색상(R,G,B) - 내부 슬라이더 3개
+    r, g, b = map(int, get_slider_value("Slider_1"))
+
+    # 배경(흰색)
+    img = np.full((H, W, 3), 255, dtype=np.uint8)
+
+    # 정N각형 꼭짓점 계산
+    pts = []
+    for k in range(n):
+        ang = 2 * math.pi * k / n - math.pi / 2
+        x = int(cx + radius * math.cos(ang))
+        y = int(cy + radius * math.sin(ang))
+        pts.append([x, y])
+    pts = np.array(pts, dtype=np.int32).reshape((-1, 1, 2))
+
+    # 도형 채우기 (OpenCV는 BGR 순서)
+    cv2.fillPoly(img, [pts], color=(b, g, r))
+
+    emit_image(img, IMAGE_WIDGET)
+    time.sleep(0.05)`;
+}

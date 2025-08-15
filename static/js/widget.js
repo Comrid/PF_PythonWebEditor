@@ -127,6 +127,14 @@ function removeWidget(widgetId) {
         if (window.mainGridStack) {
             const widgetElement = document.getElementById(widgetId);
             if (widgetElement) {
+                // 이미지 Blob URL 정리 (있다면)
+                try {
+                    const prev = window.__imageBlobUrlByWidget && window.__imageBlobUrlByWidget.get ? window.__imageBlobUrlByWidget.get(widgetId) : null;
+                    if (prev && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+                        URL.revokeObjectURL(prev);
+                        window.__imageBlobUrlByWidget.delete(widgetId);
+                    }
+                } catch (_) {}
                 window.mainGridStack.removeWidget(widgetElement);
             } else {
                 console.error(`Widget element not found: ${widgetId}`);
@@ -288,12 +296,14 @@ function handleImageUpdate(imageData, widgetId) {
     }
 
     try {
-        // base64 이미지 데이터를 직접 설정
+        // imageData가 blob URL인지(base64가 아닌) 판단
+        const isBlobUrl = typeof imageData === 'string' && imageData.startsWith('blob:');
+
+        // 공통 로드/에러 핸들러
         image.onload = function() {
             image.style.display = 'block';
             placeholder.style.display = 'none';
         };
-
         image.onerror = function() {
             console.error(`Failed to load image for widget: ${widgetId}`);
             image.style.display = 'none';
@@ -301,8 +311,22 @@ function handleImageUpdate(imageData, widgetId) {
             placeholder.textContent = '이미지 로드 실패';
         };
 
-        // base64 데이터를 직접 src에 설정
-        image.src = `data:image/jpeg;base64,${imageData}`;
+        // 이전 blob URL 정리
+        try {
+            const prev = window.__imageBlobUrlByWidget && window.__imageBlobUrlByWidget.get ? window.__imageBlobUrlByWidget.get(widgetId) : null;
+            if (prev && prev !== imageData && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+                URL.revokeObjectURL(prev);
+                window.__imageBlobUrlByWidget.delete(widgetId);
+            }
+        } catch (_) {}
+
+        if (isBlobUrl) {
+            image.src = imageData;
+            try { window.__imageBlobUrlByWidget && window.__imageBlobUrlByWidget.set && window.__imageBlobUrlByWidget.set(widgetId, imageData); } catch(_){}
+        } else {
+            // base64 문자열로 가정하고 data URL 구성(기존 하위호환)
+            image.src = `data:image/jpeg;base64,${imageData}`;
+        }
 
     } catch (error) {
         console.error(`Error processing image for widget ${widgetId}:`, error);

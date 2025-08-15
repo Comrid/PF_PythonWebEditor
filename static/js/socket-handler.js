@@ -69,7 +69,34 @@ function initializeSocket() {
         //#region image_data event, custom_data event
         socket.on('image_data', function(data) {
             // console.log('Received image_data event for widget:', data.widget_id);
-            if (data.image) {handleImageUpdate(data.image, data.widget_id);} // Widget.js
+            if (!data || !data.image) return;
+
+            try {
+                // 바이너리(ArrayBuffer/Uint8Array/Blob) → Blob URL 변환
+                let blobUrl = null;
+                const fmt = (data.format || 'jpeg').toLowerCase();
+
+                if (typeof Blob !== 'undefined' && data.image instanceof Blob) {
+                    const blob = data.image.type ? data.image : new Blob([data.image], { type: `image/${fmt}` });
+                    blobUrl = URL.createObjectURL(blob);
+                } else if (data.image instanceof ArrayBuffer) {
+                    const blob = new Blob([data.image], { type: `image/${fmt}` });
+                    blobUrl = URL.createObjectURL(blob);
+                } else if (ArrayBuffer.isView && ArrayBuffer.isView(data.image)) {
+                    const blob = new Blob([data.image.buffer || data.image], { type: `image/${fmt}` });
+                    blobUrl = URL.createObjectURL(blob);
+                } else if (typeof data.image === 'string' && data.image.length > 0) {
+                    // 하위호환: base64 문자열 처리
+                    handleImageUpdate(data.image, data.widget_id);
+                    return;
+                }
+
+                if (blobUrl) {
+                    handleImageUpdate(blobUrl, data.widget_id, /*isBlobUrl=*/true); // Widget.js
+                }
+            } catch (e) {
+                console.error('image_data handling failed:', e);
+            }
         });
         socket.on('text_data', function(data) {
             // console.log('Received text_data event:', data);
