@@ -2,7 +2,6 @@ from __future__ import annotations
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
-from util import import_findee_by_platform
 from pathlib import Path
 import os
 
