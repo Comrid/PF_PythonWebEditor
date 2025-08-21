@@ -42,7 +42,7 @@ pid_states: dict[str, dict[str, dict[str, float]]] = {}
 # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
 slider_states: dict[str, dict[str, list[float]]] = {}
 # LLM 최신 답변 저장: 세션별 문자열
-llm_answers: dict[str, str] = {}
+# llm_answers: dict[str, str] = {}
 
 
 # === 설정 ===
@@ -158,7 +158,6 @@ def execute_code(code: str, sid: str):
                 'widget_id': widget_id
             }, room=sid)
 
-
         # gesture helper for Python user code
         def get_gesture():
             return gesture_states.get(sid, {})
@@ -178,8 +177,8 @@ def execute_code(code: str, sid: str):
                 return float(values[0])
             return [float(v) for v in values]
 
-        def get_llm_answer() -> str:
-            return llm_answers.get(sid, '')
+        # def get_llm_answer() -> str:
+        #     return llm_answers.get(sid, '')
 
         # 기존 함수들을 exec_namespace에 직접 전달
         exec_namespace = {
@@ -188,12 +187,11 @@ def execute_code(code: str, sid: str):
             'stop_flags': stop_flags,
             'Findee': Findee,
             # 'robot': original_findee,
-            'emit_image': emit_image,      # 이미 정의된 함수
-            'emit_text': emit_text,        # 이미 정의된 함수
-            'get_gesture': get_gesture,    # 이미 정의된 함수
-            'get_pid_value': get_pid_value, # 이미 정의된 함수
-            'get_slider_value': get_slider_value, # 이미 정의된 함수
-            'get_llm_answer': get_llm_answer      # 이미 정의된 함수
+            'emit_image': emit_image,
+            'emit_text': emit_text,
+            'get_gesture': get_gesture,
+            'get_pid_value': get_pid_value,
+            'get_slider_value': get_slider_value
         }
 
         compiled_code = compile(code, '<string>', 'exec')
@@ -379,18 +377,18 @@ def handle_slider_update(payload):
     session_map[widget_id] = values
 
 # LLM answer updates from frontend
-@socketio.on('llm_answer_update')
-def handle_llm_answer_update(payload):
-    sid = request.sid
-    try:
-        answer = payload.get('answer', '')
-        if not isinstance(answer, str):
-            answer = str(answer)
-    except Exception:
-        answer = ''
-    llm_answers[sid] = answer
-    # Optionally broadcast back to the same session (frontend listener is optional)
-    socketio.emit('llm_answer', { 'answer': answer }, room=sid)
+# @socketio.on('llm_answer_update')
+# def handle_llm_answer_update(payload):
+#     sid = request.sid
+#     try:
+#         answer = payload.get('answer', '')
+#         if not isinstance(answer, str):
+#             answer = str(answer)
+#     except Exception:
+#         answer = ''
+#     llm_answers[sid] = answer
+#     # Optionally broadcast back to the same session (frontend listener is optional)
+#     socketio.emit('llm_answer', { 'answer': answer }, room=sid)
 
 # === 코드 저장/불러오기 API ===
 @app.route("/api/custom-code/files")
