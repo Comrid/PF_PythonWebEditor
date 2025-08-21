@@ -11,7 +11,7 @@ from traceback import format_exc
 import builtins
 
 from findee2 import Findee
-original_findee = Findee()
+# original_findee = Findee()
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -186,8 +186,8 @@ def execute_code(code: str, sid: str):
             'socketio': socketio,
             'sid': sid,
             'stop_flags': stop_flags,
-            'Findee': Findee,
-            'robot': original_findee,
+            # 'Findee': Findee,
+            # 'robot': original_findee,
             'emit_image': emit_image,      # 이미 정의된 함수
             'emit_text': emit_text,        # 이미 정의된 함수
             'get_gesture': get_gesture,    # 이미 정의된 함수
