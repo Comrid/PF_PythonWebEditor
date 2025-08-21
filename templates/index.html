@@ -195,6 +195,23 @@
                     <div class="status-dot error" id="statusDot"></div>
                     <span id="statusText">Disconnected</span>
                 </div>
+                <div class="cpu-monitor" id="cpuMonitor">
+                    <div class="cpu-display" id="cpuDisplay">
+                        <i class="fas fa-microchip"></i>
+                        <span id="cpuPercent">0%</span>
+                    </div>
+                    <div class="cpu-details" id="cpuDetails">
+                        <div class="cpu-details-header">
+                            <span>CPU 사용량 상세</span>
+                            <button class="cpu-close-btn" id="cpuCloseBtn">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="cpu-cores" id="cpuCores">
+                            <!-- 개별 CPU 코어 정보가 여기에 동적으로 추가됨 -->
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="header-controls">
                 <button class="btn btn-primary" id="addWidgetBtn">

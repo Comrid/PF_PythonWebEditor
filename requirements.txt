@@ -4,3 +4,4 @@ Flask-SocketIO==5.3.6
 opencv-python==4.8.1.78
 numpy==1.24.3 
 eventlet
+psutil==5.9.6

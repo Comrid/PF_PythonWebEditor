@@ -4,14 +4,20 @@ from flask_socketio import SocketIO, emit
 from secrets import token_hex
 from pathlib import Path
 import os
+import psutil
 
 # Modules for code execution
 import threading
 from traceback import format_exc
 import builtins
 
-from findee2 import Findee
-# original_findee = Findee()
+import platform
+if platform.system() == "Linux":
+    from findee2 import Findee
+    DEBUG_MODE = False
+else:
+    Findee = None
+    DEBUG_MODE = True
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -380,6 +386,28 @@ def api_custom_code_files():
     files = get_custom_code_files()
     return jsonify({"files": files})
 
+@app.route("/api/cpu-usage")
+def api_cpu_usage():
+    """CPU 사용량 정보 반환"""
+    try:
+        # 전체 CPU 사용량 (평균)
+        cpu_percent = psutil.cpu_percent(interval=0.1, percpu=False)
+        
+        # 개별 CPU 스레드 사용량
+        cpu_percent_per_cpu = psutil.cpu_percent(interval=0.1, percpu=True)
+        
+        # CPU 개수
+        cpu_count = psutil.cpu_count()
+        
+        return jsonify({
+            "success": True,
+            "cpu_percent": cpu_percent,
+            "cpu_percent_per_cpu": cpu_percent_per_cpu,
+            "cpu_count": cpu_count
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route("/api/custom-code/save", methods=["POST"])
 def api_custom_code_save():
     """코드 저장"""
@@ -440,7 +468,7 @@ def api_custom_code_delete(filename):
 
 #region Main
 if __name__ == '__main__':
-    socketio.run(app, debug=False, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=DEBUG_MODE, host='0.0.0.0', port=5000)
 #endregion
 
 

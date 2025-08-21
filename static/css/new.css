@@ -212,3 +212,176 @@
     color: #a0aec0;
     margin-top: 2px;
 }
+
+/* CPU Monitor Styles */
+.cpu-monitor {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: 20px;
+}
+
+.cpu-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cpu-display:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.cpu-display i {
+    color: #00d4aa;
+    font-size: 14px;
+}
+
+.cpu-display span {
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 14px;
+    min-width: 35px;
+    text-align: center;
+}
+
+.cpu-details {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #2c3e50;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 280px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    margin-top: 8px;
+}
+
+.cpu-details.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.cpu-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cpu-details-header span {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.cpu-close-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.cpu-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cpu-cores {
+    display: grid;
+    gap: 8px;
+}
+
+.cpu-core {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cpu-core-label {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.cpu-core-usage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cpu-core-bar {
+    width: 80px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.cpu-core-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4aa, #0099cc);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.cpu-core-percent {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 35px;
+    text-align: right;
+}
+
+/* CPU 사용량에 따른 색상 변화 */
+.cpu-core-fill.low {
+    background: linear-gradient(90deg, #00d4aa, #00b894);
+}
+
+.cpu-core-fill.medium {
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+}
+
+.cpu-core-fill.high {
+    background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .cpu-monitor {
+        margin-left: 10px;
+    }
+    
+    .cpu-details {
+        min-width: 250px;
+        max-width: 300px;
+    }
+    
+    .cpu-core-bar {
+        width: 60px;
+    }
+}

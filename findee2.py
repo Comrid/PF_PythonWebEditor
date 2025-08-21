@@ -20,6 +20,9 @@ from picamera2.encoders import JpegEncoder
 import cv2
 
 USE_DEBUG = True
+
+
+
 def debug_decorator(func):
     def wrapper(*args, **kwargs):
         if USE_DEBUG: print(f"DEBUG: {func.__name__} Called")
