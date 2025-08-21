@@ -274,11 +274,8 @@ try:
         emit_image(random_image, 'image_data')
 
         # 30fps 간격으로 대기
-
         print(f"time = {time.time() - start}")
         time.sleep(interval)
-        #time.sleep(1)
-
 
 except KeyboardInterrupt:
     print("전송 중지됨")`;
@@ -293,18 +290,17 @@ for i in range(20):
 
 function getCode4(){
     return `import cv2
-from findee import Findee
 
 robot = Findee()
 
 from time import sleep
 
 while(1):
-    frame = robot.camera.get_frame()
+    frame = robot.get_frame()
     height, width = frame.shape[:2]
     center = (width // 2, height // 2)
     cv2.circle(frame, center, 50, (0, 255, 0), 2)
-    emit_image(frame)
+    emit_image(frame, 'RobotCam')
     sleep(0.05)`;
 }
 
@@ -331,8 +327,6 @@ try:
         emit_image(random_image2, 'Image_1')
 
         time.sleep(interval)
-        #time.sleep(1)
-
 
 except KeyboardInterrupt:
     print("전송 중지됨")`;
@@ -369,12 +363,12 @@ while True:
 // 기본 코드
 function getEditorDefaultCode(){
     return `# Pathfinder Python Web Editor
-from findee import Findee
 
 robot = Findee()
 
 try:
-    # 여기에 코드를 작성해주세요.
+    pass # 여기에 코드를 작성해주세요.
+    
 except Exception as e:
     print(e)
 finally:
@@ -408,11 +402,9 @@ emit_text(text, "Random_Text") # 텍스트 위젯의 이름은 변경 가능`;
 // 카메라 예제 코드
 function getCameraExampleCode(){
     return `# Camera Example Code
-from findee import Findee
 import time
 
 robot = Findee()
-robot.camera.start_frame_capture()
 
 fps = 30
 interval = 1 / fps
@@ -420,8 +412,9 @@ interval = 1 / fps
 try:
     while True:
         start = time.time()
-        emit_image(robot.camera.current_frame, 'Camera')
-        emit_text(f"Time for 1 frmae: {(time.time() - start)*1000:.3f}ms", 'Text')
+        frame = robot.get_frame()
+        emit_image(frame, 'Camera')
+        emit_text(f"Time for 1 frame: {(time.time() - start)*1000:.3f}ms", 'Text')
         time.sleep(interval)
 except Exception as e:
     print(e)
@@ -432,23 +425,22 @@ finally:
 // 모터 예제 코드
 function getMotorExampleCode(){
     return `# Motor Example Code
-from findee import Findee
 import time
 
 robot = Findee()
 
 try:
-    robot.motor.move_forward(100, 1) # 100%의 속도로 1초 동안 전진
+    robot.move_forward(100, 1.0) # 100%의 속도로 1초 동안 전진
 
-    robot.motor.move_backward(100) # 100%의 속도로 후진
+    robot.move_backward(100) # 100%의 속도로 후진
     time.sleep(1)
-    robot.motor.stop() # 방향만 반대이고 첫 줄과 동일한 시간 효과
+    robot.stop() # 방향만 반대이고 첫 줄과 동일한 시간 효과
 
-    robot.motor.turn_left(50, 2) # 50%의 속도로 2초 동안 제자리 좌회전
-    robot.motor.turn_right(70, 1.5) # 70%의 속도로 1.5초 동안 제자리 우회전
+    robot.turn_left(50, 2.0) # 50%의 속도로 2초 동안 제자리 좌회전
+    robot.turn_right(70, 1.5) # 70%의 속도로 1.5초 동안 제자리 우회전
 
-    robot.motor.curve_left(100, 30, 2) # 100%의 속도로 30도 각도로 왼쪽 커브
-    robot.motor.curve_right(70, 10, 1) # 70%의 속도로 10도 각도로 오른쪽 커브
+    robot.curve_left(100, 30, 2.0) # 100%의 속도로 30도 각도로 왼쪽 커브
+    robot.curve_right(70, 10, 1.0) # 70%의 속도로 10도 각도로 오른쪽 커브
 except Exception as e:
     print(e)
 finally:
@@ -458,7 +450,6 @@ finally:
 // 초음파 예제 코드
 function getUltrasonicExampleCode(){
     return `# Ultrasonic Example Code
-from findee import Findee
 import time
 
 robot = Findee()
@@ -467,7 +458,7 @@ far_threshold = 20
 
 try:
     while True:
-        distance = robot.ultrasonic.get_distance()
+        distance = robot.get_distance()
         emit_text(f"Distance: {distance}cm", "Dis")
 
         if(distance <= close_threshold):
@@ -526,14 +517,13 @@ def detect_lanes(image):
     
     return result
 
-# 웹캠에서 실시간 차선 인식
+# Findee 카메라에서 실시간 차선 인식
+robot = Findee()
+
 try:
     while True:
-        # 웹캠 프레임 가져오기 (실제 환경에서는 robot.camera.get_frame() 사용)
-        # frame = robot.camera.get_frame()
-        
-        # 테스트용 더미 이미지 생성
-        frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        # Findee 카메라에서 프레임 가져오기
+        frame = robot.get_frame()
         
         # 차선 인식
         result = detect_lanes(frame)
@@ -544,13 +534,14 @@ try:
         
         time.sleep(0.1)
 except Exception as e:
-    print(e)`;
+    print(e)
+finally:
+    robot.cleanup()`;
 }
 
 // 장애물 회피 예제 코드
 function getObstacleAvoidanceExampleCode(){
     return `# Obstacle Avoidance Example Code
-from findee import Findee
 from time import sleep, time
 import random
 
@@ -571,10 +562,10 @@ def get_config() -> dict:
         "max_avoid_tries": 4,
     }
 
-def read_distance(robot: "Findee", *, samples: int) -> dict:
+def read_distance(robot, *, samples: int) -> dict:
     vals = []
     for _ in range(samples):
-        d = robot.ultrasonic.get_distance()
+        d = robot.get_distance()
         if d and 1.0 <= d <= 400.0: vals.append(float(d))
         sleep(0.001)
     if not vals: return {"is_valid": False, "distance_cm": None}
@@ -614,20 +605,20 @@ def decide_action(state: dict, reading: dict, cfg: dict) -> dict:
     state.setdefault("stuck_since", time())
     return {"command": "AVOID", "dir": turn_dir, "t": cfg["t_turn"], "note": f"{d:.1f}cm"}
 
-def apply_action(robot: "Findee", action: dict, cfg: dict) -> None:
+def apply_action(robot, action: dict, cfg: dict) -> None:
     cmd = action["command"]
     if cmd == "FORWARD":
-        robot.motor.move_forward(action["speed"])
+        robot.move_forward(action["speed"])
     elif cmd == "STOP":
-        robot.motor.stop()
+        robot.stop()
     elif cmd == "AVOID":
-        robot.motor.stop()
+        robot.stop()
         sleep(0.05)
-        if action["dir"] == "LEFT": robot.motor.turn_left(cfg["speed_slow"], action["t"])
-        else: robot.motor.turn_right(cfg["speed_slow"], action["t"])
+        if action["dir"] == "LEFT": robot.turn_left(cfg["speed_slow"], action["t"])
+        else: robot.turn_right(cfg["speed_slow"], action["t"])
     elif cmd == "RECOVER":
-        robot.motor.move_backward(cfg["speed_slow"], cfg["t_back"])
-        robot.motor.turn_right(cfg["speed_slow"], cfg["t_turn"] * 2.0)
+        robot.move_backward(cfg["speed_slow"], cfg["t_back"])
+        robot.turn_right(cfg["speed_slow"], cfg["t_turn"] * 2.0)
 
 def loop():
     cfg = get_config()
@@ -646,7 +637,7 @@ def loop():
     except Exception as e:
         emit_text(f"ERR: {e}", "State")
     finally:
-        robot.motor.stop()
+        robot.stop()
         robot.cleanup()
 
 loop()`;
@@ -654,7 +645,6 @@ loop()`;
 
 function getMediapipeExampleCode(){
     return `# Mediapipe Example Code
-from findee import Findee
 from time import sleep
 
 robot = Findee()
@@ -662,8 +652,8 @@ interval = 0.2
 
 try:
     while True:
-        Hand1Gesture = get_gesture().get("Hand1").get("gesture")
-        Hand2Gesture = get_gesture().get("Hand2").get("gesture")
+        Hand1Gesture = get_gesture().get("Hand1", {}).get("gesture", "None")
+        Hand2Gesture = get_gesture().get("Hand2", {}).get("gesture", "None")
         emit_text(f"Hand1 : {Hand1Gesture}  |  Hand2 : {Hand2Gesture}", "Gestures")
         command = "정지"
         speed = 100
@@ -671,29 +661,28 @@ try:
         if Hand1Gesture == "Pointing_Up": # 전진
             if Hand2Gesture == "Thumb_Up": # 오른쪽 커브
                 command = "오른쪽 커브"
-                robot.motor.curve_right(speed, 30)
+                robot.curve_right(speed, 30)
             elif Hand2Gesture == "Thumb_Down": # 왼쪽 커브
                 command = "왼쪽 커브"
-                robot.motor.curve_left(speed, 30)
+                robot.curve_left(speed, 30)
             else:
                 command = "전진"
-                robot.motor.move_forward(speed)
+                robot.move_forward(speed)
         elif Hand1Gesture == "Victory":
             command = "후진"
-            robot.motor.move_backward(speed)
+            robot.move_backward(speed)
         elif Hand1Gesture == "Thumb_Up":
             command = "제자리 우회전"
-            robot.motor.turn_right(speed)
+            robot.turn_right(speed)
         elif Hand1Gesture == "Thumb_Down":
             command = "제자리 좌회전"
-            robot.motor.turn_left(speed)
-
+            robot.turn_left(speed)
         else:
             command = "정지"
-            robot.motor.stop()
+            robot.stop()
 
         emit_text(command, "Command")
-        emit_image(robot.camera.get_frame(), "RobotCam")
+        emit_image(robot.get_frame(), "RobotCam")
         sleep(interval)
 except Exception as e:
     print(e)
@@ -746,7 +735,6 @@ while True:
 // PID 제어 예제 코드
 function getPIDControlExampleCode(){
     return `# PID Control Example Code
-from findee import Findee
 import time
 
 robot = Findee()
@@ -787,7 +775,7 @@ def pid_control(error):
 try:
     while True:
         # 현재 거리 읽기
-        current_distance = robot.ultrasonic.get_distance()
+        current_distance = robot.get_distance()
         
         # 오차 계산
         error = target_distance - current_distance
@@ -797,15 +785,15 @@ try:
         
         # 모터 제어
         if abs(error) < 2.0:  # 목표 거리 근처면 정지
-            robot.motor.stop()
+            robot.stop()
             action = "STOP"
         elif error > 0:  # 너무 멀면 전진
             speed = int(abs(control_output))
-            robot.motor.move_forward(speed)
+            robot.move_forward(speed)
             action = f"FORWARD({speed}%)"
         else:  # 너무 가까우면 후진
             speed = int(abs(control_output))
-            robot.motor.move_backward(speed)
+            robot.move_backward(speed)
             action = f"BACKWARD({speed}%)"
         
         # 상태 출력
@@ -824,7 +812,7 @@ try:
 except Exception as e:
     print(f"PID 제어 오류: {e}")
 finally:
-    robot.motor.stop()
+    robot.stop()
     robot.cleanup()`;
 }
 
@@ -860,13 +848,13 @@ stop_monitoring = monitor_cpu_background(interval=1.0)
 
 
 # Pathfinder Python Web Editor
-from findee import Findee
 
 robot = Findee()
-robot.camera.start_frame_capture()
+
 try:
     while True:
-        emit_image(robot.camera.get_frame(), "Image_0")
+        frame = robot.get_frame()
+        emit_image(frame, "Image_0")
         time.sleep(0.05)
 except Exception as e:
     print(e)
