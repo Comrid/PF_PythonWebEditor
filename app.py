@@ -41,8 +41,6 @@ gesture_states = {}
 pid_states: dict[str, dict[str, dict[str, float]]] = {}
 # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
 slider_states: dict[str, dict[str, list[float]]] = {}
-# LLM 최신 답변 저장: 세션별 문자열
-# llm_answers: dict[str, str] = {}
 
 
 # === 설정 ===
@@ -177,8 +175,6 @@ def execute_code(code: str, sid: str):
                 return float(values[0])
             return [float(v) for v in values]
 
-        # def get_llm_answer() -> str:
-        #     return llm_answers.get(sid, '')
 
         # 기존 함수들을 exec_namespace에 직접 전달
         exec_namespace = {
@@ -186,7 +182,6 @@ def execute_code(code: str, sid: str):
             'sid': sid,
             'stop_flags': stop_flags,
             'Findee': Findee,
-            # 'robot': original_findee,
             'emit_image': emit_image,
             'emit_text': emit_text,
             'get_gesture': get_gesture,
@@ -376,19 +371,7 @@ def handle_slider_update(payload):
         slider_states[sid] = session_map
     session_map[widget_id] = values
 
-# LLM answer updates from frontend
-# @socketio.on('llm_answer_update')
-# def handle_llm_answer_update(payload):
-#     sid = request.sid
-#     try:
-#         answer = payload.get('answer', '')
-#         if not isinstance(answer, str):
-#             answer = str(answer)
-#     except Exception:
-#         answer = ''
-#     llm_answers[sid] = answer
-#     # Optionally broadcast back to the same session (frontend listener is optional)
-#     socketio.emit('llm_answer', { 'answer': answer }, room=sid)
+
 
 # === 코드 저장/불러오기 API ===
 @app.route("/api/custom-code/files")
@@ -404,37 +387,36 @@ def api_custom_code_save():
         data = request.get_json()
         filename = data.get("filename", "").strip()
         code = data.get("code", "")
-        
+
         if not filename:
             return jsonify({"success": False, "error": "파일명이 필요합니다"}), 400
-        
+
         # .py 확장자가 없으면 추가
         if not filename.endswith(".py"):
             filename += ".py"
-        
+
         # 파일 경로 생성
         file_path = CUSTOM_CODE_DIR / filename
-        
+
         # 코드 저장
         file_path.write_text(code, encoding="utf-8")
-        
+
         return jsonify({"success": True, "filename": filename})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/custom-code/load/<filename>")
 def api_custom_code_load(filename):
-    """코드 불러오기"""
     try:
         # .py 확장자가 없으면 추가
         if not filename.endswith(".py"):
             filename += ".py"
-        
+
         file_path = CUSTOM_CODE_DIR / filename
-        
+
         if not file_path.exists():
             return jsonify({"success": False, "error": "파일을 찾을 수 없습니다"}), 404
-        
+
         code = file_path.read_text(encoding="utf-8")
         return jsonify({"success": True, "code": code, "filename": filename})
     except Exception as e:
@@ -442,17 +424,15 @@ def api_custom_code_load(filename):
 
 @app.route("/api/custom-code/delete/<filename>", methods=["DELETE"])
 def api_custom_code_delete(filename):
-    """코드 파일 삭제"""
     try:
-        # .py 확장자가 없으면 추가
         if not filename.endswith(".py"):
             filename += ".py"
-        
+
         file_path = CUSTOM_CODE_DIR / filename
-        
+
         if not file_path.exists():
             return jsonify({"success": False, "error": "파일을 찾을 수 없습니다"}), 404
-        
+
         file_path.unlink()
         return jsonify({"success": True})
     except Exception as e:

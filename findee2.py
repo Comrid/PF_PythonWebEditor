@@ -45,6 +45,8 @@ class Findee:
         if self._initialized: return
         self._initialized = True
 
+        self.thread_lock = threading.Lock()
+
         self.gpio_init()
         self.camera_init()
         atexit.register(self.cleanup)
@@ -81,7 +83,8 @@ class Findee:
         self.camera = Picamera2()
         self.config = self.camera.create_video_configuration(
             main={"size": (640, 480), "format": "RGB888"},
-            queue=False
+            controls={"FrameDurationLimits": (33333, 33333)},
+            queue=False, buffer_count=2
         )
         self.camera.configure(self.config)
         self.camera.start()
@@ -211,6 +214,29 @@ class Findee:
 #endregion
 
 #region: Camera
+    def get_frame(self):
+        with self.thread_lock:
+            frame = self.camera.capture_array("main")
+            return frame
+
+    def mjpeg_gen():
+        while True:
+            # RGB 프레임 -> BGR로 변환(OpenCV는 BGR 기준)
+            origin = picam2.capture_array("main")
+            arr = origin.copy()
+            # JPEG 인코딩 (품질 80)
+            ok, buf = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            if not ok:
+                continue
+            jpg = buf.tobytes()
+
+            yield (b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(jpg)).encode() + b"\r\n\r\n" +
+                jpg + b"\r\n")
+
+            # 과도한 CPU 점유 방지
+            time.sleep(0.001)
 #endregion
 
 #region: others
