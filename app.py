@@ -186,7 +186,7 @@ def execute_code(code: str, sid: str):
             'socketio': socketio,
             'sid': sid,
             'stop_flags': stop_flags,
-            # 'Findee': Findee,
+            'Findee': Findee,
             # 'robot': original_findee,
             'emit_image': emit_image,      # 이미 정의된 함수
             'emit_text': emit_text,        # 이미 정의된 함수
