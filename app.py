@@ -181,24 +181,23 @@ def execute_code(code: str, sid: str):
         def get_llm_answer() -> str:
             return llm_answers.get(sid, '')
 
-        # emit 함수들과 제스처 헬퍼를 전역 변수로 설정
-        __main__.emit_image = emit_image
-        __main__.emit_text = emit_text
-        __main__.get_gesture = get_gesture
-        __main__.get_pid_value = get_pid_value
-        __main__.get_slider_value = get_slider_value
-        __main__.get_llm_answer = get_llm_answer
+        # 기존 함수들을 exec_namespace에 직접 전달
+        exec_namespace = {
+            'socketio': socketio,
+            'sid': sid,
+            'stop_flags': stop_flags,
+            'Findee': Findee,
+            'robot': original_findee,
+            'emit_image': emit_image,      # 이미 정의된 함수
+            'emit_text': emit_text,        # 이미 정의된 함수
+            'get_gesture': get_gesture,    # 이미 정의된 함수
+            'get_pid_value': get_pid_value, # 이미 정의된 함수
+            'get_slider_value': get_slider_value, # 이미 정의된 함수
+            'get_llm_answer': get_llm_answer      # 이미 정의된 함수
+        }
 
         compiled_code = compile(code, '<string>', 'exec')
-        exec(compiled_code, {'socketio': socketio,
-                             'sid': sid,
-                             'stop_flags': stop_flags,
-                             'emit_image': emit_image,
-                             'emit_text': emit_text,
-                             'get_gesture': get_gesture,
-                             'get_pid_value': get_pid_value,
-                             'get_slider_value': get_slider_value,
-                             'get_llm_answer': get_llm_answer})
+        exec(compiled_code, exec_namespace)
 
 
     except Exception:
