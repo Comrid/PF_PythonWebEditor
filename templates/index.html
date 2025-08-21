@@ -24,6 +24,9 @@
     <!-- GridStack.js 12.2.2 -->
     <link href="https://cdn.jsdelivr.net/npm/gridstack@12.2.2/dist/gridstack.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/gridstack@12.2.2/dist/gridstack-all.js"></script>
+
+    <!-- marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <!-- Toast Container -->
@@ -86,6 +89,15 @@
                         </div>
                     </div>
                     <div class="setting-item">
+                        <label class="setting-label" for="geminiApiKey">Gemini API Key</label>
+                        <div class="api-key-controls">
+                            <input type="password" class="form-input" id="geminiApiKey" placeholder="API 키를 입력하세요" />
+                            <button class="btn btn-small btn-success" id="saveApiKeyBtn">
+                                <i class="fas fa-save"></i> 저장
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
                         <label class="setting-label" for="loadExamDropdown">Example</label>
                         <div class="dropdown-controls">
                             <button class="dropdown-btn" id="loadExamDropdown">
@@ -99,6 +111,9 @@
                                 <div class="dropdown-item" data-value="CameraExam">Camera Exam</div>
                                 <div class="dropdown-item" data-value="MotorExam">Motor Exam</div>
                                 <div class="dropdown-item" data-value="UltrasonicExam">Ultrasonic Exam</div>
+                                <div class="dropdown-item" data-value="LaneDetectionExam">Lane Detection</div>
+                                <div class="dropdown-item" data-value="ObstacleAvoidanceExam">Obstacle Avoidance</div>
+                                <div class="dropdown-item" data-value="PIDControlExam">PID Control</div>
 
                                 <div class="dropdown-item" data-value="exam1">getCode1</div>
                                 <div class="dropdown-item" data-value="exam2">getCode2</div>
@@ -123,6 +138,45 @@
                 </div>
                 <div class="popover-body" id="webcamSettingsBody">
                     <!-- Injected dynamically -->
+                </div>
+            </div>
+        </div>
+        <!-- Code File Popover (Save + Load) -->
+        <div class="popover save-load-popover" id="codeFilePopover">
+            <div class="popover-content">
+                <div class="popover-header">
+                    <h5><i class="fas fa-file-code"></i> 코드 파일 관리</h5>
+                    <button class="popover-close" id="closeCodeFilePopover">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="popover-body">
+                    <!-- Save Section -->
+                    <div class="setting-item">
+                        <label class="setting-label">코드 저장</label>
+                        <div class="api-key-controls">
+                            <div class="input-dropdown-container">
+                                <input type="text" class="form-input" id="saveCodeFilename" placeholder="파일명을 입력하세요 (예: my_code.py)" />
+                                <button class="dropdown-toggle-btn" id="filenameDropdownToggle" title="기존 파일 목록">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="dropdown-menu filename-dropdown-menu" id="filenameDropdownMenu">
+                                    <!-- 동적으로 채워짐 -->
+                                </div>
+                            </div>
+                            <button class="btn btn-small btn-success" id="confirmSaveCodeBtn">
+                                <i class="fas fa-save"></i> 저장
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Load Section -->
+                    <div class="setting-item">
+                        <label class="setting-label">코드 불러오기</label>
+                        <div id="loadCodeFileList" style="max-height: 200px; overflow-y: auto;">
+                            <!-- 동적으로 채워짐 -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

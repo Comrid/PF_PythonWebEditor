@@ -6,6 +6,7 @@ function initializePopover(){
     initializeEditorSettingsPopover();
     initializeAddWidgetPopover();
     initializeWebcamSettingsPopover();
+    initializeCodeFilePopover();
 }
 
 function positionPopover(anchorEl, popoverEl){
@@ -24,6 +25,8 @@ function initializeEditorSettingsPopover() {
     const fontSizeDecBtn = document.getElementById('decreaseFontSize');
     const wordWrapToggle = document.getElementById('wordWrapToggle');
     const minimapToggle = document.getElementById('minimapToggle');
+    const geminiApiKeyInput = document.getElementById('geminiApiKey');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
 
     if (!settingsBtn || !popover) return;
 
@@ -33,6 +36,12 @@ function initializeEditorSettingsPopover() {
     const show = () => {
         popover.classList.add('show');
         positionPopover(settingsBtn, popover);
+
+        // 저장된 API 키 로드
+        if (geminiApiKeyInput) {
+            const storedKey = localStorage.getItem('GEMINI_API_KEY') || '';
+            geminiApiKeyInput.value = storedKey;
+        }
 
         // 외부 클릭으로 닫기
         outsideClickHandler = (e) => {
@@ -80,6 +89,26 @@ function initializeEditorSettingsPopover() {
     if (fontSizeDecBtn) fontSizeDecBtn.addEventListener('click', decreaseFontSize);
     if (wordWrapToggle) wordWrapToggle.addEventListener('click', toggleWordWrap);
     if (minimapToggle) minimapToggle.addEventListener('click', toggleMinimap);
+
+    // API 키 저장 버튼
+    if (saveApiKeyBtn && geminiApiKeyInput) {
+        saveApiKeyBtn.addEventListener('click', () => {
+            const apiKey = geminiApiKeyInput.value.trim();
+            if (apiKey) {
+                setGeminiAPIKey(apiKey);
+                hide(); // 설정 후 팝오버 닫기
+            } else {
+                showToast('API 키를 입력하세요.', 'warning');
+            }
+        });
+
+        // Enter 키로도 저장 가능
+        geminiApiKeyInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveApiKeyBtn.click();
+            }
+        });
+    }
 
     // 예제 드롭다운 초기화
     dropdownExample();
@@ -185,6 +214,9 @@ function dropdownExample(){
                 CameraExam: getCameraExampleCode(),
                 MotorExam: getMotorExampleCode(),
                 UltrasonicExam: getUltrasonicExampleCode(),
+                LaneDetectionExam: getLaneDetectionExampleCode(),
+                ObstacleAvoidanceExam: getObstacleAvoidanceExampleCode(),
+                PIDControlExam: getPIDControlExampleCode(),
 
                 exam1: getCode1(),
                 exam2: getCode2(),
@@ -229,6 +261,7 @@ function initializeAddWidgetPopover(){
         { key: 'pid', icon: 'fas fa-list', label: 'PID Controller', handler: createWidget_PIDController },
         { key: 'slider', icon: 'fa-sliders-h', label: 'Slider', handler: createWidget_Slider },
         { key: 'ai', icon: 'fa-robot', label: 'AI Assistant', handler: createWidget_AIAssistant },
+        { key: 'ai_controller', icon: 'fa-magic', label: 'AI Controller', handler: createWidget_AIController },
     ];
     grid.innerHTML = items.map(item => `
         <div class="widget-picker-item" data-key="${item.key}">
@@ -415,4 +448,478 @@ function toggleWebcamSettingsPopover(anchorBtn, widgetId){
         document.removeEventListener('keydown', keydownHandler);
     };
 }
+//#endregion
+
+//#region Code File Popover (Save + Load)
+function initializeCodeFilePopover() {
+    const codeFileBtn = document.getElementById('codeFileBtn');
+    const popover = document.getElementById('codeFilePopover');
+    const closeBtn = document.getElementById('closeCodeFilePopover');
+    const confirmBtn = document.getElementById('confirmSaveCodeBtn');
+    const filenameInput = document.getElementById('saveCodeFilename');
+    const dropdownToggle = document.getElementById('filenameDropdownToggle');
+    const dropdownMenu = document.getElementById('filenameDropdownMenu');
+    const fileList = document.getElementById('loadCodeFileList');
+
+    if (!codeFileBtn || !popover) return;
+
+    let outsideClickHandler = null;
+    let keydownHandler = null;
+    let isDropdownOpen = false;
+
+    const show = () => {
+        popover.classList.add('show');
+        positionPopover(codeFileBtn, popover);
+
+        // 초기 상태 설정
+        filenameInput.value = '';
+        isDropdownOpen = false;
+        dropdownToggle.classList.remove('active');
+        dropdownMenu.classList.remove('show');
+
+        // 파일 목록 로드
+        loadSavedFilesList();
+
+        // 외부 클릭으로 닫기
+        outsideClickHandler = (e) => {
+            const isInside = popover.contains(e.target) || codeFileBtn.contains(e.target);
+            if (!isInside) hide();
+        };
+        setTimeout(() => document.addEventListener('click', outsideClickHandler), 0);
+
+        // ESC로 닫기
+        keydownHandler = (e) => { if (e.key === 'Escape') hide(); };
+        document.addEventListener('keydown', keydownHandler);
+    };
+
+    const hide = () => {
+        popover.classList.remove('show');
+        if (outsideClickHandler) {
+            document.removeEventListener('click', outsideClickHandler);
+            outsideClickHandler = null;
+        }
+        if (keydownHandler) {
+            document.removeEventListener('keydown', keydownHandler);
+            keydownHandler = null;
+        }
+    };
+
+    // 트리거 토글
+    codeFileBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (popover.classList.contains('show')) hide(); else show();
+    });
+
+    // 닫기 버튼
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            hide();
+        });
+    }
+
+    // 드롭다운 토글 버튼
+    if (dropdownToggle && dropdownMenu) {
+        dropdownToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isDropdownOpen) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+        });
+    }
+
+    // 드롭다운 열기
+    function openDropdown() {
+        if (!dropdownMenu) return;
+        
+        // 기존 파일 목록 로드
+        loadExistingFilesList();
+        
+        isDropdownOpen = true;
+        dropdownToggle.classList.add('active');
+        dropdownMenu.classList.add('show');
+    }
+
+    // 드롭다운 닫기
+    function closeDropdown() {
+        if (!dropdownMenu) return;
+        
+        isDropdownOpen = false;
+        dropdownToggle.classList.remove('active');
+        dropdownMenu.classList.remove('show');
+    }
+
+    // 기존 파일 목록 로드
+    function loadExistingFilesList() {
+        if (!dropdownMenu) return;
+
+        fetch('/api/custom-code/files')
+            .then(response => response.json())
+            .then(data => {
+                dropdownMenu.innerHTML = '';
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const item = document.createElement('div');
+                        item.className = 'dropdown-item';
+                        item.setAttribute('data-filename', file.name);
+                        
+                        item.innerHTML = `
+                            <div>${file.name}</div>
+                            <div class="file-info">${new Date(file.mtime * 1000).toLocaleDateString()} • ${(file.size / 1024).toFixed(1)}KB</div>
+                        `;
+                        
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // 파일명을 입력칸에 설정
+                            filenameInput.value = file.name;
+                            
+                            // 드롭다운 닫기
+                            closeDropdown();
+                        });
+                        
+                        dropdownMenu.appendChild(item);
+                    });
+                } else {
+                    const noFilesItem = document.createElement('div');
+                    noFilesItem.className = 'dropdown-item';
+                    noFilesItem.textContent = '저장된 파일이 없습니다';
+                    noFilesItem.style.opacity = '0.5';
+                    noFilesItem.style.cursor = 'default';
+                    dropdownMenu.appendChild(noFilesItem);
+                }
+            })
+            .catch(error => {
+                console.error('기존 파일 목록 로드 실패:', error);
+                showToast('기존 파일 목록을 불러오는데 실패했습니다.', 'error');
+            });
+    }
+
+    // 저장된 파일 목록 로드
+    function loadSavedFilesList() {
+        if (!fileList) return;
+
+        fetch('/api/custom-code/files')
+            .then(response => response.json())
+            .then(data => {
+                fileList.innerHTML = '';
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'setting-item';
+                        fileItem.style.cursor = 'pointer';
+                        fileItem.style.padding = '12px';
+                        fileItem.style.borderRadius = '6px';
+                        fileItem.style.transition = 'background-color 0.2s ease';
+
+                        fileItem.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">
+                                        ${file.name}
+                                    </div>
+                                    <div style="font-size: 12px; color: #a0aec0;">
+                                        ${new Date(file.mtime * 1000).toLocaleString()} • ${(file.size / 1024).toFixed(1)}KB
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-small btn-success" onclick="loadCodeFile('${file.name}')">
+                                        <i class="fas fa-download"></i> 불러오기
+                                    </button>
+                                    <button class="btn btn-small btn-danger" onclick="deleteCodeFile('${file.name}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+
+                        fileItem.addEventListener('mouseenter', () => {
+                            fileItem.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        });
+
+                        fileItem.addEventListener('mouseleave', () => {
+                            fileItem.style.backgroundColor = 'transparent';
+                        });
+
+                        fileList.appendChild(fileItem);
+                    });
+                } else {
+                    const noFilesItem = document.createElement('div');
+                    noFilesItem.className = 'setting-item';
+                    noFilesItem.style.textAlign = 'center';
+                    noFilesItem.style.color = '#a0aec0';
+                    noFilesItem.style.fontStyle = 'italic';
+                    noFilesItem.textContent = '저장된 파일이 없습니다';
+                    fileList.appendChild(noFilesItem);
+                }
+            })
+            .catch(error => {
+                console.error('저장된 파일 목록 로드 실패:', error);
+                showToast('저장된 파일 목록을 불러오는데 실패했습니다.', 'error');
+            });
+    }
+
+    // 저장 확인 버튼
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+            if (!monacoEditor) {
+                showToast('Monaco Editor가 초기화되지 않았습니다.', 'error');
+                return;
+            }
+
+            const code = monacoEditor.getValue();
+            if (!code || code.trim() === '') {
+                showToast('저장할 코드가 없습니다.', 'warning');
+                return;
+            }
+
+            const filename = filenameInput.value.trim();
+            if (!filename) {
+                showToast('파일명을 입력하세요.', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/custom-code/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        code: code
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`코드가 성공적으로 저장되었습니다: ${result.filename}`, 'success');
+                    hide();
+                } else {
+                    showToast(`저장 실패: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('코드 저장 중 오류:', error);
+                showToast('코드 저장 중 오류가 발생했습니다.', 'error');
+            }
+        });
+    }
+
+    // Enter 키로 저장
+    if (filenameInput) {
+        filenameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                confirmBtn.click();
+            }
+        });
+    }
+
+    // 외부 클릭 시 드롭다운 닫기
+    document.addEventListener('click', function(e) {
+        if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            closeDropdown();
+        }
+    });
+}
+//#endregion
+
+//#region Load Code Popover
+function initializeLoadCodePopover() {
+    const loadCodeBtn = document.getElementById('loadCodeBtn');
+    const popover = document.getElementById('loadCodePopover');
+    const closeBtn = document.getElementById('closeLoadCodePopover');
+    const fileList = document.getElementById('loadCodeFileList');
+
+    if (!loadCodeBtn || !popover) return;
+
+    let outsideClickHandler = null;
+    let keydownHandler = null;
+
+    const show = () => {
+        popover.classList.add('show');
+        positionPopover(loadCodeBtn, popover);
+
+        // 파일 목록 로드
+        loadSavedFilesList();
+
+        // 외부 클릭으로 닫기
+        outsideClickHandler = (e) => {
+            const isInside = popover.contains(e.target) || loadCodeBtn.contains(e.target);
+            if (!isInside) hide();
+        };
+        setTimeout(() => document.addEventListener('click', outsideClickHandler), 0);
+
+        // ESC로 닫기
+        keydownHandler = (e) => { if (e.key === 'Escape') hide(); };
+        document.addEventListener('keydown', keydownHandler);
+    };
+
+    const hide = () => {
+        popover.classList.remove('show');
+        if (outsideClickHandler) {
+            document.removeEventListener('click', outsideClickHandler);
+            outsideClickHandler = null;
+        }
+        if (keydownHandler) {
+            document.removeEventListener('keydown', keydownHandler);
+            keydownHandler = null;
+        }
+    };
+
+    // 트리거 토글
+    loadCodeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (popover.classList.contains('show')) hide(); else show();
+    });
+
+    // 닫기 버튼
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            hide();
+        });
+    }
+
+    // 저장된 파일 목록 로드
+    function loadSavedFilesList() {
+        if (!fileList) return;
+
+        fetch('/api/custom-code/files')
+            .then(response => response.json())
+            .then(data => {
+                fileList.innerHTML = '';
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'setting-item';
+                        fileItem.style.cursor = 'pointer';
+                        fileItem.style.padding = '12px';
+                        fileItem.style.borderRadius = '6px';
+                        fileItem.style.transition = 'background-color 0.2s ease';
+
+                        fileItem.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">
+                                        ${file.name}
+                                    </div>
+                                    <div style="font-size: 12px; color: #a0aec0;">
+                                        ${new Date(file.mtime * 1000).toLocaleString()} • ${(file.size / 1024).toFixed(1)}KB
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-small btn-success" onclick="loadCodeFile('${file.name}')">
+                                        <i class="fas fa-download"></i> 불러오기
+                                    </button>
+                                    <button class="btn btn-small btn-danger" onclick="deleteCodeFile('${file.name}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+
+                        fileItem.addEventListener('mouseenter', () => {
+                            fileItem.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        });
+
+                        fileItem.addEventListener('mouseleave', () => {
+                            fileItem.style.backgroundColor = 'transparent';
+                        });
+
+                        fileList.appendChild(fileItem);
+                    });
+                } else {
+                    const noFilesItem = document.createElement('div');
+                    noFilesItem.className = 'setting-item';
+                    noFilesItem.style.textAlign = 'center';
+                    noFilesItem.style.color = '#a0aec0';
+                    noFilesItem.style.fontStyle = 'italic';
+                    noFilesItem.textContent = '저장된 파일이 없습니다';
+                    fileList.appendChild(noFilesItem);
+                }
+            })
+            .catch(error => {
+                console.error('저장된 파일 목록 로드 실패:', error);
+                showToast('저장된 파일 목록을 불러오는데 실패했습니다.', 'error');
+            });
+    }
+}
+
+// 코드 파일 불러오기 함수 (전역으로 노출)
+async function loadCodeFile(filename) {
+    if (!monacoEditor) {
+        showToast('Monaco Editor가 초기화되지 않았습니다.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/custom-code/load/${encodeURIComponent(filename)}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            monacoEditor.setValue(result.code);
+            showToast(`코드가 성공적으로 불러와졌습니다: ${result.filename}`, 'success');
+            
+            // Code File 팝오버 닫기
+            const popover = document.getElementById('codeFilePopover');
+            if (popover) {
+                popover.classList.remove('show');
+            }
+        } else {
+            showToast(`불러오기 실패: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('코드 불러오기 중 오류:', error);
+        showToast('코드 불러오기 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 코드 파일 삭제 함수 (전역으로 노출)
+async function deleteCodeFile(filename) {
+    if (!confirm(`정말로 "${filename}" 파일을 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/custom-code/delete/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`파일이 성공적으로 삭제되었습니다: ${filename}`, 'success');
+            
+            // Code File 팝오버가 열려있다면 파일 목록 새로고침
+            const popover = document.getElementById('codeFilePopover');
+            if (popover && popover.classList.contains('show')) {
+                const fileList = document.getElementById('loadCodeFileList');
+                if (fileList) {
+                    // 간단한 새로고침을 위해 팝오버를 닫았다가 다시 열기
+                    popover.classList.remove('show');
+                    setTimeout(() => {
+                        document.getElementById('codeFileBtn').click();
+                    }, 100);
+                }
+            }
+        } else {
+            showToast(`삭제 실패: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('파일 삭제 중 오류:', error);
+        showToast('파일 삭제 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 전역 함수로 노출
+window.loadCodeFile = loadCodeFile;
+window.deleteCodeFile = deleteCodeFile;
 //#endregion

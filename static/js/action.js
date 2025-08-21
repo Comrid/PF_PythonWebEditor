@@ -15,6 +15,10 @@ function initializeButtonAction(){
     const clearOutputBtn = document.getElementById('clearOutputBtn');
     clearOutputBtn.addEventListener('click', clearOutput);
 
+    // Code File Button (Save + Load)
+    const codeFileBtn = document.getElementById('codeFileBtn');
+    codeFileBtn.addEventListener('click', handleCodeFileClick);
+
     // Widget Buttons
     const clearAllWidgetsBtn = document.getElementById('clearAllWidgetsBtn');
     clearAllWidgetsBtn.addEventListener('click', handleClearAllWidgetsClick);
@@ -73,6 +77,23 @@ function clearOutput() {
     const outputContent = document.getElementById('outputContent');
     if (outputContent) {
         outputContent.innerHTML = '';
+    }
+}
+//#endregion
+
+//#region Code File Event Handler (Save + Load)
+// Code File 버튼 클릭 이벤트 핸들러
+function handleCodeFileClick() {
+    // Code File 팝오버 표시
+    showCodeFilePopover();
+}
+
+// Code File 팝오버 표시 함수
+function showCodeFilePopover() {
+    const popover = document.getElementById('codeFilePopover');
+    if (popover) {
+        popover.classList.add('show');
+        // 위치 조정은 popover.js에서 처리됨
     }
 }
 //#endregion

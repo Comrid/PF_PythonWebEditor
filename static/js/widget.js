@@ -844,6 +844,9 @@ function getPidValueFromUI(widgetId){
                     <button class="btn btn-small btn-danger" id="stopBtn">
                         <i class="fas fa-stop"></i> Stop
                     </button>
+                    <button class="btn btn-small btn-primary" id="codeFileBtn">
+                        <i class="fas fa-file-code"></i> Code File
+                    </button>
                     <button class="btn btn-small btn-settings" id="editorSettingsBtn">
                         <i class="fas fa-cog"></i>
                     </button>
@@ -918,6 +921,15 @@ function createWidget_AIAssistant(){
                         <span class="execution-status" id="llmStatus_${widgetId}">Loading...</span>
                     </h4>
                     <div class="widget-controls">
+                        <div class="toggle-controls" style="margin-right:8px;">
+                            <label class="setting-label" style="margin-right:8px; color:#e2e8f0; font-size:12px;">Code Based</label>
+                            <button class="toggle-btn" id="codeBasedToggle_${widgetId}">
+                                <div class="toggle-slider">
+                                    <div class="toggle-indicator"></div>
+                                </div>
+                                <span class="toggle-label" id="codeBasedLabel_${widgetId}">Off</span>
+                            </button>
+                        </div>
                         <button class="btn btn-small btn-success" id="btnAsk_${widgetId}" disabled><i class="fas fa-paper-plane"></i> Ask</button>
                         <button class="btn btn-small" id="btnClear_${widgetId}"><i class="fas fa-eraser"></i> Clear</button>
                         <button class="widget-close-btn" onclick="removeAIAssistantWidget('${widgetId}')"><i class="fas fa-times"></i></button>
@@ -941,6 +953,18 @@ function createWidget_AIAssistant(){
         const inputEl = document.getElementById(`ai_input_${widgetId}`);
         const outputEl = document.getElementById(`ai_output_${widgetId}`);
         const statusEl = document.getElementById(`llmStatus_${widgetId}`);
+        const codeBasedToggle = document.getElementById(`codeBasedToggle_${widgetId}`);
+        const codeBasedLabel = document.getElementById(`codeBasedLabel_${widgetId}`);
+
+        // Code Based 토글 이벤트
+        if (codeBasedToggle && codeBasedLabel) {
+            codeBasedToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isActive = codeBasedToggle.classList.toggle('active');
+                codeBasedLabel.textContent = isActive ? 'On' : 'Off';
+            });
+        }
 
         const updateStatus = (loaded, loading, error) => {
             if (!statusEl || !btnAsk) return;
@@ -986,17 +1010,87 @@ function createWidget_AIAssistant(){
         if (title) title.addEventListener('click', () => copyWidgetId(widgetId));
 
         if (btnAsk && inputEl && outputEl) {
+            // 입력 필드 키 이벤트: Shift+Enter는 줄바꿈, Enter는 Ask
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    btnAsk.click();
+                }
+            });
+
             btnAsk.addEventListener('click', async () => {
                 const question = (inputEl.value || '').trim();
                 if (!question) { showToast('질문을 입력하세요.', 'warning'); return; }
+
+                // LLM 준비 상태 우선 검사 및 보정
                 try {
-                    outputEl.textContent = '';
+                    const snap = (typeof window.getLlmStatus === 'function') ? window.getLlmStatus() : {loaded:false};
+                    if (!snap.loaded && typeof window.loadLLM === 'function') {
+                        await window.loadLLM();
+                    }
+                    const snap2 = (typeof window.getLlmStatus === 'function') ? window.getLlmStatus() : {loaded:false, error:'LLM not loaded'};
+                    if (!snap2.loaded) {
+                        showToast('LLM이 준비되지 않았습니다. API 키를 확인하세요.', 'error');
+                        return;
+                    }
+                } catch (_) {
+                    showToast('LLM 초기화에 실패했습니다.', 'error');
+                    return;
+                }
+                
+                try {
+                    // 렌더 타깃을 마크다운 컨테이너로 사용
+                    outputEl.innerHTML = '';
                     btnAsk.disabled = true;
-                    await window.askLLM(question, (partial, complete) => {
-                        outputEl.textContent += partial;
+                    
+                    // Code Based가 활성화된 경우 현재 코드도 함께 전달
+                    const useCode = !!(codeBasedToggle && codeBasedToggle.classList.contains('active'));
+                    const code = useCode && monacoEditor ? monacoEditor.getValue().trim() : '';
+
+                    // 사용자의 Findee 인스턴스 변수명 추출
+                    let instanceName = 'robot'; // 기본값
+                    if (useCode && code) {
+                        const findeePattern = /(\w+)\s*=\s*Findee\(\)/;
+                        const match = code.match(findeePattern);
+                        if (match) {
+                            instanceName = match[1];
+                        }
+                    }
+
+                    // 간결 프롬프트 구성
+                    const parts = [];
+                    if (window.LLM_SYSTEM_PROMPT) parts.push(window.LLM_SYSTEM_PROMPT);
+                    if (window.FINDEE_API_BRIEF) parts.push('Findee API 요약:\n' + window.FINDEE_API_BRIEF);
+                    if (useCode && code) {
+                        parts.push(`현재 코드:\n\`\`\`python\n${code}\n\`\`\``);
+                        parts.push(`사용자의 Findee 인스턴스 변수명: ${instanceName}`);
+                        parts.push(`답변 시 ${instanceName}.motor, ${instanceName}.camera, ${instanceName}.ultrasonic 형태로 사용하세요.`);
+                        parts.push(`**코드 예시 생성 시 필수 요소**:`);
+                        parts.push(`1. from findee import Findee`);
+                        parts.push(`2. ${instanceName} = Findee()`);
+                        parts.push(`3. try-except-finally 구조`);
+                        parts.push(`4. ${instanceName}.cleanup()`);
+                        parts.push(`**중요한 주의사항**:`);
+                        parts.push(`- robot.motor.move_forward(speed=50, time_sec=1) 같은 코드는 이미 1초를 대기하고 자동으로 stop하므로 추가적인 time.sleep()을 사용하지 마세요.`);
+                        parts.push(`- motor 관련 함수들은 time_sec 매개변수로 동작 시간을 지정할 수 있습니다.`);
+                        parts.push(`- time.sleep()은 motor 함수의 time_sec 매개변수로 대체 가능한 경우 사용하지 마세요.`);
+                    }
+                    parts.push('질문:\n' + question);
+                    const fullQuestion = parts.join('\n\n');
+                    
+                    await window.askLLM(fullQuestion, (partial, complete) => {
+                        // Markdown 렌더링
+                        try {
+                            const html = (window.marked ? window.marked.parse(partial) : partial).toString();
+                            outputEl.innerHTML = html;
+                        } catch (_) {
+                            outputEl.textContent = partial;
+                        }
                         if (complete) {
                             btnAsk.disabled = false;
-                            window.llmLastAnswer = outputEl.textContent;
+                            // 최종 텍스트는 plain 저장
+                            const textOnly = outputEl.textContent || '';
+                            window.llmLastAnswer = textOnly;
                             if (window.socket && window.socket.connected) {
                                 window.socket.emit('llm_answer_update', { answer: window.llmLastAnswer });
                             }
@@ -1021,6 +1115,271 @@ function createWidget_AIAssistant(){
         }
 
         if (typeof window !== 'undefined') window.aiAssistantRunning = true;
+
+        // Cleanup on remove (best-effort)
+        const cleanupObserver = new MutationObserver(() => {
+            const el = document.getElementById(widgetId);
+            if (!el) {
+                try { window.removeEventListener('llm_status_changed', listener); } catch(_) {}
+                cleanupObserver.disconnect();
+            }
+        });
+        cleanupObserver.observe(document.body, { childList: true, subtree: true });
+    };
+
+    setTimeout(bind, 0);
+
+    return widgetId;
+}
+//#endregion
+
+//#region AI Controller Widget 관련 함수 (코드 생성 및 실행)
+function removeAIControllerWidget(widgetId){
+    try {
+        removeWidget(widgetId);
+    } finally {
+        if (typeof window !== 'undefined') {
+            window.aiControllerRunning = window.aiControllerRunning || false;
+            window.aiControllerRunning = false;
+        }
+    }
+}
+
+function createWidget_AIController(){
+    if (typeof window !== 'undefined' && window.aiControllerRunning) {
+        showToast('이미 AI Controller 위젯이 생성되어 있습니다.', 'warning');
+        return null;
+    }
+
+    const widgetId = 'AI_Controller';
+
+    const widgetHTML = `
+        <div class="grid-stack-item" id="${widgetId}" gs-w="16" gs-h="10" gs-min-w="12" gs-min-h="8" gs-locked="true">
+            <div class="grid-stack-item-content widget-content">
+                <div class="widget-header">
+                    <h4>
+                        <i class="fas fa-magic"></i>
+                        <span class="widget-title" id="title_${widgetId}" draggable="false">${widgetId}</span>
+                        <span class="execution-status" id="llmStatus_${widgetId}">Loading...</span>
+                    </h4>
+                    <div class="widget-controls">
+                        <div class="toggle-controls" style="margin-right:8px;">
+                            <label class="setting-label" style="margin-right:8px; color:#e2e8f0; font-size:12px;">Auto Run</label>
+                            <button class="toggle-btn" id="autoRunToggle_${widgetId}">
+                                <div class="toggle-slider">
+                                    <div class="toggle-indicator"></div>
+                                </div>
+                                <span class="toggle-label" id="autoRunLabel_${widgetId}">Off</span>
+                            </button>
+                        </div>
+                        <button class="btn btn-small btn-success" id="btnGenerate_${widgetId}" disabled><i class="fas fa-code"></i> Generate</button>
+                        <button class="btn btn-small" id="btnClear_${widgetId}"><i class="fas fa-eraser"></i> Clear</button>
+                        <button class="widget-close-btn" onclick="removeAIControllerWidget('${widgetId}')"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="widget-body">
+                    <div class="ai-controller-container">
+                        <textarea id="ai_input_${widgetId}" class="form-input ai-input" placeholder="원하는 동작을 자연어로 설명하세요... (예: 'LED를 깜빡여라', '모터를 3초간 전진시켜라')"></textarea>
+                        <div id="ai_output_${widgetId}" class="output-content ai-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    createWidgetByHTML(widgetHTML);
+
+    const bind = () => {
+        const btnGenerate = document.getElementById(`btnGenerate_${widgetId}`);
+        const btnClear = document.getElementById(`btnClear_${widgetId}`);
+        const title = document.getElementById(`title_${widgetId}`);
+        const inputEl = document.getElementById(`ai_input_${widgetId}`);
+        const outputEl = document.getElementById(`ai_output_${widgetId}`);
+        const statusEl = document.getElementById(`llmStatus_${widgetId}`);
+        const autoRunToggle = document.getElementById(`autoRunToggle_${widgetId}`);
+        const autoRunLabel = document.getElementById(`autoRunLabel_${widgetId}`);
+
+        let generatedCode = ''; // 생성된 코드 저장
+
+        // Auto Run 토글 이벤트
+        if (autoRunToggle && autoRunLabel) {
+            autoRunToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const isActive = autoRunToggle.classList.toggle('active');
+                autoRunLabel.textContent = isActive ? 'On' : 'Off';
+            });
+        }
+
+        const updateStatus = (loaded, loading, error) => {
+            if (!statusEl || !btnGenerate) return;
+            if (loading) {
+                statusEl.textContent = 'Loading...';
+                btnGenerate.disabled = true;
+                return;
+            }
+            if (error) {
+                statusEl.textContent = 'Load Failed';
+                btnGenerate.disabled = true;
+                return;
+            }
+            if (loaded) {
+                statusEl.textContent = 'Ready';
+                btnGenerate.disabled = false;
+                return;
+            }
+            statusEl.textContent = 'Idle';
+            btnGenerate.disabled = true;
+        };
+
+        // Apply current global status immediately
+        try {
+            const s = typeof window.getLlmStatus === 'function' ? window.getLlmStatus() : {loaded:false,loading:true,error:null};
+            updateStatus(!!s.loaded, !!s.loading, s.error || null);
+        } catch(_) {}
+
+        // Subscribe to global llm status events
+        const listener = (e) => {
+            const d = e && e.detail ? e.detail : {};
+            updateStatus(!!d.loaded, !!d.loading, d.error || null);
+        };
+        window.addEventListener('llm_status_changed', listener);
+
+        // Kick off loading if not yet (harmless if already done)
+        try {
+            if (typeof window.loadLLM === 'function') {
+                window.loadLLM().catch(()=>{});
+            }
+        } catch(_) {}
+
+        if (title) title.addEventListener('click', () => copyWidgetId(widgetId));
+
+        if (btnGenerate && inputEl && outputEl) {
+            // 입력 필드 키 이벤트: Shift+Enter는 줄바꿈, Enter는 Generate
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    btnGenerate.click();
+                }
+            });
+
+            btnGenerate.addEventListener('click', async () => {
+                const request = (inputEl.value || '').trim();
+                if (!request) { showToast('동작을 설명해주세요.', 'warning'); return; }
+
+                // LLM 준비 상태 우선 검사 및 보정
+                try {
+                    const snap = (typeof window.getLlmStatus === 'function') ? window.getLlmStatus() : {loaded:false};
+                    if (!snap.loaded && typeof window.loadLLM === 'function') {
+                        await window.loadLLM();
+                    }
+                    const snap2 = (typeof window.getLlmStatus === 'function') ? window.getLlmStatus() : {loaded:false, error:'LLM not loaded'};
+                    if (!snap2.loaded) {
+                        showToast('LLM이 준비되지 않았습니다. API 키를 확인하세요.', 'error');
+                        return;
+                    }
+                } catch (_) {
+                    showToast('LLM 초기화에 실패했습니다.', 'error');
+                    return;
+                }
+                
+                try {
+                    // 렌더 타깃을 마크다운 컨테이너로 사용
+                    outputEl.innerHTML = '';
+                    btnGenerate.disabled = true;
+                    
+                    // 코드 생성 프롬프트 구성
+                    const parts = [];
+                    if (window.LLM_SYSTEM_PROMPT) parts.push(window.LLM_SYSTEM_PROMPT);
+                    if (window.FINDEE_API_BRIEF) parts.push('Findee API 요약:\n' + window.FINDEE_API_BRIEF);
+                    parts.push('**코드 생성 요청**:');
+                    parts.push(`사용자가 원하는 동작: ${request}`);
+                    parts.push('**생성할 코드의 필수 요구사항**:');
+                    parts.push('1. from findee import Findee');
+                    parts.push('2. robot = Findee()');
+                    parts.push('3. try-except-finally 구조');
+                    parts.push('4. robot.cleanup()');
+                    parts.push('5. 사용자의 요청을 정확히 수행하는 코드');
+                    parts.push('6. 코드는 실행 가능해야 함');
+                    parts.push('**중요한 주의사항**:');
+                    parts.push('- robot.motor.move_forward(speed=50, time_sec=1) 같은 코드는 이미 1초를 대기하고 자동으로 stop하므로 추가적인 time.sleep()을 사용하지 마세요.');
+                    parts.push('- motor 관련 함수들은 time_sec 매개변수로 동작 시간을 지정할 수 있습니다.');
+                    parts.push('- time.sleep()은 motor 함수의 time_sec 매개변수로 대체 가능한 경우 사용하지 마세요.');
+                    parts.push('**응답 형식**:');
+                    parts.push('```python');
+                    parts.push('# 여기에 Python 코드를 작성');
+                    parts.push('```');
+                    parts.push('코드만 생성하고 설명은 최소화하세요.');
+                    
+                    const fullPrompt = parts.join('\n\n');
+                    
+                    await window.askLLM(fullPrompt, (partial, complete) => {
+                        // Markdown 렌더링
+                        try {
+                            const html = (window.marked ? window.marked.parse(partial) : partial).toString();
+                            outputEl.innerHTML = html;
+                        } catch (_) {
+                            outputEl.textContent = partial;
+                        }
+                        if (complete) {
+                            btnGenerate.disabled = false;
+                            
+                            // 생성된 코드 추출
+                            const codeMatch = partial.match(/```python\n([\s\S]*?)\n```/);
+                            if (codeMatch) {
+                                generatedCode = codeMatch[1].trim();
+                                
+                                // Auto Run이 활성화된 경우 자동 실행
+                                const isAutoRun = !!(autoRunToggle && autoRunToggle.classList.contains('active'));
+                                if (isAutoRun) {
+                                    executeGeneratedCode(generatedCode);
+                                } else {
+                                    showToast('코드가 생성되었습니다. Auto Run을 On으로 설정하면 자동으로 실행됩니다.', 'success');
+                                }
+                            } else {
+                                generatedCode = '';
+                                showToast('코드 생성에 실패했습니다. 다시 시도해주세요.', 'error');
+                            }
+                        }
+                    });
+                } catch (e) {
+                    btnGenerate.disabled = false;
+                    showToast('LLM 요청 중 오류가 발생했습니다.', 'error');
+                }
+            });
+        }
+
+        // 생성된 코드 실행 함수
+        function executeGeneratedCode(code) {
+            if (!code) {
+                showToast('실행할 코드가 없습니다.', 'warning');
+                return;
+            }
+
+            if (!monacoEditor) {
+                showToast('Monaco Editor가 초기화되지 않았습니다.', 'error');
+                return;
+            }
+
+            // 코드를 직접 실행 (에디터에 반영하지 않음)
+            if (window.socket && window.socket.connected) {
+                window.socket.emit('execute_code', {code: code});
+                showToast('생성된 코드가 실행됩니다.', 'success');
+            } else {
+                showToast('Socket.IO가 연결되어 있지 않습니다. 코드를 에디터에 설정합니다.', 'warning');
+                // 폴백: 에디터에 코드 설정
+                monacoEditor.setValue(code);
+            }
+        }
+
+        if (btnClear && inputEl && outputEl) {
+            btnClear.addEventListener('click', () => {
+                inputEl.value = '';
+                outputEl.textContent = '';
+                generatedCode = '';
+            });
+        }
+
+        if (typeof window !== 'undefined') window.aiControllerRunning = true;
 
         // Cleanup on remove (best-effort)
         const cleanupObserver = new MutationObserver(() => {

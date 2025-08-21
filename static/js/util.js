@@ -12,7 +12,49 @@ document.addEventListener('DOMContentLoaded', function() {
     console.info('DOM Content Loaded');
     showToast(messages.welcome_msg, 'success');
     loadVideoDevices();
+    
+    // Gemini API 키 설정 확인
+    checkGeminiAPIKey();
 });
+
+// Gemini API 키 확인 및 설정
+function checkGeminiAPIKey() {
+    // 환경변수에서 API 키 확인 (서버에서 전달받은 경우)
+    if (typeof window.GEMINI_API_KEY !== 'undefined' && window.GEMINI_API_KEY) {
+        console.log('Gemini API 키가 환경변수에서 설정되었습니다.');
+        return;
+    }
+    
+    // 로컬 스토리지에서 API 키 확인
+    const storedKey = localStorage.getItem('GEMINI_API_KEY');
+    if (storedKey) {
+        window.GEMINI_API_KEY = storedKey;
+        console.log('Gemini API 키가 로컬 스토리지에서 로드되었습니다.');
+        return;
+    }
+    
+    // API 키가 없는 경우 사용자에게 안내
+    showToast('Gemini API 키가 설정되지 않았습니다. 설정에서 API 키를 입력하세요.', 'warning');
+}
+
+// API 키 설정 함수 (사용자가 직접 입력할 수 있도록)
+function setGeminiAPIKey(apiKey) {
+    if (apiKey && apiKey.trim()) {
+        window.GEMINI_API_KEY = apiKey.trim();
+        localStorage.setItem('GEMINI_API_KEY', apiKey.trim());
+        showToast('Gemini API 키가 설정되었습니다.', 'success');
+        
+        // LLM 자동 로드 시도
+        if (typeof window.loadLLM === 'function') {
+            window.loadLLM().catch(() => {});
+        }
+    } else {
+        showToast('유효한 API 키를 입력하세요.', 'error');
+    }
+}
+
+// 전역 함수로 노출
+window.setGeminiAPIKey = setGeminiAPIKey;
 
 // Toast with console debug
 const useConsoleDebug = true;
@@ -30,6 +72,7 @@ let numWebcamDisplayWidget = 0;
 let numSliderWidget = 0;
 let numPidControllerWidget = 0;
 let aiAssistantRunning = false; // single-instance guard for AI Assistant
+let aiControllerRunning = false; // single-instance guard for AI Controller
 
 // Webcam globals
 let webcamStreams = new Map();
@@ -442,6 +485,69 @@ finally:
     robot.cleanup()`;
 }
 
+// 차선 인식 예제 코드
+function getLaneDetectionExampleCode(){
+    return `# Lane Detection Example Code
+import cv2
+import numpy as np
+import time
+
+def detect_lanes(image):
+    # 그레이스케일 변환
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # 가우시안 블러
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    
+    # Canny 엣지 검출
+    edges = cv2.Canny(blurred, 50, 150)
+    
+    # 관심 영역 설정 (ROI)
+    height, width = edges.shape
+    roi_vertices = np.array([
+        [(0, height), (width/2, height/2), (width, height)]
+    ], dtype=np.int32)
+    
+    # 마스크 적용
+    mask = np.zeros_like(edges)
+    cv2.fillPoly(mask, roi_vertices, 255)
+    masked_edges = cv2.bitwise_and(edges, mask)
+    
+    # Hough 변환으로 직선 검출
+    lines = cv2.HoughLinesP(masked_edges, 1, np.pi/180, 50, 
+                           minLineLength=100, maxLineGap=50)
+    
+    # 결과 그리기
+    result = image.copy()
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(result, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    
+    return result
+
+# 웹캠에서 실시간 차선 인식
+try:
+    while True:
+        # 웹캠 프레임 가져오기 (실제 환경에서는 robot.camera.get_frame() 사용)
+        # frame = robot.camera.get_frame()
+        
+        # 테스트용 더미 이미지 생성
+        frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        
+        # 차선 인식
+        result = detect_lanes(frame)
+        
+        # 결과 전송
+        emit_image(result, "LaneDetection")
+        emit_text("차선 인식 완료", "Status")
+        
+        time.sleep(0.1)
+except Exception as e:
+    print(e)`;
+}
+
+// 장애물 회피 예제 코드
 function getObstacleAvoidanceExampleCode(){
     return `# Obstacle Avoidance Example Code
 from findee import Findee
@@ -635,4 +741,89 @@ while True:
 
     emit_image(img, IMAGE_WIDGET)
     time.sleep(0.05)`;
+}
+
+// PID 제어 예제 코드
+function getPIDControlExampleCode(){
+    return `# PID Control Example Code
+from findee import Findee
+import time
+
+robot = Findee()
+
+# PID 제어를 위한 변수들
+target_distance = 20.0  # 목표 거리 (cm)
+current_distance = 0.0
+last_error = 0.0
+integral = 0.0
+
+# PID 계수 (위젯에서 조정 가능)
+Kp = 1.0  # 비례 계수
+Ki = 0.1  # 적분 계수
+Kd = 0.05 # 미분 계수
+
+def pid_control(error):
+    global last_error, integral
+    
+    # 비례 항
+    proportional = Kp * error
+    
+    # 적분 항
+    integral += error * 0.1  # 0.1초 간격
+    integral = max(-100, min(100, integral))  # 적분 한계
+    
+    # 미분 항
+    derivative = Kd * (error - last_error) / 0.1
+    
+    # PID 출력 계산
+    output = proportional + Ki * integral + derivative
+    
+    # 출력 범위 제한 (-100 ~ 100)
+    output = max(-100, min(100, output))
+    
+    last_error = error
+    return output
+
+try:
+    while True:
+        # 현재 거리 읽기
+        current_distance = robot.ultrasonic.get_distance()
+        
+        # 오차 계산
+        error = target_distance - current_distance
+        
+        # PID 제어
+        control_output = pid_control(error)
+        
+        # 모터 제어
+        if abs(error) < 2.0:  # 목표 거리 근처면 정지
+            robot.motor.stop()
+            action = "STOP"
+        elif error > 0:  # 너무 멀면 전진
+            speed = int(abs(control_output))
+            robot.motor.move_forward(speed)
+            action = f"FORWARD({speed}%)"
+        else:  # 너무 가까우면 후진
+            speed = int(abs(control_output))
+            robot.motor.move_backward(speed)
+            action = f"BACKWARD({speed}%)"
+        
+        # 상태 출력
+        status_text = f"거리: {current_distance:.1f}cm, 목표: {target_distance}cm, 오차: {error:.1f}cm"
+        emit_text(status_text, "Distance")
+        
+        control_text = f"제어: {action}, PID 출력: {control_output:.1f}"
+        emit_text(control_text, "Control")
+        
+        # PID 값들 출력
+        pid_text = f"P: {Kp}, I: {Ki}, D: {Kd}"
+        emit_text(pid_text, "PID Values")
+        
+        time.sleep(0.1)
+        
+except Exception as e:
+    print(f"PID 제어 오류: {e}")
+finally:
+    robot.motor.stop()
+    robot.cleanup()`;
 }

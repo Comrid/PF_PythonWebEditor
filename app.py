@@ -1,8 +1,10 @@
 from __future__ import annotations
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
 from util import import_findee_by_platform
+from pathlib import Path
+import os
 
 # Modules for code execution
 import threading
@@ -24,6 +26,28 @@ socketio = SocketIO(
     transports=['websocket', 'polling'],     # 전송 방식 설정
     allow_upgrades=True
 )
+
+# === 설정 ===
+CUSTOM_CODE_DIR = Path("static/custom_code")  # 사용자 코드 저장 디렉토리
+
+# custom_code 디렉토리 생성
+CUSTOM_CODE_DIR.mkdir(exist_ok=True)
+
+def get_custom_code_files():
+    """custom_code 디렉토리의 .py 파일 목록 반환"""
+    try:
+        files = []
+        for file_path in CUSTOM_CODE_DIR.glob("*.py"):
+            files.append({
+                "name": file_path.name,
+                "path": str(file_path),
+                "size": file_path.stat().st_size,
+                "mtime": int(file_path.stat().st_mtime)
+            })
+        return sorted(files, key=lambda x: x["mtime"], reverse=True)  # 최신순 정렬
+    except Exception as e:
+        print(f"Error reading custom code directory: {e}")
+        return []
 
 # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
 running_threads: dict[str, threading.Thread] = {}
@@ -368,6 +392,74 @@ def handle_llm_answer_update(payload):
     llm_answers[sid] = answer
     # Optionally broadcast back to the same session (frontend listener is optional)
     socketio.emit('llm_answer', { 'answer': answer }, room=sid)
+
+# === 코드 저장/불러오기 API ===
+@app.route("/api/custom-code/files")
+def api_custom_code_files():
+    """custom_code 디렉토리의 .py 파일 목록 반환"""
+    files = get_custom_code_files()
+    return jsonify({"files": files})
+
+@app.route("/api/custom-code/save", methods=["POST"])
+def api_custom_code_save():
+    """코드 저장"""
+    try:
+        data = request.get_json()
+        filename = data.get("filename", "").strip()
+        code = data.get("code", "")
+        
+        if not filename:
+            return jsonify({"success": False, "error": "파일명이 필요합니다"}), 400
+        
+        # .py 확장자가 없으면 추가
+        if not filename.endswith(".py"):
+            filename += ".py"
+        
+        # 파일 경로 생성
+        file_path = CUSTOM_CODE_DIR / filename
+        
+        # 코드 저장
+        file_path.write_text(code, encoding="utf-8")
+        
+        return jsonify({"success": True, "filename": filename})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/custom-code/load/<filename>")
+def api_custom_code_load(filename):
+    """코드 불러오기"""
+    try:
+        # .py 확장자가 없으면 추가
+        if not filename.endswith(".py"):
+            filename += ".py"
+        
+        file_path = CUSTOM_CODE_DIR / filename
+        
+        if not file_path.exists():
+            return jsonify({"success": False, "error": "파일을 찾을 수 없습니다"}), 404
+        
+        code = file_path.read_text(encoding="utf-8")
+        return jsonify({"success": True, "code": code, "filename": filename})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/custom-code/delete/<filename>", methods=["DELETE"])
+def api_custom_code_delete(filename):
+    """코드 파일 삭제"""
+    try:
+        # .py 확장자가 없으면 추가
+        if not filename.endswith(".py"):
+            filename += ".py"
+        
+        file_path = CUSTOM_CODE_DIR / filename
+        
+        if not file_path.exists():
+            return jsonify({"success": False, "error": "파일을 찾을 수 없습니다"}), 404
+        
+        file_path.unlink()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 #region Main
 if __name__ == '__main__':
