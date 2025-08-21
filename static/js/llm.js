@@ -3,7 +3,7 @@
 // 아래 API_KEY 변수에 직접 입력하세요
 
 // API 키 설정 (보안을 위해 환경변수 사용 권장)
-const API_KEY = window.GEMINI_API_KEY || 'AIzaSyDenJAeFEIlMfujPj7FdF1Xl2q4BZOyCRo';
+const API_KEY = window.GEMINI_API_KEY || 'KEY';
 
 // Gemini API 엔드포인트
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
