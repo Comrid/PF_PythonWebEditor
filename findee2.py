@@ -45,7 +45,7 @@ class Findee:
         if self._initialized: return
         self._initialized = True
 
-        self.thread_lock = threading.Lock()
+        # self.thread_lock = threading.Lock()
 
         self.gpio_init()
         self.camera_init()
@@ -213,11 +213,9 @@ class Findee:
         return round(distance, 1)
 #endregion
 
-#region: Camera
+#region: Cameras
     def get_frame(self):
-        with self.thread_lock:
-            frame = self.camera.capture_array("main")
-            return frame
+        return self.camera.capture_array("main")
 
     def mjpeg_gen():
         while True:
