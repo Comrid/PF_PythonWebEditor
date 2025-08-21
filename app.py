@@ -10,7 +10,7 @@ import threading
 from traceback import format_exc
 import builtins
 
-from findee2 import Findee
+from findee import Findee
 # original_findee = Findee()
 
 

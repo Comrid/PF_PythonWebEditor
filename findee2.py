@@ -218,27 +218,23 @@ class Findee:
     def cleanup(self):
         # GPIO Cleanup
         self.control_motors(0.0, 0.0)
-        if hasattr(self, 'rightPWM'): 
-            self.rightPWM.stop()
-        if hasattr(self, 'leftPWM'): 
-            self.leftPWM.stop()
+        if hasattr(self, 'rightPWM'): self.rightPWM.stop()
+        if hasattr(self, 'leftPWM'): self.leftPWM.stop()
         GPIO.output((self.IN1, self.IN2, self.ENA, self.IN3, self.IN4,
                     self.ENB, self.TRIG), GPIO.LOW)
         GPIO.cleanup()
 
         # Camera Cleanup
         if hasattr(self, 'camera'):
-            if hasattr(self.camera, 'stop'): 
+            if hasattr(self.camera, 'stop'):
                 self.camera.stop()
-            if hasattr(self.camera, 'close'): 
+            if hasattr(self.camera, 'close'):
                 self.camera.close()
             del self.camera
 
-        # 싱글톤 인스턴스 초기화
         Findee._instance = None
         Findee._initialized = False
-        
-        # 자신의 인스턴스 삭제
+
         del self
 #endregion
 
