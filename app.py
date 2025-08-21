@@ -11,7 +11,6 @@ import threading
 from traceback import format_exc
 import builtins
 
-from util import *
 from findee2 import Findee
 original_findee = Findee()
 
