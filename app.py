@@ -11,7 +11,10 @@ import threading
 from traceback import format_exc
 import builtins
 
-import_findee_by_platform()
+from util import *
+from findee2 import Findee
+original_findee = Findee()
+
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
@@ -27,27 +30,6 @@ socketio = SocketIO(
     allow_upgrades=True
 )
 
-# === 설정 ===
-CUSTOM_CODE_DIR = Path("static/custom_code")  # 사용자 코드 저장 디렉토리
-
-# custom_code 디렉토리 생성
-CUSTOM_CODE_DIR.mkdir(exist_ok=True)
-
-def get_custom_code_files():
-    """custom_code 디렉토리의 .py 파일 목록 반환"""
-    try:
-        files = []
-        for file_path in CUSTOM_CODE_DIR.glob("*.py"):
-            files.append({
-                "name": file_path.name,
-                "path": str(file_path),
-                "size": file_path.stat().st_size,
-                "mtime": int(file_path.stat().st_mtime)
-            })
-        return sorted(files, key=lambda x: x["mtime"], reverse=True)  # 최신순 정렬
-    except Exception as e:
-        print(f"Error reading custom code directory: {e}")
-        return []
 
 # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
 running_threads: dict[str, threading.Thread] = {}
