@@ -424,7 +424,7 @@ class Findee:
             #-Class Variables-#
             self.safe_mode = safe_mode
             self._is_available = False
-            self.object = Object.cameraz
+            self.object = Object.camera
 
             # Camera Object
             self.picam2 = None
