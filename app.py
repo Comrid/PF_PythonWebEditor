@@ -136,7 +136,7 @@ def execute_code(code: str, sid: str):
                 start_time = time.time()
 
                 # 이미지를 JPEG 바이트로 인코딩 (바이너리 전송)
-                ok, buffer = cv2.imencode('.jpg', image)
+                ok, buffer = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
                 if not ok:
                     if debug_on: print("DEBUG: JPEG 인코딩 실패")
                     return

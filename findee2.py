@@ -226,7 +226,7 @@ class Findee:
             origin = self.camera.capture_array("main")
             arr = origin.copy()
             # JPEG 인코딩 (품질 80)
-            ok, buf = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            ok, buf = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
             if not ok:
                 continue
             jpg = buf.tobytes()
