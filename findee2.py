@@ -218,12 +218,12 @@ class Findee:
 
 #region: Cameras
     def get_frame(self):
-        return self.camera.capture_array("main")
+        return self.camera.capture_array("main").copy()
 
-    def mjpeg_gen():
+    def mjpeg_gen(self):
         while True:
             # RGB 프레임 -> BGR로 변환(OpenCV는 BGR 기준)
-            origin = picam2.capture_array("main")
+            origin = self.camera.capture_array("main")
             arr = origin.copy()
             # JPEG 인코딩 (품질 80)
             ok, buf = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
