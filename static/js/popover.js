@@ -214,6 +214,8 @@ function dropdownExample(){
                 CameraExam: getCameraExampleCode(),
                 MotorExam: getMotorExampleCode(),
                 UltrasonicExam: getUltrasonicExampleCode(),
+                MediapipeExam: getMediapipeExampleCode(),
+                SliderExam: getSliderExampleCode(),
                 LaneDetectionExam: getLaneDetectionExampleCode(),
                 ObstacleAvoidanceExam: getObstacleAvoidanceExampleCode(),
                 PIDControlExam: getPIDControlExampleCode(),
@@ -224,6 +226,7 @@ function dropdownExample(){
                 exam4: getCode4(),
                 exam5: getCode5(),
                 exam6: getCode6(),
+                exam7: getCode7(),
             }
             monacoEditor.setValue(codes[selectedValue]);
         });
