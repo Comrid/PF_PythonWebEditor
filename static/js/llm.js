@@ -53,11 +53,25 @@ const FINDEE_API_BRIEF = [
   '- robot.changePin(IN1, IN2, IN3, IN4, ENA, ENB)  # GPIO 핀 변경',
   '- robot.constrain(value, min_value, max_value)  # 값 범위 제한',
   '',
+  '**웹 에디터 전용 함수**:',
+  '- emit_image(image, widget_id): numpy 배열 이미지를 위젯에 표시',
+  '- emit_text(text, widget_id): 텍스트를 위젯에 표시',
+  '- get_gesture(): 현재 제스처 상태 반환',
+  '- get_pid_value(widget_id): PID 위젯의 현재 값 반환 (p, i, d)',
+  '- get_slider_value(widget_id): 슬라이더 위젯의 현재 값 반환',
+  '',
+  '**위젯 ID 규칙**:',
+  '- 위젯 ID의 인덱스는 기본적으로 0부터 시작 (예: Image_0, Text_0, Slider_0)',
+  '- 새로운 위젯 생성 시 자동으로 다음 인덱스 할당',
+  '- widget_id: 위젯의 고유 ID (예: "Image_0", "Text_1", "Slider_2")',
+  '',
   '**참고사항**:',
   '- speed: 20~100 범위 권장 (20 이하일 때 모터가 동작하지 않을 수 있음)',
   '- duration: 0.0이면 계속 동작, 양수면 지정 시간 후 자동 정지',
   '- angle: 0~60도 범위 (0도는 직진, 60도는 최대 커브)',
-  '- get_distance(): 1.0~400.0cm 범위, -1/-2는 에러 코드'
+  '- get_distance(): 1.0~400.0cm 범위, -1/-2는 에러 코드',
+  '- emit_image(): numpy 배열만 지원, JPEG로 자동 변환하여 전송',
+  '- widget_id: 위젯의 고유 ID (예: "Image_0", "Text_1")'
 ].join('\n');
 
 // 전역 노출

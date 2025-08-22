@@ -1037,12 +1037,12 @@ function createWidget_AIAssistant(){
                     showToast('LLM 초기화에 실패했습니다.', 'error');
                     return;
                 }
-                
+
                 try {
                     // 렌더 타깃을 마크다운 컨테이너로 사용
                     outputEl.innerHTML = '';
                     btnAsk.disabled = true;
-                    
+
                     // Code Based가 활성화된 경우 현재 코드도 함께 전달
                     const useCode = !!(codeBasedToggle && codeBasedToggle.classList.contains('active'));
                     const code = useCode && monacoEditor ? monacoEditor.getValue().trim() : '';
@@ -1073,10 +1073,20 @@ function createWidget_AIAssistant(){
                         parts.push(`- ${instanceName}.move_forward(speed=50, duration=1.0) 같은 코드는 이미 1초를 대기하고 자동으로 stop하므로 추가적인 time.sleep()을 사용하지 마세요.`);
                         parts.push(`- motor 관련 함수들은 duration 매개변수로 동작 시간을 지정할 수 있습니다.`);
                         parts.push(`- time.sleep()은 motor 함수의 duration 매개변수로 대체 가능한 경우 사용하지 마세요.`);
+                        parts.push(`**웹 에디터 전용 함수**:`);
+                        parts.push(`- emit_image(image, widget_id): numpy 배열 이미지를 위젯에 표시 (예: emit_image(frame, "Image_0"))`);
+                        parts.push(`- emit_text(text, widget_id): 텍스트를 위젯에 표시 (예: emit_text("거리: 15cm", "Text_0"))`);
+                        parts.push(`- get_gesture(): 현재 제스처 상태 반환`);
+                        parts.push(`- get_pid_value(widget_id): PID 위젯의 현재 값 반환 (p, i, d)`);
+                        parts.push(`- get_slider_value(widget_id): 슬라이더 위젯의 현재 값 반환`);
+                        parts.push(`**위젯 ID 규칙**:`);
+                        parts.push(`- 위젯 ID의 인덱스는 기본적으로 0부터 시작 (예: Image_0, Text_0, Slider_0)`);
+                        parts.push(`- 새로운 위젯 생성 시 자동으로 다음 인덱스 할당`);
+                        parts.push(`- widget_id는 위젯의 고유 ID (예: "Image_0", "Text_1", "Slider_2")`);
                     }
                     parts.push('질문:\n' + question);
                     const fullQuestion = parts.join('\n\n');
-                    
+
                     await window.askLLM(fullQuestion, (partial, complete) => {
                         // Markdown 렌더링
                         try {
@@ -1280,12 +1290,12 @@ function createWidget_AIController(){
                     showToast('LLM 초기화에 실패했습니다.', 'error');
                     return;
                 }
-                
+
                 try {
                     // 렌더 타깃을 마크다운 컨테이너로 사용
                     outputEl.innerHTML = '';
                     btnGenerate.disabled = true;
-                    
+
                     // 코드 생성 프롬프트 구성
                     const parts = [];
                     if (window.LLM_SYSTEM_PROMPT) parts.push(window.LLM_SYSTEM_PROMPT);
@@ -1302,14 +1312,24 @@ function createWidget_AIController(){
                     parts.push('- robot.move_forward(speed=50, duration=1.0) 같은 코드는 이미 1초를 대기하고 자동으로 stop하므로 추가적인 time.sleep()을 사용하지 마세요.');
                     parts.push('- motor 관련 함수들은 duration 매개변수로 동작 시간을 지정할 수 있습니다.');
                     parts.push('- time.sleep()은 motor 함수의 duration 매개변수로 대체 가능한 경우 사용하지 마세요.');
+                    parts.push('**웹 에디터 전용 함수**:');
+                    parts.push('- emit_image(image, widget_id): numpy 배열 이미지를 위젯에 표시 (예: emit_image(frame, "Image_0"))');
+                    parts.push('- emit_text(text, widget_id): 텍스트를 위젯에 표시 (예: emit_text("거리: 15cm", "Text_0"))');
+                    parts.push('- get_gesture(): 현재 제스처 상태 반환');
+                    parts.push('- get_pid_value(widget_id): PID 위젯의 현재 값 반환 (p, i, d)');
+                    parts.push('- get_slider_value(widget_id): 슬라이더 위젯의 현재 값 반환');
+                    parts.push('**위젯 ID 규칙**:');
+                    parts.push('- 위젯 ID의 인덱스는 기본적으로 0부터 시작 (예: Image_0, Text_0, Slider_0)');
+                    parts.push('- 새로운 위젯 생성 시 자동으로 다음 인덱스 할당');
+                    parts.push('- widget_id는 위젯의 고유 ID (예: "Image_0", "Text_1", "Slider_2")');
                     parts.push('**응답 형식**:');
                     parts.push('```python');
                     parts.push('# 여기에 Python 코드를 작성');
                     parts.push('```');
                     parts.push('코드만 생성하고 설명은 최소화하세요.');
-                    
+
                     const fullPrompt = parts.join('\n\n');
-                    
+
                     await window.askLLM(fullPrompt, (partial, complete) => {
                         // Markdown 렌더링
                         try {
@@ -1320,12 +1340,12 @@ function createWidget_AIController(){
                         }
                         if (complete) {
                             btnGenerate.disabled = false;
-                            
+
                             // 생성된 코드 추출
                             const codeMatch = partial.match(/```python\n([\s\S]*?)\n```/);
                             if (codeMatch) {
                                 generatedCode = codeMatch[1].trim();
-                                
+
                                 // Auto Run이 활성화된 경우 자동 실행
                                 const isAutoRun = !!(autoRunToggle && autoRunToggle.classList.contains('active'));
                                 if (isAutoRun) {
