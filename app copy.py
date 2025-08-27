@@ -1,18 +1,19 @@
-#TODO 단일 세션
-
 from __future__ import annotations
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
+from pathlib import Path
 import psutil
+import sqlite3
 
+# Blueprint 임포트
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
 
+# Modules for code execution
 import threading
 from traceback import format_exc
 import builtins
-original_print = builtins.print
 
 import platform
 if platform.system() == "Linux":
@@ -25,9 +26,10 @@ else:
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
+
+# Blueprint 등록
 app.register_blueprint(custom_code_bp)
 app.register_blueprint(tutorial_bp)
-
 socketio = SocketIO(
     app,                                    # Flask 애플리케이션 인스턴스
     cors_allowed_origins="*",               # CORS 설정 - 모든 도메인 허용
@@ -39,6 +41,7 @@ socketio = SocketIO(
     transports=['websocket', 'polling'],     # 전송 방식 설정
     allow_upgrades=True
 )
+
 
 # 세션별 - 위젯별 상태 저장
 running_threads: dict[str, threading.Thread] = {}           # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
@@ -60,15 +63,13 @@ def index():
 def execute_code(code: str, sid: str):
     stop_flags[sid] = False
 
-    # decorator
-    def check_stop_flag(func):
-        def wrapper(*args, **kwargs):
-            if stop_flags.get(sid, False): return
-            return func(*args, **kwargs)
-        return wrapper
+    original_print = builtins.print
+    builtins._original_print = original_print
 
-    @check_stop_flag
     def realtime_print(*args, **kwargs):
+        if stop_flags.get(sid, False): # 중지 플래그 확인
+            return
+
         output = ' '.join(str(arg) for arg in args)
         if output:
             socketio.emit('stdout', {'output': output}, room=sid)
@@ -76,10 +77,17 @@ def execute_code(code: str, sid: str):
     try:
         builtins.print = realtime_print
 
+        def check_stop_flag(func):
+            def wrapper(*args, **kwargs):
+                if stop_flags.get(sid, False):
+                    return
+                return func(*args, **kwargs)
+            return wrapper
+
         @check_stop_flag
         def emit_image(image, widget_id):
             debug_on = True
-            if debug_on: original_print(f"DEBUG: emit_image 호출됨 : {widget_id}")
+            if debug_on: print(f"DEBUG: emit_image 호출됨 : {widget_id}")
             if hasattr(image, 'shape'):  # numpy 배열인지 확인
                 import time
                 import cv2
@@ -88,7 +96,7 @@ def execute_code(code: str, sid: str):
                 # 이미지를 JPEG 바이트로 인코딩 (바이너리 전송)
                 ok, buffer = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
                 if not ok:
-                    if debug_on: original_print("DEBUG: JPEG 인코딩 실패")
+                    if debug_on: print("DEBUG: JPEG 인코딩 실패")
                     return
 
                 # socketio.emit() 사용 - 바이너리 첨부 전송
@@ -100,9 +108,9 @@ def execute_code(code: str, sid: str):
                 }, room=sid)
 
                 total_time = time.time() - start_time
-                if debug_on: original_print(f"DEBUG: 이미지 메시지 전송 완료 - 총 시간: {total_time*1000:.2f}ms")
+                if debug_on: print(f"DEBUG: 이미지 메시지 전송 완료 - 총 시간: {total_time*1000:.2f}ms")
             else:
-                original_print(f"DEBUG: 이미지가 numpy 배열이 아님 - 타입: {type(image)}")
+                print(f"DEBUG: 이미지가 numpy 배열이 아님 - 타입: {type(image)}")
 
         @check_stop_flag
         def emit_text(text, widget_id):
@@ -153,10 +161,16 @@ def execute_code(code: str, sid: str):
             socketio.emit('stderr', {'output': line}, room=sid)
 
     finally:
+        try:
+            builtins.print = original_print
+            print(f"DEBUG: Session {sid}: 원본 print 함수 복원됨")
+        except Exception as e:
+            print(f"DEBUG: Session {sid}: print 함수 복원 중 오류: {str(e)}")
+
         # 추적 딕셔너리에서 제거
         running_threads.pop(sid, None)
         stop_flags.pop(sid, None)
-        original_print(f"DEBUG: Session {sid}: 스레드 정리 완료")
+        print(f"DEBUG: Session {sid}: 스레드 정리 완료")
 
     # 코드 실행 완료 알림
     socketio.emit('finished', {}, room=sid)
@@ -205,6 +219,12 @@ def handle_stop_execution():
         stop_flags[sid] = True
 
         if thread.is_alive():
+            def safe_termination():
+                try:
+                    builtins.print = getattr(builtins, '_original_print', print)
+                except Exception as e:
+                    print(f"DEBUG: 안전장치 실행 중 오류: {str(e)}")
+
             # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
             def raise_in_thread(thread, exc_type = SystemExit):
                 import ctypes
@@ -223,19 +243,25 @@ def handle_stop_execution():
                     return False
 
                 return res == 1
+
+            # 별도 스레드에서 안전장치 실행
+            safety_thread = threading.Thread(target=safe_termination, daemon=True)
+            safety_thread.start()
+            safety_thread.join(timeout=1.0)  # 1초 대기
+
             # 강제 종료 실행 (안전 헬퍼 사용)
             ok = raise_in_thread(thread, SystemExit)
 
             thread.join(timeout=2.0)  # 2초 대기
 
             if thread.is_alive():
-                original_print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
+                print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
                 socketio.emit('execution_stopped', {
                     'message': '코드 실행 중지 요청이 완료되었습니다.',
                     'warning': '스레드가 완전히 종료되지 않았을 수 있습니다.'
                 }, room=sid)
             else:
-                original_print(f"DEBUG: 강제 종료 성공")
+                print(f"DEBUG: 강제 종료 성공")
                 socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
         else:
             socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
@@ -249,19 +275,19 @@ def handle_stop_execution():
             pass
 
     except Exception as e:
-        original_print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
+        print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
         socketio.emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
 #endregion
 
 #region SocketIO connect/disconnect
 @socketio.on('connect')
 def handle_connect():
-    original_print('클라이언트가 연결되었습니다.')
+    print('클라이언트가 연결되었습니다.')
     emit('connected', {'message': '서버에 연결되었습니다.'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    original_print('클라이언트가 연결을 해제했습니다.')
+    print('클라이언트가 연결을 해제했습니다.')
 
     # 연결 해제 시 실행 중인 스레드 정리
     sid = request.sid
