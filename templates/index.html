@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/popover.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/new.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/first.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tutorial.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/challenge.css') }}">
 
     <!-- MediaPipe -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -190,7 +193,7 @@
         <!-- Header -->
         <header class="header">
             <h1>
-                <img src="{{ url_for('static', filename='img/app-logo.png') }}" class="app-logo" alt="App Logo">
+                <img src="{{ url_for('static', filename='img/app-logo.png') }}" class="app-logo" alt="App Logo" id="headerLogo" style="cursor: pointer;">
                 Pathfinder Python Web Editor
             </h1>
             <div class="status-info">
@@ -239,6 +242,31 @@
                 <!-- Injected dynamically -->
             </div>
         </section>
+
+        <!-- AI Chat Button (Fixed Position) -->
+        <div class="ai-chat-button" id="aiChatButton">
+            <img src="{{ url_for('static', filename='img/app-logo.png') }}" alt="AI Chat" class="ai-chat-icon">
+            <div class="ai-chat-close" id="aiChatClose">×</div>
+        </div>
+
+        <!-- AI Chat Popover -->
+        <div class="popover ai-chat-popover" id="aiChatPopover">
+            <div class="popover-content">
+                <div class="popover-header">
+                    <h5><i class="fas fa-robot"></i> AI Assistant</h5>
+                    <button class="popover-close" id="closeAiChatPopover">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="popover-body">
+                    <!-- AI 채팅 내용이 여기에 들어갈 예정 -->
+                    <div class="ai-chat-placeholder">
+                        <i class="fas fa-comments"></i>
+                        <p>AI와 대화를 시작하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Custom JavaScript -->
@@ -247,10 +275,14 @@
     <script src="{{ url_for('static', filename='js/widget.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/llm.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/new.js') }}" defer></script> <!-- 임시 파일 -->
+    <script src="{{ url_for('static', filename='js/first.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tutorial.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/challenge.js') }}" defer></script>
 
     <script src="{{ url_for('static', filename='js/socket-handler.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/popover.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/action.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/cpu.js') }}" defer></script>
 </body>
 </html>

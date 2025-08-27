@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.info('DOM Content Loaded');
     showToast(messages.welcome_msg, 'success');
     loadVideoDevices();
-    
+
     // Gemini API 키 설정 확인
     checkGeminiAPIKey();
 });
@@ -24,7 +24,7 @@ function checkGeminiAPIKey() {
         console.log('Gemini API 키가 환경변수에서 설정되었습니다.');
         return;
     }
-    
+
     // 로컬 스토리지에서 API 키 확인
     const storedKey = localStorage.getItem('GEMINI_API_KEY');
     if (storedKey) {
@@ -32,7 +32,7 @@ function checkGeminiAPIKey() {
         console.log('Gemini API 키가 로컬 스토리지에서 로드되었습니다.');
         return;
     }
-    
+
     // API 키가 없는 경우 사용자에게 안내
     showToast('Gemini API 키가 설정되지 않았습니다. 설정에서 API 키를 입력하세요.', 'warning');
 }
@@ -43,7 +43,7 @@ function setGeminiAPIKey(apiKey) {
         window.GEMINI_API_KEY = apiKey.trim();
         localStorage.setItem('GEMINI_API_KEY', apiKey.trim());
         showToast('Gemini API 키가 설정되었습니다.', 'success');
-        
+
         // LLM 자동 로드 시도
         if (typeof window.loadLLM === 'function') {
             window.loadLLM().catch(() => {});
@@ -368,7 +368,7 @@ robot = Findee()
 
 try:
     pass # 여기에 코드를 작성해주세요.
-    
+
 except Exception as e:
     print(e)
 finally:
@@ -486,35 +486,35 @@ import time
 def detect_lanes(image):
     # 그레이스케일 변환
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
+
     # 가우시안 블러
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    
+
     # Canny 엣지 검출
     edges = cv2.Canny(blurred, 50, 150)
-    
+
     # 관심 영역 설정 (ROI)
     height, width = edges.shape
     roi_vertices = np.array([
         [(0, height), (width/2, height/2), (width, height)]
     ], dtype=np.int32)
-    
+
     # 마스크 적용
     mask = np.zeros_like(edges)
     cv2.fillPoly(mask, roi_vertices, 255)
     masked_edges = cv2.bitwise_and(edges, mask)
-    
+
     # Hough 변환으로 직선 검출
-    lines = cv2.HoughLinesP(masked_edges, 1, np.pi/180, 50, 
+    lines = cv2.HoughLinesP(masked_edges, 1, np.pi/180, 50,
                            minLineLength=100, maxLineGap=50)
-    
+
     # 결과 그리기
     result = image.copy()
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
             cv2.line(result, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    
+
     return result
 
 # Findee 카메라에서 실시간 차선 인식
@@ -524,14 +524,14 @@ try:
     while True:
         # Findee 카메라에서 프레임 가져오기
         frame = robot.get_frame()
-        
+
         # 차선 인식
         result = detect_lanes(frame)
-        
+
         # 결과 전송
         emit_image(result, "LaneDetection")
         emit_text("차선 인식 완료", "Status")
-        
+
         time.sleep(0.1)
 except Exception as e:
     print(e)
@@ -752,23 +752,23 @@ Kd = 0.05 # 미분 계수
 
 def pid_control(error):
     global last_error, integral
-    
+
     # 비례 항
     proportional = Kp * error
-    
+
     # 적분 항
     integral += error * 0.1  # 0.1초 간격
     integral = max(-100, min(100, integral))  # 적분 한계
-    
+
     # 미분 항
     derivative = Kd * (error - last_error) / 0.1
-    
+
     # PID 출력 계산
     output = proportional + Ki * integral + derivative
-    
+
     # 출력 범위 제한 (-100 ~ 100)
     output = max(-100, min(100, output))
-    
+
     last_error = error
     return output
 
@@ -776,13 +776,13 @@ try:
     while True:
         # 현재 거리 읽기
         current_distance = robot.get_distance()
-        
+
         # 오차 계산
         error = target_distance - current_distance
-        
+
         # PID 제어
         control_output = pid_control(error)
-        
+
         # 모터 제어
         if abs(error) < 2.0:  # 목표 거리 근처면 정지
             robot.stop()
@@ -795,20 +795,20 @@ try:
             speed = int(abs(control_output))
             robot.move_backward(speed)
             action = f"BACKWARD({speed}%)"
-        
+
         # 상태 출력
         status_text = f"거리: {current_distance:.1f}cm, 목표: {target_distance}cm, 오차: {error:.1f}cm"
         emit_text(status_text, "Distance")
-        
+
         control_text = f"제어: {action}, PID 출력: {control_output:.1f}"
         emit_text(control_text, "Control")
-        
+
         # PID 값들 출력
         pid_text = f"P: {Kp}, I: {Ki}, D: {Kd}"
         emit_text(pid_text, "PID Values")
-        
+
         time.sleep(0.1)
-        
+
 except Exception as e:
     print(f"PID 제어 오류: {e}")
 finally:
@@ -862,3 +862,58 @@ finally:
     robot.cleanup()
     stop_monitoring.set()`;
 }
+
+
+
+
+// Ctrl + 휠 확대/축소 방지
+document.addEventListener('wheel', function(e) {
+    if (e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+}, { passive: false });
+
+// 추가적인 확대/축소 방지 (키보드 단축키)
+document.addEventListener('keydown', function(e) {
+    // Ctrl + '+' (확대)
+    if (e.ctrlKey && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+    
+    // Ctrl + '-' (축소)
+    if (e.ctrlKey && e.key === '-') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+    
+    // Ctrl + 0 (100%로 복원)
+    if (e.ctrlKey && e.key === '0') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+});
+
+// 터치 제스처 확대/축소 방지 (모바일/태블릿)
+document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+});
+
+document.addEventListener('gesturechange', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+});
+
+document.addEventListener('gestureend', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+});

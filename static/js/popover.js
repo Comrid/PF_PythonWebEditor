@@ -9,10 +9,18 @@ function initializePopover(){
     initializeCodeFilePopover();
 }
 
-function positionPopover(anchorEl, popoverEl){
+// function positionPopover(anchorEl, popoverEl){
+//     const rect = anchorEl.getBoundingClientRect();
+//     popoverEl.style.top = `${rect.bottom + window.scrollY + 2}px`;
+//     popoverEl.style.right = `${window.scrollX + window.innerWidth - rect.right}px`;
+// }
+function positionPopover(anchorEl, popoverEl) {
     const rect = anchorEl.getBoundingClientRect();
-    popoverEl.style.top = `${rect.bottom + window.scrollY + 2}px`;
-    popoverEl.style.right = `${window.scrollX + window.innerWidth - rect.right}px`;
+    const scale = parseFloat(getComputedStyle(document.documentElement).scale) || 1;
+    
+    // scale을 고려한 위치 계산
+    popoverEl.style.top = `${(rect.bottom / scale) + window.scrollY + 2}px`;
+    popoverEl.style.right = `${window.scrollX + (window.innerWidth / scale) - (rect.right / scale)}px`;
 }
 
 //#region Editor Settings Popover

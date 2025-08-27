@@ -1,0 +1,91 @@
+/* 뷰포트(레터박스 배경) */
+/* html이 body를 중앙에 배치 */
+html {
+    height: 100vh;
+    margin: 0;
+    background: #000;               /* 여백 배경 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* body를 고정 1920x1080로 */
+body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    width: 100%;
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    user-select: none;
+    overflow: hidden;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function updateBodyScaling() {
+    const body = document.body;
+    const html = document.documentElement;
+
+    // 현재 뷰포트 크기
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 16:9 비율 계산
+    const targetRatio = 16 / 9;
+    const currentRatio = viewportWidth / viewportHeight;
+
+    let scale;
+
+    if (currentRatio > targetRatio) {
+        // 뷰포트가 더 넓음 (높이 기준으로 스케일링)
+        scale = viewportHeight / 1080;
+    } else {
+        // 뷰포트가 더 좁음 (너비 기준으로 스케일링)
+        scale = viewportWidth / 1920;
+    }
+
+    // 최소/최대 스케일 제한 (0.5 ~ 2.0)
+    scale = Math.max(0.5, Math.min(2.0, scale));
+
+    // body에 스케일 적용
+    body.style.transform = `scale(${scale})`;
+
+    // 스케일링 후 body의 실제 크기 계산
+    const scaledWidth = 1920 * scale;
+    const scaledHeight = 1080 * scale;
+
+    // body를 중앙에 배치하기 위한 마진 계산
+    const marginLeft = (viewportWidth - scaledWidth) / 2;
+    const marginTop = (viewportHeight - scaledHeight) / 2;
+
+    body.style.marginLeft = `${marginLeft}px`;
+    body.style.marginTop = `${marginTop}px`;
+}
+
+// 초기 스케일링 적용
+document.addEventListener('DOMContentLoaded', function() {
+    updateBodyScaling();
+
+    // 윈도우 리사이즈 시 스케일링 업데이트
+    window.addEventListener('resize', updateBodyScaling);
+
+    // orientationchange 이벤트 (모바일 회전 시)
+    window.addEventListener('orientationchange', function() {
+        setTimeout(updateBodyScaling, 100);
+    });
+});

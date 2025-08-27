@@ -70,10 +70,12 @@
 5. **코드 실행**: 예제 코드 복사 → Run 버튼 클릭
 
 ### 웹 에디터 UI
-- Main Interface\
+> **참고**: 실제 스크린샷은 프로젝트 실행 후 확인 가능
+
+- **Main Interface**: Monaco Editor + 위젯 그리드 레이아웃\
 ![Main Interface](static/img/screenshot-main.png)
 
-- Widget System\
+- **Widget System**: Image/Text/Webcam/Slider/PID/AI 위젯 배치\
 ![Widget System](static/img/screenshot-widgets.png)
 
 ---
@@ -102,6 +104,33 @@
                                     │ └─────────────┘ │
                                     └─────────────────┘
 ```
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (Browser)                       │
+├─────────────────────────────────────────────────────────────┤
+│  Monaco Editor  │  GridStack Widgets  │  Popover/Toast      │
+│  (Code Input)   │  (Image/Text/Webcam │  (Settings/UI)      │
+│                 │   /Slider/PID/AI)   │                     │
+└─────────────────┼─────────────────────┼─────────────────────┘
+                  │                     │
+                  ▼                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Backend (Flask + Socket.IO)                 │
+├─────────────────────────────────────────────────────────────┤
+│  Code Execution │  Hardware Control   │  File Management    │
+│  (Threading)    │  (Findee Module)    │  (Save/Load)        │
+└─────────────────┼─────────────────────┼─────────────────────┘
+                  │                     │
+                  ▼                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Hardware Layer                           │
+├─────────────────────────────────────────────────────────────┤
+│  Motors  │  Ultrasonic  │  Camera    │  GPIO Control        │
+│  (L298N) │  (HC-SR04)   │(Picamera2) │  (RPi.GPIO)          │
+└─────────────────────────────────────────────────────────────┘
+```
+
 
 ---
 
@@ -155,7 +184,7 @@ sudo raspi-config nonint do_legacy 0
 
 ### 2) 프로젝트 클론 및 의존성
 ```bash
-git clone https://github.com/<your-org>/PF_PythonWebEditor.git
+git clone https://github.com/Comrid/PF_PythonWebEditor.git
 cd PF_PythonWebEditor
 
 # 가상환경(권장)
@@ -286,6 +315,9 @@ finally:
 - `POST /api/custom-code/save`: `{ filename, code }` 저장
 - `GET /api/custom-code/load/<filename>`: 코드 로드
 - `DELETE /api/custom-code/delete/<filename>`: 코드 삭제
+- `GET /api/tutorial/progress`: 튜토리얼 진행상황 조회
+- `POST /api/tutorial/progress`: 튜토리얼 진행상황 저장/업데이트
+- `POST /api/tutorial/reset`: 튜토리얼 데이터베이스 초기화
 
 ### Socket.IO 이벤트
 - 클라이언트→서버: `execute_code`, `stop_execution`, `pid_update`, `slider_update`, `gesture_update`
@@ -296,7 +328,7 @@ finally:
 ## 프로젝트 구조
 ```text
 PF_PythonWebEditor/
-├─ app.py                # Flask + Socket.IO 서버, 코드 실행/브리지, REST API
+├─ app.py                # Flask + Socket.IO 서버, 코드 실행/브리지, CPU API
 ├─ templates/
 │  └─ index.html         # 메인 웹 UI(위젯/팝오버/에디터 포함)
 ├─ static/
@@ -313,6 +345,9 @@ PF_PythonWebEditor/
 │  │  └─ new.js          # CPU 모니터 UI
 │  ├─ img/app-logo.png
 │  └─ custom_code/       # 사용자 저장 코드(.py)
+├─ blueprints/
+│  ├─ custom_code_bp.py  # 코드 저장/불러오기 API
+│  └─ tutorial_bp.py     # 튜토리얼 진행상황 관리 API
 ├─ requirements.txt
 ├─ LICENSE
 └─ findee (PyPI 모듈 사용 가정)
@@ -325,6 +360,12 @@ PF_PythonWebEditor/
 - **비Linux 환경**: `app.py`가 **DEBUG 모드**로 실행되어 프론트/에디터/UI 테스트 가능 (하드웨어 제어는 비활성)
 - **VS Code 설정**: Python 확장, 디버깅 설정, Python 인터프리터 경로 설정 권장
 - **가상환경**: 프로젝트별 가상환경 사용으로 의존성 충돌 방지
+
+### 코드 구조
+- **Blueprint 패턴**: API 기능별로 `blueprints/` 디렉토리에 모듈화
+  - `custom_code_bp.py`: 코드 저장/불러오기 API
+  - `tutorial_bp.py`: 튜토리얼 진행상황 관리 API
+- **모듈화**: 각 blueprint는 독립적인 기능을 담당하며 URL prefix로 구분
 
 ### 운영 관련
 - **코드 실행**: 별도 스레드에서 이루어지며, `Stop` 버튼으로 중지 신호 전송 → 필요 시 강제 종료 루틴 수행
@@ -382,25 +423,20 @@ PF_PythonWebEditor/
 ## Requirements.txt
 ```txt
 # Web Framework
-Flask>=2.0.0
-Flask-SocketIO>=5.0.0
+Flask==2.3.3
+Werkzeug==2.3.7
+Flask-SocketIO==5.3.6
 
 # System Monitoring
-psutil>=5.8.0
+psutil==5.9.6
 
 # Socket.IO Dependencies
-python-socketio>=5.0.0
-python-engineio>=4.0.0
-
-# Hardware Control (Raspberry Pi)
-RPi.GPIO>=0.7.0
-picamera2>=0.3.0
+eventlet
 
 # Computer Vision
-opencv-python>=4.5.0
-numpy>=1.21.0
+opencv-python==4.8.1.78
+numpy==1.24.3
 
-# Optional: AI/ML
-google-generativeai>=0.3.0  # Gemini API
-mediapipe>=0.10.0           # Hand Gesture
+# Note: RPi.GPIO, picamera2 등 하드웨어 관련 패키지는 
+# 라즈베리파이 환경에서 별도 설치 필요
 ```

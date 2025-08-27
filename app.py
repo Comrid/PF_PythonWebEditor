@@ -3,8 +3,12 @@ from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
 from pathlib import Path
-import os
 import psutil
+import sqlite3
+
+# Blueprint 임포트
+from blueprints.custom_code_bp import custom_code_bp
+from blueprints.tutorial_bp import tutorial_bp
 
 # Modules for code execution
 import threading
@@ -13,7 +17,7 @@ import builtins
 
 import platform
 if platform.system() == "Linux":
-    from findee2 import Findee
+    from findee import Findee
     DEBUG_MODE = False
 else:
     Findee = None
@@ -22,6 +26,10 @@ else:
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
+
+# Blueprint 등록
+app.register_blueprint(custom_code_bp)
+app.register_blueprint(tutorial_bp)
 socketio = SocketIO(
     app,                                    # Flask 애플리케이션 인스턴스
     cors_allowed_origins="*",               # CORS 설정 - 모든 도메인 허용
@@ -35,58 +43,17 @@ socketio = SocketIO(
 )
 
 
-# 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
-running_threads: dict[str, threading.Thread] = {}
-
-# 실행 중지 플래그를 추적하는 딕셔너리
-stop_flags: dict[str, bool] = {}
-
-# 제스처 최신 상태 저장: 세션별 → 위젯별
-gesture_states = {}
-# PID 최신 값 저장: 세션별 → 위젯ID별 {p,i,d}
-pid_states: dict[str, dict[str, dict[str, float]]] = {}
-# Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
-slider_states: dict[str, dict[str, list[float]]] = {}
+# 세션별 - 위젯별 상태 저장
+running_threads: dict[str, threading.Thread] = {}           # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
+stop_flags: dict[str, bool] = {}                            # 실행 중지 플래그를 추적하는 딕셔너리
+gesture_states: dict[str, dict[str, dict[str, float]]] = {} # 제스처 최신 상태 저장: 세션별 → 위젯별
+pid_states: dict[str, dict[str, dict[str, float]]] = {}     # PID 최신 값 저장: 세션별 → 위젯ID별 {p,i,d}
+slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
 
 
-# === 설정 ===
-CUSTOM_CODE_DIR = Path("static/custom_code")  # 사용자 코드 저장 디렉토리
-
-def get_custom_code_files():
-    try:
-        files = []
-        for file_path in CUSTOM_CODE_DIR.glob("*.py"):
-            files.append({
-                "name": file_path.name,
-                "path": str(file_path),
-                "size": file_path.stat().st_size,
-                "mtime": int(file_path.stat().st_mtime)
-            })
-        return sorted(files, key=lambda x: x["mtime"], reverse=True)  # 최신순 정렬
-    except Exception as e:
-        print(f"Error reading custom code directory: {e}")
-        return []
 
 
-# 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
-def raise_in_thread(thread: threading.Thread, exc_type = SystemExit) -> bool:
-    import ctypes
-    if thread is None or not thread.is_alive():
-        return False
 
-    func = ctypes.pythonapi.PyThreadState_SetAsyncExc
-    func.argtypes = [ctypes.c_ulong, ctypes.py_object]
-    func.restype = ctypes.c_int
-
-    tid = ctypes.c_ulong(thread.ident)
-    res = func(tid, ctypes.py_object(exc_type))
-
-    if res > 1:
-        # 롤백
-        func(tid, ctypes.py_object(0))
-        return False
-
-    return res == 1
 
 @app.route('/')
 def index():
@@ -94,27 +61,20 @@ def index():
 
 #region Code Execution
 def execute_code(code: str, sid: str):
-    # 중지 플래그 초기화
     stop_flags[sid] = False
 
-    # 원본 함수들 저장 (더 안전한 방식)
     original_print = builtins.print
-
-    # 원본 함수를 안전한 위치에 저장
     builtins._original_print = original_print
 
-    # 실시간 출력을 위한 커스텀 print 함수
     def realtime_print(*args, **kwargs):
-        # 중지 플래그 확인
-        if stop_flags.get(sid, False):
+        if stop_flags.get(sid, False): # 중지 플래그 확인
             return
 
         output = ' '.join(str(arg) for arg in args)
-        if output:  # 빈 문자열이 아닌 경우만 전송
+        if output:
             socketio.emit('stdout', {'output': output}, room=sid)
 
     try:
-        # print 함수를 안전하게 오버라이드
         builtins.print = realtime_print
 
         # 사용자 코드에서 socketio와 sid를 사용할 수 있도록 전역 변수 설정
@@ -128,7 +88,7 @@ def execute_code(code: str, sid: str):
             # 중지 플래그 확인
             if stop_flags.get(sid, False):
                 return
-            debug_on = False
+            debug_on = True
             if debug_on: print(f"DEBUG: emit_image 호출됨 : {widget_id}")
             if hasattr(image, 'shape'):  # numpy 배열인지 확인
                 import time
@@ -205,7 +165,6 @@ def execute_code(code: str, sid: str):
             socketio.emit('stderr', {'output': line}, room=sid)
 
     finally:
-        # 반드시 원본 함수들 복원 (안전성 보장)
         try:
             builtins.print = original_print
             print(f"DEBUG: Session {sid}: 원본 print 함수 복원됨")
@@ -263,15 +222,31 @@ def handle_stop_execution():
         # 1단계: 중지 플래그 설정 (안전한 종료 시도)
         stop_flags[sid] = True
 
-        # 3단계: 강제 종료 (필요한 경우)
         if thread.is_alive():
-
-            # 강제 종료 전에 finally 블록 실행을 위한 안전장치
             def safe_termination():
                 try:
                     builtins.print = getattr(builtins, '_original_print', print)
                 except Exception as e:
                     print(f"DEBUG: 안전장치 실행 중 오류: {str(e)}")
+
+            # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
+            def raise_in_thread(thread, exc_type = SystemExit):
+                import ctypes
+                if thread is None or not thread.is_alive():
+                    return False
+
+                func = ctypes.pythonapi.PyThreadState_SetAsyncExc
+                func.argtypes = [ctypes.c_ulong, ctypes.py_object]
+                func.restype = ctypes.c_int
+
+                tid = ctypes.c_ulong(thread.ident)
+                res = func(tid, ctypes.py_object(exc_type))
+
+                if res > 1:
+                    func(tid, ctypes.py_object(0))
+                    return False
+
+                return res == 1
 
             # 별도 스레드에서 안전장치 실행
             safety_thread = threading.Thread(target=safe_termination, daemon=True)
@@ -379,12 +354,9 @@ def handle_slider_update(payload):
 
 
 
-# === 코드 저장/불러오기 API ===
-@app.route("/api/custom-code/files")
-def api_custom_code_files():
-    """custom_code 디렉토리의 .py 파일 목록 반환"""
-    files = get_custom_code_files()
-    return jsonify({"files": files})
+
+
+
 
 @app.route("/api/cpu-usage")
 def api_cpu_usage():
@@ -392,13 +364,13 @@ def api_cpu_usage():
     try:
         # 전체 CPU 사용량 (평균)
         cpu_percent = psutil.cpu_percent(interval=0.1, percpu=False)
-        
+
         # 개별 CPU 스레드 사용량
         cpu_percent_per_cpu = psutil.cpu_percent(interval=0.1, percpu=True)
-        
+
         # CPU 개수
         cpu_count = psutil.cpu_count()
-        
+
         return jsonify({
             "success": True,
             "cpu_percent": cpu_percent,
@@ -408,68 +380,25 @@ def api_cpu_usage():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/api/custom-code/save", methods=["POST"])
-def api_custom_code_save():
-    """코드 저장"""
-    try:
-        data = request.get_json()
-        filename = data.get("filename", "").strip()
-        code = data.get("code", "")
 
-        if not filename:
-            return jsonify({"success": False, "error": "파일명이 필요합니다"}), 400
 
-        # .py 확장자가 없으면 추가
-        if not filename.endswith(".py"):
-            filename += ".py"
 
-        # 파일 경로 생성
-        file_path = CUSTOM_CODE_DIR / filename
 
-        # 코드 저장
-        file_path.write_text(code, encoding="utf-8")
 
-        return jsonify({"success": True, "filename": filename})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/api/custom-code/load/<filename>")
-def api_custom_code_load(filename):
-    try:
-        # .py 확장자가 없으면 추가
-        if not filename.endswith(".py"):
-            filename += ".py"
 
-        file_path = CUSTOM_CODE_DIR / filename
 
-        if not file_path.exists():
-            return jsonify({"success": False, "error": "파일을 찾을 수 없습니다"}), 404
 
-        code = file_path.read_text(encoding="utf-8")
-        return jsonify({"success": True, "code": code, "filename": filename})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/api/custom-code/delete/<filename>", methods=["DELETE"])
-def api_custom_code_delete(filename):
-    try:
-        if not filename.endswith(".py"):
-            filename += ".py"
 
-        file_path = CUSTOM_CODE_DIR / filename
 
-        if not file_path.exists():
-            return jsonify({"success": False, "error": "파일을 찾을 수 없습니다"}), 404
 
-        file_path.unlink()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
-#region Main
+
+
+
+
+
+
 if __name__ == '__main__':
     socketio.run(app, debug=DEBUG_MODE, host='0.0.0.0', port=5000)
-#endregion
-
-
-
