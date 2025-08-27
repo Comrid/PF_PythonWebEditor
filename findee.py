@@ -188,7 +188,7 @@ class Findee:
 
 #region: Ultrasonic Sensor
     @debug_decorator
-    def get_distance(self) -> Optional[float]:
+    def get_distance(self):
         # Return
         # -1 : Trig Timeout
         # -2 : Echo Timeout
@@ -218,14 +218,15 @@ class Findee:
 
 #region: Cameras
     def get_frame(self):
-        return self.camera.capture_array("main").copy()
+        return self.camera.capture_array("main")
+        # return self.camera.capture_array("main").copy()
 
     def mjpeg_gen(self):
         while True:
             # RGB 프레임 -> BGR로 변환(OpenCV는 BGR 기준)
             origin = self.camera.capture_array("main")
             arr = origin.copy()
-            # JPEG 인코딩 (품질 80)
+
             ok, buf = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
             if not ok:
                 continue
