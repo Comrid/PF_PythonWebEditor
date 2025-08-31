@@ -352,17 +352,5 @@ def api_cpu_usage():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
     socketio.run(app, debug=DEBUG_MODE, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000)
