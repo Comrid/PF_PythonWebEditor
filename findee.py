@@ -16,7 +16,7 @@ os.environ['LIBCAMERA_LOG_FILE'] = '/dev/null' # disable logging
 
 import RPi.GPIO as GPIO
 from picamera2 import Picamera2
-from picamera2.encoders import JpegEncoder
+# from picamera2.encoders import JpegEncoder
 import cv2
 
 USE_DEBUG = True
@@ -218,14 +218,12 @@ class Findee:
 
 #region: Cameras
     def get_frame(self):
-        return self.camera.capture_array("main")
-        # return self.camera.capture_array("main").copy()
+        return self.camera.capture_array("main").copy()
 
     def mjpeg_gen(self):
         while True:
             # RGB 프레임 -> BGR로 변환(OpenCV는 BGR 기준)
-            origin = self.camera.capture_array("main")
-            arr = origin.copy()
+            arr = self.camera.capture_array("main").copy()
 
             ok, buf = cv2.imencode('.jpg', arr, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
             if not ok:
@@ -239,6 +237,41 @@ class Findee:
 
             # 과도한 CPU 점유 방지
             time.sleep(0.001)
+
+    @debug_decorator
+    def set_fps(self, fps: int):
+        if fps <= 0:
+            print("DEBUG: ERR: FPS는 0보다 커야 합니다.")
+            return
+        elif fps > 60:
+            print("DEBUG: ERR: FPS는 60 이하여야 합니다.")
+            return
+
+        frame_duration = 1000000 // fps
+        current_controls = self.camera.camera_controls
+        current_controls["FrameDurationLimits"] = (frame_duration, frame_duration)
+
+        self.camera.stop()
+        self.camera.set_controls(current_controls)
+        self.camera.start()
+
+        print(f"DEBUG: 카메라 FPS가 약 {fps}로 변경되었습니다.")
+
+    @debug_decorator
+    def set_resolution(self, resolution: tuple[int, int]):
+        if self.config["main"]["size"] == resolution:
+            return
+
+        new_config = self.config.copy()
+        new_config["main"]["size"] = resolution
+
+        self.camera.stop()
+        self.camera.configure(new_config)
+        self.camera.start()
+
+        self.config = new_config
+
+        print(f"DEBUG: 카메라 해상도가 {resolution}으로 변경되었습니다.")
 #endregion
 
 #region: others
