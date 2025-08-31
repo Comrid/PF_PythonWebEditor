@@ -4,8 +4,8 @@ from pathlib import Path
 # Blueprint 생성
 custom_code_bp = Blueprint('custom_code_bp', __name__, url_prefix='/api/custom-code')
 
-# 사용자 코드 저장 디렉토리
-CUSTOM_CODE_DIR = Path("static/custom_code")
+# 절대 경로로 변경
+CUSTOM_CODE_DIR = Path(__file__).parent.parent / "static" / "custom_code"
 
 @custom_code_bp.route("/files")
 def get_files():

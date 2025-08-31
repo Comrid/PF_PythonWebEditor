@@ -5,8 +5,8 @@ import sqlite3
 # Blueprint 생성
 tutorial_bp = Blueprint('tutorial_bp', __name__, url_prefix='/api/tutorial')
 
-# 튜토리얼 데이터베이스 경로
-TUTORIAL_DB_PATH = Path("static/db/tutorial.db")
+# 절대 경로로 변경
+TUTORIAL_DB_PATH = Path(__file__).parent.parent / "static" / "db" / "tutorial.db"
 
 def db_tutorial_init():
     """튜토리얼 데이터베이스 초기화"""
