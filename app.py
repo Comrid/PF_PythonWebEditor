@@ -26,6 +26,7 @@ app.config['SECRET_KEY'] = token_hex(32)
 app.register_blueprint(custom_code_bp)
 app.register_blueprint(tutorial_bp)
 
+
 socketio = SocketIO(
     app,                                    # Flask 애플리케이션 인스턴스
     cors_allowed_origins="*",               # CORS 설정 - 모든 도메인 허용
