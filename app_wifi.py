@@ -263,11 +263,13 @@ def start_main_app_in_ap_mode():
 
 
 def trigger_reboot(message=""):
-    """응답을 먼저 보낸 후, 백그라운드에서 지연 재부팅을 실행합니다."""
+    """응답을 먼저 보낸 후, '신호탄'을 생성하고 백그라운드에서 지연 재부팅을 실행합니다."""
     print(message)
     def delayed_reboot():
         time.sleep(2)
-        os.system("sudo reboot")
+        # '신호탄'을 생성하고(&&) 성공했을 때만 재부팅하는 명령어로 변경
+        command = "sudo /usr/bin/touch /tmp/reboot_for_client_mode && sudo /sbin/reboot"
+        os.system(command)
 
     reboot_thread = threading.Thread(target=delayed_reboot)
     reboot_thread.daemon = True
