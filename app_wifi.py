@@ -1,7 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify
 import subprocess
-import time
-import threading
 import re
 import os
 
@@ -15,10 +13,9 @@ def get_saved_networks():
     try:
         with open(WPA_SUPPLICANT_PATH, 'r') as f:
             content = f.read()
-            # 정규표현식을 사용하여 network={...} 블록 안의 ssid="..." 값을 찾습니다.
             found = re.findall(r'network={[^}]+?ssid="([^"]+)"[^}]+?}', content)
             if found:
-                networks = list(dict.fromkeys(found)) # 중복 제거
+                networks = list(dict.fromkeys(found))
     except FileNotFoundError:
         print(f"Warning: {WPA_SUPPLICANT_PATH} not found.")
     except Exception as e:
@@ -35,7 +32,7 @@ HTML_TEMPLATE = '''
     <style>
         /* --- 기존 디자인(CSS)과 동일 --- */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100vh; display: flex; align-items: center; justify-content: center; color: white; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; color: white; padding: 20px 0; }
         .container { text-align: center; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); max-width: 500px; width: 90%; }
         .title { font-size: 2rem; margin-bottom: 20px; font-weight: 600; }
         .description { font-size: 1.1rem; margin-bottom: 30px; opacity: 0.9; line-height: 1.6; }
@@ -135,7 +132,6 @@ HTML_TEMPLATE = '''
             document.getElementById('loadingText').textContent = message;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('status').textContent = '';
-            // 모든 버튼 비활성화
             document.querySelectorAll('button').forEach(btn => btn.disabled = true);
         }
 
@@ -144,7 +140,6 @@ HTML_TEMPLATE = '''
             const statusEl = document.getElementById('status');
             statusEl.textContent = message;
             statusEl.style.color = isError ? '#ef4444' : '#4ade80';
-            // 모든 버튼 다시 활성화
             document.querySelectorAll('button').forEach(btn => btn.disabled = false);
         }
 
@@ -155,7 +150,7 @@ HTML_TEMPLATE = '''
                 showStatus('새로운 WiFi 이름과 비밀번호를 모두 입력해주세요.', true);
                 return;
             }
-            showLoading('새로운 WiFi 설정을 저장하고 재부팅합니다...');
+            showLoading('새로운 WiFi 설정을 저장하고 클라이언트 모드로 전환합니다...');
             fetch('/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -166,8 +161,8 @@ HTML_TEMPLATE = '''
         }
 
         function connectToSaved(ssid) {
-            if (!confirm(`'${ssid}' 네트워크로 연결하기 위해 재부팅하시겠습니까?`)) return;
-            showLoading(`'${ssid}' 네트워크로 연결하기 위해 재부팅합니다...`);
+            if (!confirm(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환하시겠습니까?`)) return;
+            showLoading(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환합니다...`);
             fetch('/connect-saved', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -216,9 +211,24 @@ def index():
     saved_networks = get_saved_networks()
     return render_template_string(HTML_TEMPLATE, saved_networks=saved_networks)
 
+def trigger_client_mode_switch():
+    """switch_to_client.sh 스크립트를 실행하여 모드 전환을 시작합니다."""
+    # 현재 실행 중인 파이썬 스크립트의 디렉토리를 기준으로 경로를 설정합니다.
+    script_dir = os.path.dirname(__file__)
+    switch_script_path = os.path.join(script_dir, 'switch_to_client.sh')
+    
+    # 스크립트가 존재하는지 확인
+    if not os.path.exists(switch_script_path):
+        raise FileNotFoundError(f"전환 스크립트를 찾을 수 없습니다: {switch_script_path}")
+        
+    # Popen을 사용하여 백그라운드에서 스크립트를 실행합니다.
+    # 앱이 응답을 보낸 후에도 스크립트는 계속 실행됩니다.
+    subprocess.Popen(['sudo', switch_script_path])
+
+
 @app.route('/connect', methods=['POST'])
 def connect_new_wifi():
-    """새로운 Wi-Fi 정보를 wpa_supplicant.conf에 저장하고 재부팅합니다."""
+    """새로운 Wi-Fi 정보를 wpa_supplicant.conf에 저장하고 모드 전환을 시작합니다."""
     try:
         data = request.get_json()
         ssid = data.get('ssid')
@@ -227,26 +237,25 @@ def connect_new_wifi():
         if not ssid or not password:
             return jsonify({"success": False, "error": "SSID 또는 비밀번호가 없습니다."}), 400
 
+        # wpa_passphrase를 사용하여 안전하게 Wi-Fi 정보를 추가합니다.
         command = f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null"
         subprocess.run(command, shell=True, check=True)
         
-        trigger_reboot("새로운 WiFi 정보가 저장되었으며, 시스템이 재부팅됩니다.")
-        return jsonify({"success": True, "message": "설정 완료! 잠시 후 시스템이 재부팅됩니다..."})
+        # 모드 전환 스크립트를 호출합니다.
+        trigger_client_mode_switch()
+        
+        return jsonify({"success": True, "message": "설정 완료! 클라이언트 모드로 전환을 시작합니다. 잠시 후 시스템이 재부팅됩니다."})
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/connect-saved', methods=['POST'])
 def connect_saved_wifi():
-    """저장된 네트워크로 연결하기 위해 재부팅만 실행합니다."""
+    """저장된 네트워크로 연결하기 위해 모드 전환을 시작합니다."""
     try:
-        data = request.get_json()
-        ssid = data.get('ssid')
-        print(f"Connecting to saved network: {ssid}")
-        # 실제로는 재부팅만 하면 wpa_supplicant가 알아서 연결합니다.
-        # 우선순위를 높이고 싶다면 파일을 수정하는 로직을 추가할 수 있습니다.
-        trigger_reboot(f"'{ssid}' 네트워크로 연결하기 위해 시스템을 재부팅합니다.")
-        return jsonify({"success": True, "message": "재부팅 신호를 보냈습니다..."})
+        # 이 경우에는 Wi-Fi 정보를 추가할 필요 없이, 바로 전환 스크립트만 호출합니다.
+        trigger_client_mode_switch()
+        return jsonify({"success": True, "message": "클라이언트 모드 전환을 시작합니다. 잠시 후 시스템이 재부팅됩니다."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -254,27 +263,11 @@ def connect_saved_wifi():
 def start_main_app_in_ap_mode():
     """현재 Wi-Fi 설정 앱을 중지하고 메인 웹 에디터 앱을 시작합니다."""
     try:
-        # 이 서비스(자기 자신)를 먼저 중지하고, 메인 에디터 서비스를 시작합니다.
         # 이 명령어들은 sudoers 파일에 미리 등록되어 있어야 합니다.
         subprocess.Popen("sudo systemctl stop wifi_setup.service && sudo systemctl start webeditor.service", shell=True)
         return jsonify({"success": True, "message": "메인 에디터 서비스를 시작합니다."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-
-def trigger_reboot(message=""):
-    """응답을 먼저 보낸 후, '신호탄'을 생성하고 백그라운드에서 지연 재부팅을 실행합니다."""
-    print(message)
-    def delayed_reboot():
-        time.sleep(2)
-        # '신호탄'을 생성하고(&&) 성공했을 때만 재부팅하는 명령어로 변경
-        command = "sudo /usr/bin/touch /tmp/reboot_for_client_mode && sudo /sbin/reboot"
-        os.system(command)
-
-    reboot_thread = threading.Thread(target=delayed_reboot)
-    reboot_thread.daemon = True
-    reboot_thread.start()
-
 
 if __name__ == '__main__':
     print("WiFi 설정 컨트롤 타워를 시작합니다...")
