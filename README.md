@@ -56,9 +56,11 @@
 - **위젯 시스템**: 이미지·텍스트·웹캠·슬라이더·PID·AI 위젯을 자유 배치
 - **하드웨어 제어**: Findee API로 모터/초음파/카메라 제어
 - **스트리밍**: `emit_image()`/`emit_text()`로 위젯에 실시간 표시
+- **AI Assistant**: 화면 우측 하단 AI-Chat 버튼으로 실시간 AI 질의응답
 - **LLM 보조**: Gemini API Key 설정 시 AI Assistant/Controller 사용
 - **파일 관리**: 코드 저장/불러오기(`static/custom_code/*.py`)
 - **CPU 모니터/상태 표시**: 연결/실행/CPU 사용량 UI
+- **튜토리얼 시스템**: 단계별 학습 가이드 및 진행상황 저장
 
 ---
 
@@ -276,12 +278,20 @@ finally:
     robot.cleanup()
 ```
 
-### 3) LLM 위젯
+### 3) AI Assistant (AI-Chat)
+- **화면 우측 하단 AI-Chat 버튼** 클릭하여 AI Assistant와 대화
+- **실시간 질의응답**: Path Finder Python Web Editor 관련 질문에 AI가 답변
+- **JavaScript 직접 처리**: `llm.js`를 통해 Gemini API 직접 호출 (백엔드 불필요)
+- **스트리밍 응답**: AI 응답이 실시간으로 타이핑되듯 표시
+- **Fallback 모드**: API Key 미설정 시 시뮬레이션 응답 제공
+- **채팅 히스토리**: 세션 동안 대화 내용 자동 저장
+
+### 4) LLM 위젯
 - AI Assistant: 질문/설명(코드 기반 참고 토글 가능)
 - AI Controller: 자연어 요구사항 → 코드 생성(옵션 Auto Run)
 - Editor Settings에서 Gemini API Key 입력 필요
 
-### 4) 실제 사용 시나리오
+### 5) 실제 사용 시나리오
 - **라인 트레이서**: 카메라로 라인 인식 → 모터 제어
 - **장애물 회피**: 초음파 센서 → 거리 측정 → 경로 계획
 - **제스처 제어**: 손 제스처 → 모터 동작
@@ -319,6 +329,8 @@ finally:
 - `POST /api/tutorial/progress`: 튜토리얼 진행상황 저장/업데이트
 - `POST /api/tutorial/reset`: 튜토리얼 데이터베이스 초기화
 
+**참고**: AI-Chat은 JavaScript에서 직접 처리됩니다 (`llm.js` 사용)
+
 ### Socket.IO 이벤트
 - 클라이언트→서버: `execute_code`, `stop_execution`, `pid_update`, `slider_update`, `gesture_update`
 - 서버→클라이언트: `execution_started`, `execution_stopped`, `finished`, `stdout`, `stderr`, `image_data`, `text_data`
@@ -332,7 +344,7 @@ PF_PythonWebEditor/
 ├─ templates/
 │  └─ index.html         # 메인 웹 UI(위젯/팝오버/에디터 포함)
 ├─ static/
-│  ├─ css/               # base.css, editor.css, popover.css, new.css
+│  ├─ css/               # base.css, editor.css, popover.css, new.css, first.css, tutorial.css, challenge.css
 │  ├─ js/
 │  │  ├─ util.js         # 전역 상태/토스트/예제 코드/디바이스 탐색
 │  │  ├─ editor.js       # Monaco Editor 로드/설정
@@ -342,9 +354,13 @@ PF_PythonWebEditor/
 │  │  ├─ action.js       # Run/Stop/파일 관리 버튼 핸들러
 │  │  ├─ socket-handler.js# 소켓 이벤트 바인딩/출력/이미지/텍스트 수신
 │  │  ├─ popover.js      # 설정/파일/웹캠 팝오버 로직
-│  │  └─ new.js          # CPU 모니터 UI
+│  │  ├─ new.js          # AI-Chat 기능 및 CPU 모니터 UI
+│  │  ├─ first.js        # 초기 화면 및 설정 관리
+│  │  ├─ tutorial.js     # 튜토리얼 시스템
+│  │  └─ challenge.js    # 도전과제 시스템
 │  ├─ img/app-logo.png
-│  └─ custom_code/       # 사용자 저장 코드(.py)
+│  ├─ custom_code/       # 사용자 저장 코드(.py)
+│  └─ db/                # SQLite 데이터베이스 (tutorial.db)
 ├─ blueprints/
 │  ├─ custom_code_bp.py  # 코드 저장/불러오기 API
 │  └─ tutorial_bp.py     # 튜토리얼 진행상황 관리 API
@@ -439,4 +455,5 @@ numpy==1.24.3
 
 # Note: RPi.GPIO, picamera2 등 하드웨어 관련 패키지는 
 # 라즈베리파이 환경에서 별도 설치 필요
+# Note: AI-Chat은 JavaScript에서 직접 처리됩니다 (llm.js 사용)
 ```

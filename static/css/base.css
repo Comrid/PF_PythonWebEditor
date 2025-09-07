@@ -931,6 +931,309 @@ body {
 
 /* #endregion */
 
+/* #region AI Chat Button */
+.ai-chat-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.ai-chat-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+}
+
+.ai-chat-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+}
+
+.ai-chat-close {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-button:hover .ai-chat-close {
+    opacity: 1;
+}
+
+/* #endregion */
+
+/* #region AI Chat Popover */
+.ai-chat-popover {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 500px;
+    max-height: 600px;
+    z-index: 1001;
+    display: none;
+}
+
+.ai-chat-popover.show {
+    display: block;
+}
+
+.ai-chat-popover .popover-content {
+    background: rgba(45, 55, 72, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.ai-chat-popover .popover-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 15px 15px 0 0;
+    border-bottom: none;
+}
+
+.ai-chat-popover .popover-header h5 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-chat-popover .popover-body {
+    padding: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* #endregion */
+
+/* #region AI Chat Messages */
+.ai-chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.ai-message {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ai-message.user {
+    align-items: flex-end;
+}
+
+.ai-message.assistant {
+    align-items: flex-start;
+}
+
+.ai-message-content {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 15px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    cursor: text;
+}
+
+.ai-message.user .ai-message-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 5px 15px;
+}
+
+.ai-message.assistant .ai-message-content {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px 15px 15px 5px;
+}
+
+.ai-message-time {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
+}
+
+/* #endregion */
+
+/* #region AI Chat Input */
+.ai-chat-input-container {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.ai-chat-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: white;
+    padding: 12px 16px;
+    font-size: 14px;
+    resize: none;
+    min-height: 40px;
+    max-height: 120px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.ai-chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.ai-chat-send-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.ai-chat-send-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.ai-chat-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ai-chat-new-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.ai-chat-new-btn:hover {
+    background: rgba(74, 222, 128, 0.2);
+    border-color: rgba(74, 222, 128, 0.4);
+    transform: scale(1.1);
+}
+
+.ai-chat-new-btn:active {
+    transform: scale(0.95);
+}
+
+/* #endregion */
+
+/* #region AI Chat Placeholder */
+.ai-chat-placeholder {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 40px 20px;
+}
+
+.ai-chat-placeholder i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.ai-chat-placeholder p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* #endregion */
+
+/* #region AI Chat Loading */
+.ai-chat-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    padding: 10px 0;
+}
+
+.ai-chat-loading-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.ai-chat-loading-dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: ai-chat-bounce 1.4s infinite ease-in-out both;
+}
+
+.ai-chat-loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.ai-chat-loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes ai-chat-bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* #endregion */
+
 /* #region _ */
 /* #endregion */
 

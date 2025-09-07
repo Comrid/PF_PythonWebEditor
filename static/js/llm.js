@@ -8,15 +8,16 @@ const API_KEY = window.GEMINI_API_KEY;
 // Gemini API 엔드포인트
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
-// 간결 응답용 시스템 프롬프트
+// AI-Chat용 시스템 프롬프트
 const LLM_SYSTEM_PROMPT = [
-  '규칙:',
-  '- 한국어로 간결히 답변(중복 금지, 과한 장황함 금지).',
-  '- 가능하면 3~5개의 불릿 또는 1개의 짧은 코드 블록만 사용.',
-  '- 필요 시 Python 예시는 최소화하고 실행에 필요한 부분만 포함.',
-  '- 질문 맥락(코드/Findee API)만 근거로 답변.',
-  '- 코드 예시에서 Findee 인스턴스 변수명은 사용자가 정의한 이름을 사용.',
-  '- 코드 예시 생성 시 항상 try-except-finally 구조 사용.',
+  '당신은 Path Finder Python Web Editor의 AI Assistant입니다.',
+  '라즈베리파이 제로 2 W + Findee 모듈로 자율주행 자동차 개발을 도와드립니다.',
+  '',
+  '답변 규칙:',
+  '- 한국어로 간결하게 답변 (3-5줄 이내)',
+  '- 코드 예시는 핵심 부분만 포함',
+  '- try-except-finally 구조 사용',
+  '- 불필요한 설명 생략'
 ].join('\n');
 
 // Findee API 요약 (findee2.py 기준, 안전 모드/환경 차이는 생략)
@@ -150,14 +151,30 @@ function getLlmStatus() {
     };
 }
 
+// 대화 히스토리 저장
+let conversationHistory = [];
+
 // Gemini API로 질문하기
-async function askLLM(question, callback) {
+async function askLLM(question, callback, includeHistory = true) {
     if (!llmLoaded) {
         throw new Error('LLM이 아직 로드되지 않았습니다.');
     }
     
     try {
         const currentApiKey = window.GEMINI_API_KEY || API_KEY;
+        
+        // 대화 히스토리와 함께 프롬프트 구성
+        let fullPrompt = LLM_SYSTEM_PROMPT;
+        
+        if (includeHistory && conversationHistory.length > 0) {
+            fullPrompt += '\n\n이전 대화:\n';
+            conversationHistory.forEach(msg => {
+                fullPrompt += `${msg.role}: ${msg.content}\n`;
+            });
+        }
+        
+        fullPrompt += `\n\n사용자 질문: ${question}`;
+        
         const response = await fetch(GEMINI_API_URL, {
             method: 'POST',
             headers: {
@@ -166,13 +183,13 @@ async function askLLM(question, callback) {
             },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: question }]
+                    parts: [{ text: fullPrompt }]
                 }],
                 generationConfig: {
-                    temperature: 0.3,
+                    temperature: 0.7,
                     topK: 20,
                     topP: 0.9,
-                    maxOutputTokens: 800,
+                    maxOutputTokens: 1000,
                     thinkingConfig: {
                         thinkingBudget: 0
                     }
@@ -188,6 +205,15 @@ async function askLLM(question, callback) {
         
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
             const answer = data.candidates[0].content.parts?.[0]?.text || '';
+            
+            // 대화 히스토리에 추가
+            conversationHistory.push({ role: 'user', content: question });
+            conversationHistory.push({ role: 'assistant', content: answer });
+            
+            // 히스토리 길이 제한 (최근 10개 대화만 유지)
+            if (conversationHistory.length > 20) {
+                conversationHistory = conversationHistory.slice(-20);
+            }
             
             // 스트리밍 흉내: 단어 단위로 갱신
             let currentText = '';
@@ -210,10 +236,16 @@ async function askLLM(question, callback) {
     }
 }
 
+// 대화 히스토리 초기화
+function clearConversationHistory() {
+    conversationHistory = [];
+}
+
 // 전역 함수로 노출
 window.loadLLM = loadLLM;
-    window.askLLM = askLLM;
-    window.getLlmStatus = getLlmStatus;
+window.askLLM = askLLM;
+window.getLlmStatus = getLlmStatus;
+window.clearConversationHistory = clearConversationHistory;
 
 // 페이지 로드 시 자동 초기화
 document.addEventListener('DOMContentLoaded', () => {

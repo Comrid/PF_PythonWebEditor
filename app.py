@@ -5,6 +5,8 @@ from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from secrets import token_hex
 import psutil
+import os
+import json
 
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
@@ -19,6 +21,8 @@ if platform.system() == "Linux":
 else:
     Findee = None
     DEBUG_MODE = True
+
+# AI-Chat은 JavaScript에서 직접 처리됩니다 (llm.js 사용)
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -344,6 +348,8 @@ def api_cpu_usage():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+# AI-Chat은 이제 JavaScript에서 직접 처리됩니다 (llm.js 사용)
 
 
 
