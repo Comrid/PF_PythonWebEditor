@@ -13,6 +13,7 @@ function initializeAiChat() {
     
     let isPopoverOpen = false;
     let chatHistory = [];
+    let aiChatConversationHistory = []; // AI-Chat 전용 대화 히스토리
     
     // AI Chat 버튼 클릭 이벤트
     aiChatButton.addEventListener('click', function(e) {
@@ -234,16 +235,103 @@ function initializeAiChat() {
         }
     }
     
+    // AI-Chat 전용 히스토리 관리 함수들
+    function addToAiChatHistory(role, content) {
+        aiChatConversationHistory.push({ role, content });
+        
+        // 히스토리 길이 제한 (최근 20개 대화만 유지)
+        if (aiChatConversationHistory.length > 20) {
+            aiChatConversationHistory = aiChatConversationHistory.slice(-20);
+        }
+    }
+    
+    function clearAiChatHistory() {
+        aiChatConversationHistory = [];
+    }
+    
+    function buildAiChatPrompt(question) {
+        let prompt = '당신은 Path Finder Python Web Editor의 AI Assistant입니다.\n라즈베리파이 제로 2 W + Findee 모듈로 자율주행 자동차 개발을 도와드립니다.\n\n답변 규칙:\n- 한국어로 간결하게 답변 (3-5줄 이내)\n- 코드 예시는 핵심 부분만 포함\n- try-except-finally 구조 사용\n- 불필요한 설명 생략';
+        
+        if (aiChatConversationHistory.length > 0) {
+            prompt += '\n\n이전 대화:\n';
+            aiChatConversationHistory.forEach(msg => {
+                prompt += `${msg.role}: ${msg.content}\n`;
+            });
+        }
+        
+        prompt += `\n\n사용자 질문: ${question}`;
+        return prompt;
+    }
+    
+    // AI-Chat 전용 API 호출 함수
+    async function callAiChatAPI(question, callback) {
+        const currentApiKey = window.GEMINI_API_KEY;
+        if (!currentApiKey) {
+            throw new Error('Gemini API 키가 설정되지 않았습니다.');
+        }
+        
+        const fullPrompt = buildAiChatPrompt(question);
+        
+        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': currentApiKey
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: fullPrompt }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 20,
+                    topP: 0.9,
+                    maxOutputTokens: 1000,
+                    thinkingConfig: {
+                        thinkingBudget: 0
+                    }
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const answer = data.candidates[0].content.parts?.[0]?.text || '';
+            
+            // AI-Chat 히스토리에 추가
+            addToAiChatHistory('user', question);
+            addToAiChatHistory('assistant', answer);
+            
+            // 스트리밍 흉내: 단어 단위로 갱신
+            let currentText = '';
+            const words = answer.split(' ');
+            
+            for (let i = 0; i < words.length; i++) {
+                currentText += words[i] + ' ';
+                callback(currentText.trim(), false);
+                await new Promise(resolve => setTimeout(resolve, 20));
+            }
+            
+            callback(answer, true);
+        } else {
+            throw new Error('API 응답 형식이 올바르지 않습니다.');
+        }
+    }
+
     // AI 응답 요청
     async function requestAiResponse(message) {
         try {
             // 로딩 메시지 추가
             addMessage('assistant', '', true);
             
-            // llm.js의 askLLM 함수 사용
-            if (window.askLLM && window.getLlmStatus().loaded) {
-                // Gemini API 직접 호출
-                await window.askLLM(message, (response, isComplete) => {
+            // AI-Chat 전용 API 호출
+            if (window.getLlmStatus && window.getLlmStatus().loaded) {
+                await callAiChatAPI(message, (response, isComplete) => {
                     // 로딩 메시지 제거 (첫 번째 응답 시)
                     if (isComplete) {
                         const messagesContainer = document.getElementById('aiChatMessages');
@@ -337,10 +425,8 @@ function initializeAiChat() {
         // 로컬 채팅 히스토리 초기화
         chatHistory = [];
         
-        // 전역 대화 히스토리 초기화
-        if (window.clearConversationHistory) {
-            window.clearConversationHistory();
-        }
+        // AI-Chat 전용 히스토리 초기화
+        clearAiChatHistory();
         
         // 메시지 컨테이너 초기화
         const messagesContainer = document.getElementById('aiChatMessages');

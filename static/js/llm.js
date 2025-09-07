@@ -151,11 +151,8 @@ function getLlmStatus() {
     };
 }
 
-// 대화 히스토리 저장
-let conversationHistory = [];
-
 // Gemini API로 질문하기
-async function askLLM(question, callback, includeHistory = true) {
+async function askLLM(question, callback) {
     if (!llmLoaded) {
         throw new Error('LLM이 아직 로드되지 않았습니다.');
     }
@@ -163,17 +160,8 @@ async function askLLM(question, callback, includeHistory = true) {
     try {
         const currentApiKey = window.GEMINI_API_KEY || API_KEY;
         
-        // 대화 히스토리와 함께 프롬프트 구성
-        let fullPrompt = LLM_SYSTEM_PROMPT;
-        
-        if (includeHistory && conversationHistory.length > 0) {
-            fullPrompt += '\n\n이전 대화:\n';
-            conversationHistory.forEach(msg => {
-                fullPrompt += `${msg.role}: ${msg.content}\n`;
-            });
-        }
-        
-        fullPrompt += `\n\n사용자 질문: ${question}`;
+        // 시스템 프롬프트와 사용자 질문을 결합
+        const fullPrompt = `${LLM_SYSTEM_PROMPT}\n\n사용자 질문: ${question}`;
         
         const response = await fetch(GEMINI_API_URL, {
             method: 'POST',
@@ -206,15 +194,6 @@ async function askLLM(question, callback, includeHistory = true) {
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
             const answer = data.candidates[0].content.parts?.[0]?.text || '';
             
-            // 대화 히스토리에 추가
-            conversationHistory.push({ role: 'user', content: question });
-            conversationHistory.push({ role: 'assistant', content: answer });
-            
-            // 히스토리 길이 제한 (최근 10개 대화만 유지)
-            if (conversationHistory.length > 20) {
-                conversationHistory = conversationHistory.slice(-20);
-            }
-            
             // 스트리밍 흉내: 단어 단위로 갱신
             let currentText = '';
             const words = answer.split(' ');
@@ -236,16 +215,10 @@ async function askLLM(question, callback, includeHistory = true) {
     }
 }
 
-// 대화 히스토리 초기화
-function clearConversationHistory() {
-    conversationHistory = [];
-}
-
 // 전역 함수로 노출
 window.loadLLM = loadLLM;
 window.askLLM = askLLM;
 window.getLlmStatus = getLlmStatus;
-window.clearConversationHistory = clearConversationHistory;
 
 // 페이지 로드 시 자동 초기화
 document.addEventListener('DOMContentLoaded', () => {
