@@ -7,6 +7,12 @@ import os
 
 app = Flask(__name__)
 
+# --- [추가됨] ---
+# AP 모드일 때 사용할 표준 주소와 IP를 정의합니다.
+CANONICAL_HOSTNAME = "pathfinder.kit"
+AP_IP = "10.42.0.1" # setup_concurrent_mode.sh에 설정된 AP의 IP와 일치해야 합니다.
+# --------------------
+
 WPA_SUPPLICANT_PATH = "/etc/wpa_supplicant/wpa_supplicant.conf"
 
 def get_saved_networks():
@@ -24,6 +30,24 @@ def get_saved_networks():
         print(f"Error reading saved networks: {e}")
     return networks
 
+# --- [추가됨] ---
+# 모든 요청이 라우트 함수에 도달하기 전에 실행됩니다.
+@app.before_request
+def redirect_to_canonical_host():
+    """
+    msftconnecttest.com 등 원치 않는 호스트 이름으로 접속 시,
+    CANONICAL_HOSTNAME으로 리디렉션합니다.
+    """
+    # 요청된 호스트 이름(예: msftconnecttest.com)을 가져옵니다.
+    host = request.host.split(':')[0]
+    
+    # 호스트 이름이 우리의 표준 주소나 AP의 IP 주소가 아니라면,
+    if host not in [CANONICAL_HOSTNAME, AP_IP]:
+        # 표준 주소로 리디렉션 응답을 보냅니다.
+        # request.full_path는 쿼리 파라미터까지 포함하여 원래 경로를 유지합니다.
+        return redirect(f"http://{CANONICAL_HOSTNAME}{request.full_path}", code=302)
+# --------------------
+
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="ko">
@@ -32,7 +56,7 @@ HTML_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>네트워크 설정</title>
     <style>
-        /* --- 기존 디자인(CSS)과 동일 --- */
+        /* CSS는 변경되지 않았습니다. */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; color: white; padding: 20px 0; }
         .container { text-align: center; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); max-width: 500px; width: 90%; }
@@ -118,7 +142,6 @@ HTML_TEMPLATE = '''
     </div>
 
     <script>
-        // --- 기존 JavaScript 코드와 동일 ---
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleBtn = document.getElementById('togglePassword');
@@ -130,12 +153,14 @@ HTML_TEMPLATE = '''
                 toggleBtn.textContent = '🔍';
             }
         }
+
         function showLoading(message) {
             document.getElementById('loadingText').textContent = message;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('status').textContent = '';
             document.querySelectorAll('button').forEach(btn => btn.disabled = true);
         }
+
         function showStatus(message, isError = false) {
             document.getElementById('loading').style.display = 'none';
             const statusEl = document.getElementById('status');
@@ -143,6 +168,7 @@ HTML_TEMPLATE = '''
             statusEl.style.color = isError ? '#ef4444' : '#4ade80';
             document.querySelectorAll('button').forEach(btn => btn.disabled = false);
         }
+
         function connectToNewWiFi() {
             const ssid = document.getElementById('ssid').value.trim();
             const password = document.getElementById('password').value.trim();
@@ -159,6 +185,7 @@ HTML_TEMPLATE = '''
             .then(handleResponse)
             .catch(handleError);
         }
+
         function connectToSaved(ssid) {
             if (!confirm(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환하시겠습니까?`)) return;
             showLoading(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환합니다...`);
@@ -170,6 +197,7 @@ HTML_TEMPLATE = '''
             .then(handleResponse)
             .catch(handleError);
         }
+
         function startInAPMode() {
             showLoading('AP 모드에서 메인 에디터를 시작합니다...');
             fetch('/start-main-app-in-ap-mode', { method: 'POST' })
@@ -184,6 +212,7 @@ HTML_TEMPLATE = '''
             })
             .catch(handleError);
         }
+
         function handleResponse(response) {
             return response.json().then(data => {
                 if (data.success) {
@@ -193,6 +222,7 @@ HTML_TEMPLATE = '''
                 }
             });
         }
+
         function handleError(error) {
             showStatus('요청 오류가 발생했습니다: ' + error.message, true);
         }
@@ -201,9 +231,8 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-# [수정됨] 캡티브 포털 감지용 라우트 추가
-# 스마트 기기가 인터넷 연결을 확인할 때 사용하는 표준 URL들에 응답하여
-# OS가 자동으로 로그인 페이지(이 웹페이지)를 띄우도록 유도합니다.
+# [추가됨] 캡티브 포털 감지용 라우트
+# 스마트 기기가 인터넷 연결을 확인할 때 사용하는 표준 URL들에 응답합니다.
 @app.route("/generate_204")
 @app.route("/gen_204")
 @app.route("/hotspot-detect.html")
@@ -221,12 +250,12 @@ def index():
     saved_networks = get_saved_networks()
     return render_template_string(HTML_TEMPLATE, saved_networks=saved_networks)
 
-# [수정됨] 이 앱은 이제 '상태 플래그'나 '재부팅'을 직접 제어하지 않습니다.
-# Wi-Fi 정보 저장만 담당하며, 모드 전환은 외부 스크립트(pf-netmode.sh)가 담당합니다.
+# '상태 플래그' 파일의 경로
+STATE_FILE = "/etc/network_mode_state"
 
 @app.route('/connect', methods=['POST'])
 def connect_new_wifi():
-    """새로운 Wi-Fi 정보를 wpa_supplicant.conf에 저장합니다."""
+    """새로운 Wi-Fi 정보를 저장하고, 상태를 'CLIENT'로 변경 후 재부팅합니다."""
     try:
         data = request.get_json()
         ssid = data.get('ssid')
@@ -236,36 +265,51 @@ def connect_new_wifi():
             return jsonify({"success": False, "error": "SSID 또는 비밀번호가 없습니다."}), 400
 
         # wpa_passphrase를 사용하여 안전하게 Wi-Fi 정보를 추가합니다.
-        # 이 명령어는 sudoers 파일에 미리 등록되어 있어야 합니다.
-        command = f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null"
-        subprocess.run(command, shell=True, check=True)
+        command_wpa = f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null"
+        subprocess.run(command_wpa, shell=True, check=True)
         
-        # 정보 저장 후, 클라이언트 모드로 전환하라는 신호를 보냅니다.
-        # 실제 전환은 NetworkManager dispatcher가 감지하여 처리합니다.
-        return jsonify({"success": True, "message": "설정 저장 완료! 이제 기기를 재부팅하거나, Wi-Fi를 다시 연결하여 클라이언트 모드로 전환하세요."})
+        # 상태를 'CLIENT'로 변경합니다.
+        command_state = f"echo 'CLIENT' | sudo tee {STATE_FILE} > /dev/null"
+        subprocess.run(command_state, shell=True, check=True)
+
+        trigger_reboot()
+        return jsonify({"success": True, "message": "설정 완료! 클라이언트 모드로 전환하기 위해 재부팅됩니다..."})
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/connect-saved', methods=['POST'])
 def connect_saved_wifi():
-    """저장된 네트워크로 연결하기 위해 클라이언트 모드 전환을 유도합니다."""
-    # 이 앱에서는 특별한 작업을 하지 않습니다.
-    # 사용자가 이 버튼을 눌렀다는 것은, 다음 재부팅이나 재연결 시
-    # 클라이언트 모드로 진입하겠다는 의사 표현입니다.
-    return jsonify({"success": True, "message": "클라이언트 모드로 전환 준비 완료. 기기를 재부팅하거나 Wi-Fi를 다시 연결하세요."})
-
+    """상태를 'CLIENT'로 변경하고 재부팅합니다."""
+    try:
+        # 상태를 'CLIENT'로 변경합니다.
+        command_state = f"echo 'CLIENT' | sudo tee {STATE_FILE} > /dev/null"
+        subprocess.run(command_state, shell=True, check=True)
+        
+        trigger_reboot()
+        return jsonify({"success": True, "message": "클라이언트 모드로 전환하기 위해 재부팅합니다..."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/start-main-app-in-ap-mode', methods=['POST'])
 def start_main_app_in_ap_mode():
     """현재 Wi-Fi 설정 앱을 중지하고 메인 웹 에디터 앱을 시작합니다."""
     try:
-        # 이 명령어는 sudoers 파일에 미리 등록되어 있어야 합니다.
         command = "sudo systemctl stop wifi_setup.service && sudo systemctl start webeditor.service"
         subprocess.Popen(command, shell=True)
         return jsonify({"success": True, "message": "메인 에디터 서비스를 시작합니다."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+def trigger_reboot():
+    """응답을 먼저 보낸 후, 백그라운드에서 지연 재부팅을 실행합니다."""
+    def delayed_reboot():
+        time.sleep(2)
+        os.system("sudo reboot")
+
+    reboot_thread = threading.Thread(target=delayed_reboot)
+    reboot_thread.daemon = True
+    reboot_thread.start()
 
 if __name__ == '__main__':
     print("WiFi 설정 컨트롤 타워를 시작합니다...")
