@@ -7,11 +7,11 @@ import os
 
 app = Flask(__name__)
 
-# --- [추가됨] ---
-# AP 모드일 때 사용할 표준 주소와 IP를 정의합니다.
+# --- AP 모드일 때 사용할 표준 주소와 IP를 정의합니다. ---
 CANONICAL_HOSTNAME = "pathfinder.kit"
-AP_IP = "10.42.0.1" # setup_concurrent_mode.sh에 설정된 AP의 IP와 일치해야 합니다.
-# --------------------
+# setup_concurrent_mode.sh에 설정된 AP의 IP와 일치해야 합니다.
+AP_IP = "10.42.0.1"
+# ---------------------------------------------------
 
 WPA_SUPPLICANT_PATH = "/etc/wpa_supplicant/wpa_supplicant.conf"
 
@@ -21,17 +21,17 @@ def get_saved_networks():
     try:
         with open(WPA_SUPPLICANT_PATH, 'r') as f:
             content = f.read()
+            # 정규표현식을 사용하여 network={...} 블록 안의 ssid="..." 값을 찾습니다.
             found = re.findall(r'network={[^}]+?ssid="([^"]+)"[^}]+?}', content)
             if found:
-                networks = list(dict.fromkeys(found))
+                networks = list(dict.fromkeys(found)) # 중복 제거
     except FileNotFoundError:
         print(f"Warning: {WPA_SUPPLICANT_PATH} not found.")
     except Exception as e:
         print(f"Error reading saved networks: {e}")
     return networks
 
-# --- [추가됨] ---
-# 모든 요청이 라우트 함수에 도달하기 전에 실행됩니다.
+# --- 모든 요청이 라우트 함수에 도달하기 전에 실행됩니다. ---
 @app.before_request
 def redirect_to_canonical_host():
     """
@@ -46,7 +46,6 @@ def redirect_to_canonical_host():
         # 표준 주소로 리디렉션 응답을 보냅니다.
         # request.full_path는 쿼리 파라미터까지 포함하여 원래 경로를 유지합니다.
         return redirect(f"http://{CANONICAL_HOSTNAME}{request.full_path}", code=302)
-# --------------------
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
@@ -56,7 +55,6 @@ HTML_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>네트워크 설정</title>
     <style>
-        /* CSS는 변경되지 않았습니다. */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; color: white; padding: 20px 0; }
         .container { text-align: center; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); max-width: 500px; width: 90%; }
@@ -129,7 +127,7 @@ HTML_TEMPLATE = '''
                 </div>
             </div>
             <button class="btn connect-btn" id="connectBtn" onclick="connectToNewWiFi()">
-                새 WiFi 추가 및 재부팅
+                새 WiFi 추가 및 연결 시도
             </button>
         </div>
         
@@ -176,7 +174,7 @@ HTML_TEMPLATE = '''
                 showStatus('새로운 WiFi 이름과 비밀번호를 모두 입력해주세요.', true);
                 return;
             }
-            showLoading('새로운 WiFi 설정을 저장하고 클라이언트 모드로 전환합니다...');
+            showLoading('새로운 WiFi 설정을 저장하고 클라이언트 모드로 전환을 시도합니다...');
             fetch('/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -188,7 +186,7 @@ HTML_TEMPLATE = '''
 
         function connectToSaved(ssid) {
             if (!confirm(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환하시겠습니까?`)) return;
-            showLoading(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환합니다...`);
+            showLoading(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환을 시도합니다...`);
             fetch('/connect-saved', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -231,8 +229,7 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-# [추가됨] 캡티브 포털 감지용 라우트
-# 스마트 기기가 인터넷 연결을 확인할 때 사용하는 표준 URL들에 응답합니다.
+# 캡티브 포털 감지용 라우트
 @app.route("/generate_204")
 @app.route("/gen_204")
 @app.route("/hotspot-detect.html")
@@ -250,12 +247,9 @@ def index():
     saved_networks = get_saved_networks()
     return render_template_string(HTML_TEMPLATE, saved_networks=saved_networks)
 
-# '상태 플래그' 파일의 경로
-STATE_FILE = "/etc/network_mode_state"
-
 @app.route('/connect', methods=['POST'])
 def connect_new_wifi():
-    """새로운 Wi-Fi 정보를 저장하고, 상태를 'CLIENT'로 변경 후 재부팅합니다."""
+    """새로운 Wi-Fi 정보를 저장하고, 즉시 연결을 시도하도록 시스템에 알립니다."""
     try:
         data = request.get_json()
         ssid = data.get('ssid')
@@ -264,52 +258,41 @@ def connect_new_wifi():
         if not ssid or not password:
             return jsonify({"success": False, "error": "SSID 또는 비밀번호가 없습니다."}), 400
 
-        # wpa_passphrase를 사용하여 안전하게 Wi-Fi 정보를 추가합니다.
+        # 1. wpa_passphrase를 사용하여 안전하게 Wi-Fi 정보를 추가합니다.
         command_wpa = f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null"
         subprocess.run(command_wpa, shell=True, check=True)
         
-        # 상태를 'CLIENT'로 변경합니다.
-        command_state = f"echo 'CLIENT' | sudo tee {STATE_FILE} > /dev/null"
-        subprocess.run(command_state, shell=True, check=True)
-
-        trigger_reboot()
-        return jsonify({"success": True, "message": "설정 완료! 클라이언트 모드로 전환하기 위해 재부팅됩니다..."})
+        # 2. wpa_supplicant에게 설정을 다시 읽고 연결을 시도하라고 명령합니다.
+        command_reconfigure = "sudo wpa_cli -i wlan0 reconfigure"
+        subprocess.run(command_reconfigure, shell=True, check=True)
+        
+        return jsonify({"success": True, "message": "설정 저장 완료! 클라이언트 모드로 전환을 시도합니다. 잠시 후 인터넷이 연결되면 자동으로 메인 앱이 시작됩니다."})
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/connect-saved', methods=['POST'])
 def connect_saved_wifi():
-    """상태를 'CLIENT'로 변경하고 재부팅합니다."""
+    """저장된 네트워크로 연결하기 위해 wpa_supplicant를 다시 활성화합니다."""
     try:
-        # 상태를 'CLIENT'로 변경합니다.
-        command_state = f"echo 'CLIENT' | sudo tee {STATE_FILE} > /dev/null"
-        subprocess.run(command_state, shell=True, check=True)
-        
-        trigger_reboot()
-        return jsonify({"success": True, "message": "클라이언트 모드로 전환하기 위해 재부팅합니다..."})
+        # wpa_supplicant에게 설정을 다시 읽고 저장된 네트워크 중 가능한 것에 연결하라고 명령합니다.
+        command_reconfigure = "sudo wpa_cli -i wlan0 reconfigure"
+        subprocess.run(command_reconfigure, shell=True, check=True)
+        return jsonify({"success": True, "message": "클라이언트 모드 전환을 시도합니다..."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route('/start-main-app-in-ap-mode', methods=['POST'])
 def start_main_app_in_ap_mode():
     """현재 Wi-Fi 설정 앱을 중지하고 메인 웹 에디터 앱을 시작합니다."""
     try:
+        # 이 명령어는 sudoers 파일에 미리 등록되어 있어야 합니다.
         command = "sudo systemctl stop wifi_setup.service && sudo systemctl start webeditor.service"
         subprocess.Popen(command, shell=True)
         return jsonify({"success": True, "message": "메인 에디터 서비스를 시작합니다."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-def trigger_reboot():
-    """응답을 먼저 보낸 후, 백그라운드에서 지연 재부팅을 실행합니다."""
-    def delayed_reboot():
-        time.sleep(2)
-        os.system("sudo reboot")
-
-    reboot_thread = threading.Thread(target=delayed_reboot)
-    reboot_thread.daemon = True
-    reboot_thread.start()
 
 if __name__ == '__main__':
     print("WiFi 설정 컨트롤 타워를 시작합니다...")
