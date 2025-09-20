@@ -1,7 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for
 import subprocess
-import time
-import threading
 import re
 import os
 
@@ -9,7 +7,6 @@ app = Flask(__name__)
 
 # --- AP 모드일 때 사용할 표준 주소와 IP를 정의합니다. ---
 CANONICAL_HOSTNAME = "pathfinder.kit"
-# setup_concurrent_mode.sh에 설정된 AP의 IP와 일치해야 합니다.
 AP_IP = "10.42.0.1"
 # ---------------------------------------------------
 
@@ -21,30 +18,19 @@ def get_saved_networks():
     try:
         with open(WPA_SUPPLICANT_PATH, 'r') as f:
             content = f.read()
-            # 정규표현식을 사용하여 network={...} 블록 안의 ssid="..." 값을 찾습니다.
             found = re.findall(r'network={[^}]+?ssid="([^"]+)"[^}]+?}', content)
             if found:
-                networks = list(dict.fromkeys(found)) # 중복 제거
-    except FileNotFoundError:
-        print(f"Warning: {WPA_SUPPLICANT_PATH} not found.")
-    except Exception as e:
-        print(f"Error reading saved networks: {e}")
+                networks = list(dict.fromkeys(found))
+    except Exception:
+        pass
     return networks
 
 # --- 모든 요청이 라우트 함수에 도달하기 전에 실행됩니다. ---
 @app.before_request
 def redirect_to_canonical_host():
-    """
-    msftconnecttest.com 등 원치 않는 호스트 이름으로 접속 시,
-    CANONICAL_HOSTNAME으로 리디렉션합니다.
-    """
-    # 요청된 호스트 이름(예: msftconnecttest.com)을 가져옵니다.
+    """msftconnecttest.com 등 원치 않는 호스트 이름으로 접속 시, CANONICAL_HOSTNAME으로 리디렉션합니다."""
     host = request.host.split(':')[0]
-    
-    # 호스트 이름이 우리의 표준 주소나 AP의 IP 주소가 아니라면,
     if host not in [CANONICAL_HOSTNAME, AP_IP]:
-        # 표준 주소로 리디렉션 응답을 보냅니다.
-        # request.full_path는 쿼리 파라미터까지 포함하여 원래 경로를 유지합니다.
         return redirect(f"http://{CANONICAL_HOSTNAME}{request.full_path}", code=302)
 
 HTML_TEMPLATE = '''
@@ -60,49 +46,26 @@ HTML_TEMPLATE = '''
         .container { text-align: center; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); max-width: 500px; width: 90%; }
         .title { font-size: 2rem; margin-bottom: 20px; font-weight: 600; }
         .description { font-size: 1.1rem; margin-bottom: 30px; opacity: 0.9; line-height: 1.6; }
-        .wifi-form, .saved-networks, .ap-mode-section { text-align: left; margin-bottom: 30px; }
+        .wifi-form, .saved-networks { text-align: left; margin-bottom: 30px; }
         .form-group { margin-bottom: 20px; }
         .form-label, h3 { display: block; margin-bottom: 12px; font-weight: 500; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 8px; }
         .form-input { width: 100%; padding: 15px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 1rem; transition: all 0.3s ease; backdrop-filter: blur(10px); }
-        .form-input::placeholder { color: rgba(255, 255, 255, 0.6); }
-        .form-input:focus { outline: none; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.15); box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); }
-        .password-toggle { position: relative; }
-        .toggle-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: rgba(255, 255, 255, 0.6); cursor: pointer; font-size: 1.1rem; padding: 5px; transition: color 0.3s ease; }
-        .toggle-btn:hover { color: rgba(255, 255, 255, 0.8); }
         .btn { border: none; border-radius: 15px; color: white; padding: 18px 36px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-bottom: 15px; }
-        .btn:hover { transform: translateY(-3px); }
-        .btn:active { transform: translateY(-1px); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .connect-btn { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3); }
-        .connect-btn:hover { box-shadow: 0 8px 25px rgba(74, 222, 128, 0.4); }
-        .ap-mode-btn { background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3); }
-        .ap-mode-btn:hover { box-shadow: 0 8px 25px rgba(56, 189, 248, 0.4); }
+        .connect-btn { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); }
         .saved-network-btn { background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.3); font-size: 1rem; padding: 15px 30px; }
-        .saved-network-btn:hover { background: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.5); }
         .status { margin-top: 20px; font-size: 0.9rem; opacity: 0.8; min-height: 20px; }
         .loading { display: none; margin-top: 20px; }
         .spinner { border: 3px solid rgba(255, 255, 255, 0.3); border-top: 3px solid white; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .wifi-icon { font-size: 3rem; margin-bottom: 20px; opacity: 0.8; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="wifi-icon">📡</div>
-        <h1 class="title">네트워크 컨트롤 타워</h1>
+        <h1 class="title">네트워크 설정</h1>
         <p class="description">
-            연결할 네트워크를 선택하거나, AP 모드를 유지하여 메인 에디터를 시작할 수 있습니다.
+            인터넷에 연결하여 메인 에디터를 시작하려면,<br>아래 목록에서 Wi-Fi를 선택하거나 새로운 네트워크를 추가하세요.
         </p>
-
-        <!-- AP 모드 유지 섹션 -->
-        <div class="ap-mode-section">
-            <h3>AP 모드로 시작하기</h3>
-            <button class="btn ap-mode-btn" id="apModeBtn" onclick="startInAPMode()">
-                AP 모드 유지하고 메인 에디터 시작
-            </button>
-        </div>
         
-        <!-- 저장된 네트워크 섹션 -->
         {% if saved_networks %}
         <div class="saved-networks">
             <h3>저장된 네트워크로 연결</h3>
@@ -112,45 +75,28 @@ HTML_TEMPLATE = '''
         </div>
         {% endif %}
 
-        <!-- 새 네트워크 입력 폼 -->
         <div class="wifi-form">
             <h3>새로운 네트워크 추가</h3>
             <div class="form-group">
-                <label class="form-label" for="ssid">WiFi 네트워크 이름 (SSID)</label>
-                <input type="text" class="form-input" id="ssid" name="ssid" placeholder="새로운 WiFi 이름을 입력하세요" required>
+                <label class="form-label" for="ssid">WiFi 이름 (SSID)</label>
+                <input type="text" class="form-input" id="ssid" name="ssid" required>
             </div>
             <div class="form-group">
                 <label class="form-label" for="password">WiFi 비밀번호</label>
-                <div class="password-toggle">
-                    <input type="password" class="form-input" id="password" name="password" placeholder="새로운 WiFi 비밀번호를 입력하세요" required>
-                    <button type="button" class="toggle-btn" id="togglePassword" onclick="togglePassword()">🔍</button>
-                </div>
+                <input type="password" class="form-input" id="password" name="password" required>
             </div>
-            <button class="btn connect-btn" id="connectBtn" onclick="connectToNewWiFi()">
-                새 WiFi 추가 및 연결 시도
-            </button>
+            <button class="btn connect-btn" id="connectBtn" onclick="connectToNewWiFi()">새 WiFi 추가 및 연결 시도</button>
         </div>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <div id="loadingText"></div>
         </div>
-        
         <div class="status" id="status"></div>
     </div>
 
     <script>
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleBtn = document.getElementById('togglePassword');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.textContent = '🙈';
-            } else {
-                passwordInput.type = 'password';
-                toggleBtn.textContent = '🔍';
-            }
-        }
+        let statusInterval;
 
         function showLoading(message) {
             document.getElementById('loadingText').textContent = message;
@@ -165,6 +111,25 @@ HTML_TEMPLATE = '''
             statusEl.textContent = message;
             statusEl.style.color = isError ? '#ef4444' : '#4ade80';
             document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+            if(statusInterval) clearInterval(statusInterval);
+        }
+
+        function checkConnectionStatus() {
+            statusInterval = setInterval(() => {
+                fetch('/api/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'connected') {
+                            clearInterval(statusInterval);
+                            showStatus(`연결 성공! 이제 PC를 '${data.ssid}'에 연결하고 http://${data.ip}:5000 또는 http://raspberrypi.local:5000 으로 접속하세요.`);
+                        } else {
+                            document.getElementById('loadingText').textContent = `연결 시도 중... (상태: ${data.status})`;
+                        }
+                    })
+                    .catch(err => {
+                        // Polling 중 에러는 무시할 수 있음
+                    });
+            }, 2000);
         }
 
         function connectToNewWiFi() {
@@ -174,7 +139,7 @@ HTML_TEMPLATE = '''
                 showStatus('새로운 WiFi 이름과 비밀번호를 모두 입력해주세요.', true);
                 return;
             }
-            showLoading('새로운 WiFi 설정을 저장하고 클라이언트 모드로 전환을 시도합니다...');
+            showLoading('새로운 WiFi 설정을 저장하고 연결을 시도합니다...');
             fetch('/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -185,8 +150,7 @@ HTML_TEMPLATE = '''
         }
 
         function connectToSaved(ssid) {
-            if (!confirm(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환하시겠습니까?`)) return;
-            showLoading(`'${ssid}' 네트워크로 연결하기 위해 클라이언트 모드로 전환을 시도합니다...`);
+            showLoading(`'${ssid}' 네트워크로 연결을 시도합니다...`);
             fetch('/connect-saved', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -196,25 +160,11 @@ HTML_TEMPLATE = '''
             .catch(handleError);
         }
 
-        function startInAPMode() {
-            showLoading('AP 모드에서 메인 에디터를 시작합니다...');
-            fetch('/start-main-app-in-ap-mode', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showStatus('메인 에디터가 시작되었습니다. 잠시 후 페이지를 새로고침하세요.');
-                    setTimeout(() => window.location.reload(), 5000);
-                } else {
-                    showStatus('오류: ' + data.error, true);
-                }
-            })
-            .catch(handleError);
-        }
-
         function handleResponse(response) {
             return response.json().then(data => {
                 if (data.success) {
-                    showStatus(data.message);
+                    showLoading(data.message); // 로딩 상태 유지
+                    checkConnectionStatus(); // 상태 확인 시작
                 } else {
                     showStatus('오류: ' + data.error, true);
                 }
@@ -229,18 +179,9 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-# 캡티브 포털 감지용 라우트
-@app.route("/generate_204")
-@app.route("/gen_204")
-@app.route("/hotspot-detect.html")
-@app.route("/library/test/success.html")
-@app.route("/success.txt")
-@app.route("/connecttest.txt")
-@app.route("/redirect")
-@app.route("/ncsi.txt")
+@app.route("/generate_204") # ... and other captive portal routes
 def captive_probe_redirect():
-    # 메인 페이지로 리디렉션하여 캡티브 포털임을 알림
-    return redirect(url_for("index"), code=302)
+    return redirect(f"http://{CANONICAL_HOSTNAME}", code=302)
 
 @app.route('/')
 def index():
@@ -249,7 +190,6 @@ def index():
 
 @app.route('/connect', methods=['POST'])
 def connect_new_wifi():
-    """새로운 Wi-Fi 정보를 저장하고, 즉시 연결을 시도하도록 시스템에 알립니다."""
     try:
         data = request.get_json()
         ssid = data.get('ssid')
@@ -258,43 +198,44 @@ def connect_new_wifi():
         if not ssid or not password:
             return jsonify({"success": False, "error": "SSID 또는 비밀번호가 없습니다."}), 400
 
-        # 1. wpa_passphrase를 사용하여 안전하게 Wi-Fi 정보를 추가합니다.
         command_wpa = f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null"
         subprocess.run(command_wpa, shell=True, check=True)
         
-        # 2. wpa_supplicant에게 설정을 다시 읽고 연결을 시도하라고 명령합니다.
         command_reconfigure = "sudo wpa_cli -i wlan0 reconfigure"
         subprocess.run(command_reconfigure, shell=True, check=True)
         
-        return jsonify({"success": True, "message": "설정 저장 완료! 클라이언트 모드로 전환을 시도합니다. 잠시 후 인터넷이 연결되면 자동으로 메인 앱이 시작됩니다."})
-
+        return jsonify({"success": True, "message": "설정 저장 완료! 연결 상태를 확인합니다..."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/connect-saved', methods=['POST'])
 def connect_saved_wifi():
-    """저장된 네트워크로 연결하기 위해 wpa_supplicant를 다시 활성화합니다."""
     try:
-        # wpa_supplicant에게 설정을 다시 읽고 저장된 네트워크 중 가능한 것에 연결하라고 명령합니다.
         command_reconfigure = "sudo wpa_cli -i wlan0 reconfigure"
         subprocess.run(command_reconfigure, shell=True, check=True)
-        return jsonify({"success": True, "message": "클라이언트 모드 전환을 시도합니다..."})
+        return jsonify({"success": True, "message": "연결을 시도합니다! 상태를 확인합니다..."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-@app.route('/start-main-app-in-ap-mode', methods=['POST'])
-def start_main_app_in_ap_mode():
-    """현재 Wi-Fi 설정 앱을 중지하고 메인 웹 에디터 앱을 시작합니다."""
+@app.route('/api/status')
+def get_status():
+    """wlan0 인터페이스의 현재 연결 상태를 반환합니다."""
     try:
-        # 이 명령어는 sudoers 파일에 미리 등록되어 있어야 합니다.
-        command = "sudo systemctl stop wifi_setup.service && sudo systemctl start webeditor.service"
-        subprocess.Popen(command, shell=True)
-        return jsonify({"success": True, "message": "메인 에디터 서비스를 시작합니다."})
+        # iwgetid: 현재 연결된 Wi-Fi의 SSID를 가져옵니다.
+        result_ssid = subprocess.run(['iwgetid', '-r', 'wlan0'], capture_output=True, text=True)
+        # ip addr: 인터페이스의 IP 주소 정보를 가져옵니다.
+        result_ip = subprocess.run(['ip', 'addr', 'show', 'wlan0'], capture_output=True, text=True)
+
+        if result_ssid.returncode == 0 and result_ssid.stdout.strip():
+            ssid = result_ssid.stdout.strip()
+            ip_match = re.search(r'inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', result_ip.stdout)
+            ip_address = ip_match.group(1) if ip_match else 'IP 할당 중...'
+            return jsonify({'status': 'connected', 'ssid': ssid, 'ip': ip_address})
+        else:
+            return jsonify({'status': 'connecting...'})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({'status': 'error', 'error': str(e)})
 
 if __name__ == '__main__':
-    print("WiFi 설정 컨트롤 타워를 시작합니다...")
     app.run(host='0.0.0.0', port=5000, debug=False)
 

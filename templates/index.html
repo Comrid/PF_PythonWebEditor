@@ -284,5 +284,17 @@
     <script src="{{ url_for('static', filename='js/hand_gesture.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/action.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/cpu.js') }}" defer></script>
+    
+    <script>
+        // 헤더 로고 클릭 이벤트
+        document.addEventListener('DOMContentLoaded', function() {
+            const headerLogo = document.getElementById('headerLogo');
+            if (headerLogo) {
+                headerLogo.addEventListener('click', function() {
+                    window.location.href = '/';
+                });
+            }
+        });
+    </script>
 </body>
 </html>

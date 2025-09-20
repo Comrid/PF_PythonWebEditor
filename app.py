@@ -1,4 +1,4 @@
-#TODO 단일 세션
+#TODO 중앙 서버 + 로봇 클라이언트 아키텍처
 
 from __future__ import annotations
 from flask import Flask, render_template, request, jsonify
@@ -7,6 +7,9 @@ from secrets import token_hex
 import psutil
 import os
 import json
+import requests
+import time
+from datetime import datetime
 
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
@@ -14,15 +17,9 @@ from blueprints.tutorial_bp import tutorial_bp
 import threading
 from traceback import format_exc
 
-import platform
-if platform.system() == "Linux":
-    from findee import Findee
-    DEBUG_MODE = False
-else:
-    Findee = None
-    DEBUG_MODE = True
-
-# AI-Chat은 JavaScript에서 직접 처리됩니다 (llm.js 사용)
+# 중앙 서버에서는 하드웨어 제어 없음
+Findee = None
+DEBUG_MODE = True
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -43,12 +40,17 @@ socketio = SocketIO(
     allow_upgrades=True
 )
 
-# 세션별 - 위젯별 상태 저장
-running_threads: dict[str, threading.Thread] = {}           # 실행 중인 스레드를 추적하는 딕셔너리 (메인 프로세스용)
+# 중앙 서버 상태 관리
+running_threads: dict[str, threading.Thread] = {}           # 실행 중인 스레드를 추적하는 딕셔너리
 stop_flags: dict[str, bool] = {}                            # 실행 중지 플래그를 추적하는 딕셔너리
 gesture_states: dict[str, dict[str, dict[str, float]]] = {} # 제스처 최신 상태 저장: 세션별 → 위젯별
 pid_states: dict[str, dict[str, dict[str, float]]] = {}     # PID 최신 값 저장: 세션별 → 위젯ID별 {p,i,d}
 slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
+
+# 로봇 관리 시스템
+registered_robots: dict[str, dict] = {}                      # 등록된 로봇 정보: robot_id → {name, url, status, last_seen}
+user_robot_mapping: dict[str, str] = {}                      # 사용자 세션 → 로봇 ID 매핑
+robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비트: robot_id → timestamp
 
 
 
@@ -57,108 +59,279 @@ slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 
 
 @app.route('/')
 def index():
+    return render_template('first.html')
+
+@app.route('/editor')
+def editor():
     return render_template('index.html')
 
-#region Code Execution
-def execute_code(code: str, sid: str):
-    stop_flags[sid] = False
+#region Robot Management API
+@app.route('/api/robots', methods=['GET'])
+def get_robots():
+    """등록된 로봇 목록 조회"""
+    current_time = time.time()
+    robots = []
+    
+    for robot_id, robot_info in registered_robots.items():
+        # 하트비트 확인 (30초 이내면 온라인)
+        is_online = (current_time - robot_heartbeats.get(robot_id, 0)) < 30
+        robot_info_copy = robot_info.copy()
+        robot_info_copy['status'] = 'online' if is_online else 'offline'
+        robot_info_copy['robot_id'] = robot_id
+        robots.append(robot_info_copy)
+    
+    return jsonify({"robots": robots})
 
-    # decorator
-    def check_stop_flag(func):
-        def wrapper(*args, **kwargs):
-            if stop_flags.get(sid, False): return
-            return func(*args, **kwargs)
-        return wrapper
-
-    @check_stop_flag
-    def realtime_print(*args, **kwargs):
-        output = ' '.join(str(arg) for arg in args)
-        if output:
-            socketio.emit('stdout', {'output': output}, room=sid)
-
+@app.route('/api/robots/register', methods=['POST'])
+def register_robot():
+    """새 로봇 등록"""
     try:
-        @check_stop_flag
-        def emit_image(image, widget_id):
-            debug_on = True
-            if debug_on: print(f"DEBUG: emit_image 호출됨 : {widget_id}")
-            if hasattr(image, 'shape'):  # numpy 배열인지 확인
-                import time
-                import cv2
-                start_time = time.time()
-
-                ok, buffer = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
-                if not ok:
-                    if debug_on: print("DEBUG: JPEG 인코딩 실패")
-                    return
-
-                # socketio.emit() 사용 - 바이너리 첨부 전송
-                socketio.emit('image_data', {
-                    'i': buffer.tobytes(),
-                    'w': widget_id
-                }, room=sid)
-
-                total_time = time.time() - start_time
-                if debug_on: print(f"DEBUG: 이미지 메시지 전송 완료 - 총 시간: {total_time*1000:.2f}ms")
-            else:
-                print(f"DEBUG: 이미지가 numpy 배열이 아님 - 타입: {type(image)}")
-
-        @check_stop_flag
-        def emit_text(text, widget_id):
-            socketio.emit('text_data', {
-                'text': text,
-                'widget_id': widget_id
-            }, room=sid)
-
-        @check_stop_flag
-        def get_gesture():
-            return gesture_states.get(sid, {})
-
-        @check_stop_flag
-        def get_pid_value(widget_id: str):
-            state = pid_states.get(sid, {}).get(widget_id)
-            if not state:
-                return (0.0, 0.0, 0.0)
-            return (float(state.get('p', 0.0)), float(state.get('i', 0.0)), float(state.get('d', 0.0)))
-
-        @check_stop_flag
-        def get_slider_value(widget_id: str):
-            values = slider_states.get(sid, {}).get(widget_id)
-            if not values:
-                return 0.0
-            if len(values) == 1:
-                return float(values[0])
-            return [float(v) for v in values]
-
-        exec_namespace = {
-            'socketio': socketio,
-            'sid': sid,
-            'stop_flags': stop_flags,
-            'Findee': Findee,
-            'emit_image': emit_image,
-            'emit_text': emit_text,
-            'get_gesture': get_gesture,
-            'get_pid_value': get_pid_value,
-            'get_slider_value': get_slider_value,
-            'print': realtime_print
+        data = request.get_json()
+        robot_id = data.get('robot_id')
+        robot_name = data.get('robot_name')
+        robot_url = data.get('robot_url')
+        
+        if not all([robot_id, robot_name, robot_url]):
+            return jsonify({"success": False, "error": "robot_id, robot_name, robot_url이 모두 필요합니다"}), 400
+        
+        # 로봇 등록
+        registered_robots[robot_id] = {
+            "name": robot_name,
+            "url": robot_url,
+            "status": "offline",
+            "last_seen": None,
+            "registered_at": datetime.now().isoformat()
         }
+        
+        # 하트비트 초기화
+        robot_heartbeats[robot_id] = 0
+        
+        return jsonify({"success": True, "message": f"로봇 {robot_name}이 등록되었습니다"})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-        compiled_code = compile(code, '<string>', 'exec')
-        exec(compiled_code, exec_namespace)
+@app.route('/api/robots/<robot_id>', methods=['DELETE'])
+def unregister_robot(robot_id):
+    """로봇 등록 해제"""
+    try:
+        if robot_id in registered_robots:
+            del registered_robots[robot_id]
+            robot_heartbeats.pop(robot_id, None)
+            
+            # 해당 로봇을 사용하는 사용자 세션 정리
+            sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
+            for sid in sessions_to_remove:
+                user_robot_mapping.pop(sid, None)
+            
+            return jsonify({"success": True, "message": f"로봇 {robot_id}이 등록 해제되었습니다"})
+        else:
+            return jsonify({"success": False, "error": "로봇을 찾을 수 없습니다"}), 404
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/robots/<robot_id>/heartbeat', methods=['POST'])
+def robot_heartbeat(robot_id):
+    """로봇 하트비트 업데이트"""
+    try:
+        if robot_id in registered_robots:
+            robot_heartbeats[robot_id] = time.time()
+            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-    except Exception:
-        # 오류 출력
-        for line in format_exc().splitlines():
-            socketio.emit('stderr', {'output': line}, room=sid)
+@app.route('/api/robots/<robot_id>/assign', methods=['POST'])
+def assign_robot_to_user():
+    """사용자 세션에 로봇 할당"""
+    try:
+        data = request.get_json()
+        robot_id = data.get('robot_id')
+        session_id = request.sid
+        
+        if robot_id not in registered_robots:
+            return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
+        
+        # 사용자 세션에 로봇 할당
+        user_robot_mapping[session_id] = robot_id
+        
+        return jsonify({"success": True, "message": f"로봇 {robot_id}이 할당되었습니다"})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-    finally:
-        # 추적 딕셔너리에서 제거
-        running_threads.pop(sid, None)
-        stop_flags.pop(sid, None)
-        print(f"DEBUG: Session {sid}: 스레드 정리 완료")
+@app.route('/api/robot/emit/image', methods=['POST'])
+def robot_emit_image():
+    """로봇에서 이미지 데이터 수신 및 중계"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        image_data = data.get('image_data')
+        widget_id = data.get('widget_id')
+        
+        if not all([session_id, image_data, widget_id]):
+            return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
+        
+        # 브라우저로 이미지 데이터 중계
+        relay_image_data({
+            'i': image_data,
+            'w': widget_id
+        }, session_id)
+        
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-    # 코드 실행 완료 알림
-    socketio.emit('finished', {}, room=sid)
+@app.route('/api/robot/emit/text', methods=['POST'])
+def robot_emit_text():
+    """로봇에서 텍스트 데이터 수신 및 중계"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        text = data.get('text')
+        widget_id = data.get('widget_id')
+        
+        if not all([session_id, text, widget_id]):
+            return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
+        
+        # 브라우저로 텍스트 데이터 중계
+        relay_text_data({
+            'text': text,
+            'widget_id': widget_id
+        }, session_id)
+        
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/robot/stdout', methods=['POST'])
+def robot_stdout():
+    """로봇에서 stdout 데이터 수신 및 중계"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        output = data.get('output')
+        
+        if not all([session_id, output]):
+            return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
+        
+        # 브라우저로 stdout 데이터 중계
+        relay_stdout_data({'output': output}, session_id)
+        
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/robot/stderr', methods=['POST'])
+def robot_stderr():
+    """로봇에서 stderr 데이터 수신 및 중계"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        output = data.get('output')
+        
+        if not all([session_id, output]):
+            return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
+        
+        # 브라우저로 stderr 데이터 중계
+        relay_stderr_data({'output': output}, session_id)
+        
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/robot/finished', methods=['POST'])
+def robot_finished():
+    """로봇에서 finished 데이터 수신 및 중계"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({"success": False, "error": "session_id가 필요합니다"}), 400
+        
+        # 브라우저로 finished 데이터 중계
+        relay_finished_data({}, session_id)
+        
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+#endregion
+
+#region Code Execution
+def execute_code_on_robot(code: str, sid: str, robot_id: str):
+    """로봇에 코드 실행 요청 전송"""
+    try:
+        # 할당된 로봇 확인
+        if robot_id not in registered_robots:
+            socketio.emit('execution_error', {'error': '할당된 로봇을 찾을 수 없습니다.'}, room=sid)
+            return
+        
+        robot_url = registered_robots[robot_id]['url']
+        
+        # 로봇에 코드 실행 요청 전송
+        response = requests.post(
+            f"{robot_url}/execute",
+            json={
+                'code': code,
+                'session_id': sid
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
+        else:
+            socketio.emit('execution_error', {'error': f'로봇 실행 요청 실패: {response.text}'}, room=sid)
+    
+    except requests.exceptions.RequestException as e:
+        socketio.emit('execution_error', {'error': f'로봇 통신 오류: {str(e)}'}, room=sid)
+    except Exception as e:
+        socketio.emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'}, room=sid)
+
+def relay_image_data(data: dict, session_id: str):
+    """로봇에서 받은 이미지 데이터를 브라우저로 중계"""
+    try:
+        socketio.emit('image_data', data, room=session_id)
+    except Exception as e:
+        print(f"DEBUG: 이미지 데이터 중계 실패: {e}")
+
+def relay_text_data(data: dict, session_id: str):
+    """로봇에서 받은 텍스트 데이터를 브라우저로 중계"""
+    try:
+        socketio.emit('text_data', data, room=session_id)
+    except Exception as e:
+        print(f"DEBUG: 텍스트 데이터 중계 실패: {e}")
+
+def relay_stdout_data(data: dict, session_id: str):
+    """로봇에서 받은 stdout 데이터를 브라우저로 중계"""
+    try:
+        socketio.emit('stdout', data, room=session_id)
+    except Exception as e:
+        print(f"DEBUG: stdout 데이터 중계 실패: {e}")
+
+def relay_stderr_data(data: dict, session_id: str):
+    """로봇에서 받은 stderr 데이터를 브라우저로 중계"""
+    try:
+        socketio.emit('stderr', data, room=session_id)
+    except Exception as e:
+        print(f"DEBUG: stderr 데이터 중계 실패: {e}")
+
+def relay_finished_data(data: dict, session_id: str):
+    """로봇에서 받은 finished 데이터를 브라우저로 중계"""
+    try:
+        socketio.emit('finished', data, room=session_id)
+    except Exception as e:
+        print(f"DEBUG: finished 데이터 중계 실패: {e}")
 
 @socketio.on('execute_code')
 def handle_execute_code(data):
@@ -168,23 +341,17 @@ def handle_execute_code(data):
             emit('execution_error', {'error': '코드가 제공되지 않았습니다.'})
             return
 
-        # 실행 시작 알림
-        emit('execution_started', {'message': '코드 실행을 시작합니다...'})
-
         # 현재 세션 ID 가져오기
         sid = request.sid
+        
+        # 할당된 로봇 확인
+        robot_id = user_robot_mapping.get(sid)
+        if not robot_id:
+            emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
+            return
 
-        # 별도 스레드에서 코드 실행
-        thread = threading.Thread(
-            target=execute_code,
-            args=(code, sid),
-            daemon=True
-        )
-
-        # 스레드를 추적 딕셔너리에 저장
-        running_threads[sid] = thread
-
-        thread.start()
+        # 로봇에 코드 실행 요청 전송
+        execute_code_on_robot(code, sid, robot_id)
 
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})

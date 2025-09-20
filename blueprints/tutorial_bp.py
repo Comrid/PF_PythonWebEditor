@@ -2,10 +2,7 @@ from flask import Blueprint, request, jsonify
 from pathlib import Path
 import sqlite3
 
-# Blueprint 생성
 tutorial_bp = Blueprint('tutorial_bp', __name__, url_prefix='/api/tutorial')
-
-# 절대 경로로 변경
 TUTORIAL_DB_PATH = Path(__file__).parent.parent / "static" / "db" / "tutorial.db"
 
 def db_tutorial_init():

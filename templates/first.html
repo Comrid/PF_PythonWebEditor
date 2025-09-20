@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pathfinder Python Web Editor - 시작</title>
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/first.css') }}">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- First Screen -->
+    <div class="first-screen" id="firstScreen">
+        <div class="first-screen-settings">
+            <button class="settings-btn" id="firstScreenSettingsBtn" title="설정">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+        
+        <img src="{{ url_for('static', filename='img/app-logo.png') }}" alt="App Logo" class="first-screen-logo">
+        <h1 class="first-screen-title">Pathfinder Python Web Editor</h1>
+        <p class="first-screen-subtitle">라즈베리파이 기반 AI 자율주행 자동차 개발 환경</p>
+        <p class="first-screen-description">
+            이 에디터는 Findee 모듈을 통해 모터, 초음파 센서, 카메라를 제어할 수 있는<br>
+            웹 기반 Python 개발 환경입니다. 브라우저에서 코드를 작성하고 실행하여<br>
+            실시간으로 하드웨어를 제어하고 결과를 확인할 수 있습니다.
+        </p>
+        
+        <div class="first-screen-buttons">
+            <button class="first-screen-btn primary" id="startEditorBtn">
+                <i class="fas fa-play"></i> 에디터 사용하기
+            </button>
+            <button class="first-screen-btn secondary" id="tutorialBtn">
+                <i class="fas fa-graduation-cap"></i> 튜토리얼
+            </button>
+        </div>
+        
+        <!-- Trophy Icon for Challenges -->
+        <div class="first-screen-trophy" id="trophyIcon" title="도전과제 보기">
+            <button class="trophy-btn">
+                <i class="fas fa-trophy"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-overlay" id="settingsOverlay" style="display: none;">
+        <div class="settings-modal" id="settingsModal">
+            <div class="settings-header">
+                <h2><i class="fas fa-cog"></i> 설정</h2>
+                <button class="settings-close" id="settingsCloseBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h3><i class="fas fa-database"></i> 데이터베이스 관리</h3>
+                    <button class="reset-db-btn" id="resetDbBtn">
+                        <i class="fas fa-trash"></i> 완전 초기화
+                    </button>
+                    <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-top: 10px; text-align: center;">
+                        모든 튜토리얼 진행상황을 초기화합니다
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/first.js') }}" defer></script>
+</body>
+</html>
