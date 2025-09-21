@@ -51,30 +51,22 @@ function startEditor() {
 }
 
 function showTutorial() {
-    // 튜토리얼 내용을 토스트로 표시
-    showToast('튜토리얼 기능은 준비 중입니다. 에디터 사용하기 버튼을 눌러 에디터를 시작하세요.', 'info');
-    
-    // 튜토리얼 버튼 비활성화
-    const tutorialBtn = document.getElementById('tutorialBtn');
-    if (tutorialBtn) {
-        tutorialBtn.disabled = true;
-        tutorialBtn.style.opacity = '0.5';
-        tutorialBtn.style.cursor = 'not-allowed';
-    }
+    // 튜토리얼 페이지로 이동
+    window.location.href = '/tutorial';
 }
 
 function showSettings() {
     // 설정 모달 표시
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay) {
-        settingsOverlay.style.display = 'flex';
+        settingsOverlay.classList.add('show');
     }
 }
 
 function closeSettings() {
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay) {
-        settingsOverlay.style.display = 'none';
+        settingsOverlay.classList.remove('show');
     }
 }
 

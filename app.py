@@ -65,6 +65,10 @@ def index():
 def editor():
     return render_template('index.html')
 
+@app.route('/tutorial')
+def tutorial():
+    return render_template('tutorial.html')
+
 #region Robot Management API
 @app.route('/api/robots', methods=['GET'])
 def get_robots():

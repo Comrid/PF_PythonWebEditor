@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pathfinder Python Web Editor - 튜토리얼</title>
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tutorial.css') }}">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Tutorial Container -->
+    <div class="tutorial-container">
+        <!-- Header -->
+        <header class="tutorial-header">
+            <div class="tutorial-header-left">
+                <button class="back-btn" id="backBtn" title="뒤로가기">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h1><i class="fas fa-graduation-cap"></i> 튜토리얼</h1>
+            </div>
+            <div class="tutorial-header-right">
+                <div class="progress-info">
+                    <span class="progress-label">진행률</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tutorial Content -->
+        <div class="tutorial-content">
+            <!-- Tutorial List -->
+            <div class="tutorial-list" id="tutorialList">
+                <!-- Tutorial categories will be loaded here -->
+            </div>
+
+            <!-- Tutorial Detail -->
+            <div class="tutorial-detail" id="tutorialDetail" style="display: none;">
+                <div class="tutorial-detail-header">
+                    <button class="back-to-list-btn" id="backToListBtn">
+                        <i class="fas fa-arrow-left"></i> 목록으로
+                    </button>
+                    <h2 id="tutorialTitle"></h2>
+                    <div class="tutorial-meta">
+                        <span class="difficulty" id="tutorialDifficulty"></span>
+                        <span class="time" id="tutorialTime"></span>
+                    </div>
+                </div>
+                <div class="tutorial-detail-content">
+                    <div class="tutorial-description" id="tutorialDescription"></div>
+                    <div class="tutorial-steps" id="tutorialSteps"></div>
+                    <div class="tutorial-actions">
+                        <button class="btn btn-primary" id="startTutorialBtn">
+                            <i class="fas fa-play"></i> 시작하기
+                        </button>
+                        <button class="btn btn-secondary" id="completeTutorialBtn" style="display: none;">
+                            <i class="fas fa-check"></i> 완료하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tutorial.js') }}" defer></script>
+    
+    <script>
+        // 뒤로가기 버튼 이벤트
+        document.addEventListener('DOMContentLoaded', function() {
+            const backBtn = document.getElementById('backBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', function() {
+                    window.location.href = '/';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
