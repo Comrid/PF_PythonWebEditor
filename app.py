@@ -113,10 +113,10 @@ def api_login():
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
-        
+
         if not username or not password:
             return jsonify({"error": "사용자명과 비밀번호를 입력해주세요."}), 400
-        
+
         user = authenticate_user(username, password)
         if user:
             login_user(user)
@@ -131,7 +131,7 @@ def api_login():
             })
         else:
             return jsonify({"error": "사용자명 또는 비밀번호가 올바르지 않습니다."}), 401
-            
+
     except Exception as e:
         print(f"로그인 오류: {e}")
         return jsonify({"error": "로그인 중 오류가 발생했습니다."}), 500
@@ -144,13 +144,13 @@ def api_register():
         username = data.get('username')
         password = data.get('password')
         email = data.get('email')
-        
+
         if not username or not password:
             return jsonify({"error": "사용자명과 비밀번호를 입력해주세요."}), 400
-        
+
         if len(password) < 6:
             return jsonify({"error": "비밀번호는 6자 이상이어야 합니다."}), 400
-        
+
         user = create_user(username, password, email)
         if user:
             return jsonify({
@@ -159,7 +159,7 @@ def api_register():
             })
         else:
             return jsonify({"error": "이미 존재하는 사용자명입니다."}), 409
-            
+
     except Exception as e:
         print(f"회원가입 오류: {e}")
         return jsonify({"error": "회원가입 중 오류가 발생했습니다."}), 500
@@ -183,23 +183,23 @@ def get_robots():
     try:
         # 사용자에게 할당된 로봇 ID 목록 조회
         user_robot_ids = get_user_robots(current_user.id)
-        
+
         current_time = time.time()
         robots = []
-        
+
         for robot_id in user_robot_ids:
             if robot_id in registered_robots:
                 robot_info = registered_robots[robot_id]
                 last_seen = robot_heartbeats.get(robot_id, 0)
                 is_online = (current_time - last_seen) < 30  # 30초 이내에 하트비트가 있으면 온라인
-                
+
                 robots.append({
                     "robot_id": robot_id,
                     "name": robot_info.get("name", f"Robot {robot_id}"),
                     "online": is_online,
                     "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
                 })
-        
+
         return jsonify(robots)
     except Exception as e:
         print(f"로봇 목록 조회 오류: {e}")
@@ -214,10 +214,10 @@ def register_robot_simple():
         robot_name = data.get('robot_name')
         status = data.get('status', 'available')
         user_id = data.get('user_id')  # 선택적 사용자 ID
-        
+
         if not robot_id or not robot_name:
             return jsonify({"success": False, "error": "robot_id와 robot_name이 필요합니다"}), 400
-        
+
         # 로봇 등록 (URL 설정)
         # PC 테스트용: 실제 PC의 IP 주소 사용
         robot_url = f"http://192.168.45.169:5001"  # 실제 PC IP 주소로 변경 필요
@@ -227,24 +227,24 @@ def register_robot_simple():
             "status": status,
             "created_at": datetime.now().isoformat()
         }
-        
+
         # 하트비트 초기화
         robot_heartbeats[robot_id] = time.time()
-        
+
         # 사용자 ID가 제공된 경우 자동 할당
         if user_id:
             assign_robot_to_user(user_id, robot_id)
             print(f"로봇 등록 및 사용자 할당됨: {robot_name} (ID: {robot_id}) -> 사용자 {user_id}")
-            else:
+        else:
             print(f"로봇 등록됨: {robot_name} (ID: {robot_id}) - 사용자 할당 필요")
-        
+
         return jsonify({
-            "success": True, 
+            "success": True,
             "message": f"로봇 {robot_name}이 등록되었습니다",
             "robot_id": robot_id,
             "needs_assignment": user_id is None
         })
-    
+
     except Exception as e:
         print(f"로봇 등록 오류: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -256,30 +256,30 @@ def assign_robot():
     try:
         data = request.get_json()
         robot_name = data.get('robot_name')
-        
+
         if not robot_name:
             return jsonify({"success": False, "error": "로봇 이름이 필요합니다"}), 400
-        
+
         # 등록된 로봇 중에서 이름으로 찾기
         robot_id = None
         for rid, robot_info in registered_robots.items():
             if robot_info.get('name') == robot_name:
                 robot_id = rid
                 break
-        
+
         if not robot_id:
             return jsonify({"success": False, "error": f"로봇 '{robot_name}'을 찾을 수 없습니다"}), 404
-        
+
         # 사용자에게 로봇 할당
         if assign_robot_to_user(current_user.id, robot_id):
             return jsonify({
-                "success": True, 
+                "success": True,
                 "message": f"로봇 '{robot_name}'이 할당되었습니다",
                 "robot_id": robot_id
             })
         else:
             return jsonify({"success": False, "error": "로봇 할당에 실패했습니다"}), 500
-            
+
     except Exception as e:
         print(f"로봇 할당 오류: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -292,10 +292,10 @@ def register_robot():
         robot_id = data.get('robot_id')
         robot_name = data.get('robot_name')
         robot_url = data.get('robot_url')
-        
+
         if not all([robot_id, robot_name, robot_url]):
             return jsonify({"success": False, "error": "robot_id, robot_name, robot_url이 모두 필요합니다"}), 400
-        
+
         # 로봇 등록
         registered_robots[robot_id] = {
             "name": robot_name,
@@ -304,12 +304,12 @@ def register_robot():
             "last_seen": None,
             "registered_at": datetime.now().isoformat()
         }
-        
+
         # 하트비트 초기화
         robot_heartbeats[robot_id] = 0
-        
+
         return jsonify({"success": True, "message": f"로봇 {robot_name}이 등록되었습니다"})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -320,16 +320,16 @@ def unregister_robot(robot_id):
         if robot_id in registered_robots:
             del registered_robots[robot_id]
             robot_heartbeats.pop(robot_id, None)
-            
+
             # 해당 로봇을 사용하는 사용자 세션 정리
             sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
             for sid in sessions_to_remove:
                 user_robot_mapping.pop(sid, None)
-            
+
             return jsonify({"success": True, "message": f"로봇 {robot_id}이 등록 해제되었습니다"})
         else:
             return jsonify({"success": False, "error": "로봇을 찾을 수 없습니다"}), 404
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -343,7 +343,7 @@ def robot_heartbeat(robot_id):
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -354,15 +354,15 @@ def assign_robot_to_session():
         data = request.get_json()
         robot_id = data.get('robot_id')
         session_id = request.sid
-        
+
         if robot_id not in registered_robots:
             return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
-        
+
         # 사용자 세션에 로봇 할당
         user_robot_mapping[session_id] = robot_id
-        
+
         return jsonify({"success": True, "message": f"로봇 {robot_id}이 할당되었습니다"})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -374,18 +374,18 @@ def robot_emit_image():
         session_id = data.get('session_id')
         image_data = data.get('image_data')
         widget_id = data.get('widget_id')
-        
+
         if not all([session_id, image_data, widget_id]):
             return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
-        
+
         # 브라우저로 이미지 데이터 중계
         relay_image_data({
             'i': image_data,
             'w': widget_id
         }, session_id)
-        
+
         return jsonify({"success": True})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -397,18 +397,18 @@ def robot_emit_text():
         session_id = data.get('session_id')
         text = data.get('text')
         widget_id = data.get('widget_id')
-        
+
         if not all([session_id, text, widget_id]):
             return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
-        
+
         # 브라우저로 텍스트 데이터 중계
         relay_text_data({
             'text': text,
             'widget_id': widget_id
         }, session_id)
-        
+
         return jsonify({"success": True})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -419,15 +419,15 @@ def robot_stdout():
         data = request.get_json()
         session_id = data.get('session_id')
         output = data.get('output')
-        
+
         if not all([session_id, output]):
             return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
-        
+
         # 브라우저로 stdout 데이터 중계
         relay_stdout_data({'output': output}, session_id)
-        
+
         return jsonify({"success": True})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -438,15 +438,15 @@ def robot_stderr():
         data = request.get_json()
         session_id = data.get('session_id')
         output = data.get('output')
-        
+
         if not all([session_id, output]):
             return jsonify({"success": False, "error": "필수 필드가 누락되었습니다"}), 400
-        
+
         # 브라우저로 stderr 데이터 중계
         relay_stderr_data({'output': output}, session_id)
-        
+
         return jsonify({"success": True})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -456,15 +456,15 @@ def robot_finished():
     try:
         data = request.get_json()
         session_id = data.get('session_id')
-        
+
         if not session_id:
             return jsonify({"success": False, "error": "session_id가 필요합니다"}), 400
-        
+
         # 브라우저로 finished 데이터 중계
         relay_finished_data({}, session_id)
-        
+
         return jsonify({"success": True})
-    
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 #endregion
@@ -477,9 +477,9 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str):
         if robot_id not in registered_robots:
             socketio.emit('execution_error', {'error': '할당된 로봇을 찾을 수 없습니다.'}, room=sid)
             return
-        
+
         robot_url = registered_robots[robot_id]['url']
-        
+
         # 로봇에 코드 실행 요청 전송
         response = requests.post(
             f"{robot_url}/execute",
@@ -489,12 +489,12 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str):
             },
             timeout=30
         )
-        
+
         if response.status_code == 200:
             socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
         else:
             socketio.emit('execution_error', {'error': f'로봇 실행 요청 실패: {response.text}'}, room=sid)
-    
+
     except requests.exceptions.RequestException as e:
         socketio.emit('execution_error', {'error': f'로봇 통신 오류: {str(e)}'}, room=sid)
     except Exception as e:
