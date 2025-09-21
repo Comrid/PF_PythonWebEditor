@@ -23,12 +23,19 @@ def generate_robot_id():
 def register_to_server(robot_name, robot_id):
     """서버에 로봇 등록"""
     try:
-        # 1. 먼저 인터넷 연결 확인
+        # 1. 간단한 인터넷 연결 확인 (ping 테스트)
         print("인터넷 연결 확인 중...")
-        test_response = requests.get("https://www.google.com", timeout=10)
-        if test_response.status_code != 200:
-            print("인터넷 연결 실패")
-            return False
+        try:
+            # ping으로 간단한 연결 테스트
+            result = subprocess.run(['ping', '-c', '1', '8.8.8.8'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                print("인터넷 연결 성공")
+            else:
+                print("인터넷 연결 불안정 (계속 진행)")
+        except Exception as e:
+            print(f"인터넷 연결 테스트 실패: {e} (계속 진행)")
+            # ping 실패해도 계속 진행
         
         # 2. DNS 해석 테스트
         print("DNS 해석 테스트 중...")

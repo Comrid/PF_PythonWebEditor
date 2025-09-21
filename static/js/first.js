@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resetDbBtn = document.getElementById('resetDbBtn');
     const robotSelect = document.getElementById('robotSelect');
     const logoutBtn = document.getElementById('logoutBtn');
+    const assignRobotBtn = document.getElementById('assignRobotBtn');
     
     if (startEditorBtn) {
         startEditorBtn.addEventListener('click', startEditor);
@@ -42,6 +43,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
+    }
+    if (assignRobotBtn) {
+        assignRobotBtn.addEventListener('click', assignRobot);
     }
     
     // 배경 클릭으로 설정 모달 닫기
@@ -342,5 +346,39 @@ async function refreshRobotStatus() {
         }
     } catch (error) {
         console.error('로봇 상태 업데이트 오류:', error);
+    }
+}
+
+// 로봇 할당
+async function assignRobot() {
+    const robotName = document.getElementById('selectedRobotName').textContent;
+    if (!robotName) {
+        showToast('할당할 로봇을 선택해주세요.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/robot/assign', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ robot_name: robotName })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showToast(result.message, 'success');
+            // 할당 완료 후 로봇 목록 새로고침
+            loadRobotList();
+            // 할당 UI 숨기기
+            document.getElementById('robotAssign').style.display = 'none';
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('로봇 할당 오류:', error);
+        showToast('로봇 할당 중 오류가 발생했습니다.', 'error');
     }
 }

@@ -213,6 +213,7 @@ def register_robot_simple():
         robot_id = data.get('robot_id')
         robot_name = data.get('robot_name')
         status = data.get('status', 'available')
+        user_id = data.get('user_id')  # 선택적 사용자 ID
         
         if not robot_id or not robot_name:
             return jsonify({"success": False, "error": "robot_id와 robot_name이 필요합니다"}), 400
@@ -227,11 +228,57 @@ def register_robot_simple():
         # 하트비트 초기화
         robot_heartbeats[robot_id] = time.time()
         
-        print(f"로봇 등록됨: {robot_name} (ID: {robot_id})")
-        return jsonify({"success": True, "message": f"로봇 {robot_name}이 등록되었습니다"})
+        # 사용자 ID가 제공된 경우 자동 할당
+        if user_id:
+            assign_robot_to_user(user_id, robot_id)
+            print(f"로봇 등록 및 사용자 할당됨: {robot_name} (ID: {robot_id}) -> 사용자 {user_id}")
+        else:
+            print(f"로봇 등록됨: {robot_name} (ID: {robot_id}) - 사용자 할당 필요")
+        
+        return jsonify({
+            "success": True, 
+            "message": f"로봇 {robot_name}이 등록되었습니다",
+            "robot_id": robot_id,
+            "needs_assignment": user_id is None
+        })
     
     except Exception as e:
         print(f"로봇 등록 오류: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/robot/assign', methods=['POST'])
+@login_required
+def assign_robot():
+    """로봇을 현재 사용자에게 할당"""
+    try:
+        data = request.get_json()
+        robot_name = data.get('robot_name')
+        
+        if not robot_name:
+            return jsonify({"success": False, "error": "로봇 이름이 필요합니다"}), 400
+        
+        # 등록된 로봇 중에서 이름으로 찾기
+        robot_id = None
+        for rid, robot_info in registered_robots.items():
+            if robot_info.get('name') == robot_name:
+                robot_id = rid
+                break
+        
+        if not robot_id:
+            return jsonify({"success": False, "error": f"로봇 '{robot_name}'을 찾을 수 없습니다"}), 404
+        
+        # 사용자에게 로봇 할당
+        if assign_robot_to_user(current_user.id, robot_id):
+            return jsonify({
+                "success": True, 
+                "message": f"로봇 '{robot_name}'이 할당되었습니다",
+                "robot_id": robot_id
+            })
+        else:
+            return jsonify({"success": False, "error": "로봇 할당에 실패했습니다"}), 500
+            
+    except Exception as e:
+        print(f"로봇 할당 오류: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/robots/register', methods=['POST'])
