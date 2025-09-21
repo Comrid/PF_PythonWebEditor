@@ -27,8 +27,8 @@ import threading
 from traceback import format_exc
 
 # 중앙 서버에서는 하드웨어 제어 없음
-    Findee = None
-    DEBUG_MODE = True
+Findee = None
+DEBUG_MODE = True
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
