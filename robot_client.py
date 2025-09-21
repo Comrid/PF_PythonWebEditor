@@ -90,6 +90,31 @@ def init_hardware():
             return False
     return False
 
+def register_with_server():
+    """중앙 서버에 로봇 등록"""
+    try:
+        response = requests.post(
+            f"{ROBOT_CONFIG['CENTRAL_SERVER_URL']}/api/robot/register",
+            json={
+                'robot_id': ROBOT_CONFIG['ROBOT_ID'],
+                'robot_name': ROBOT_CONFIG['ROBOT_NAME'],
+                'status': 'available'
+            },
+            timeout=10,
+            verify=ROBOT_CONFIG['VERIFY_SSL']
+        )
+        
+        if response.status_code == 200:
+            print("✅ 서버 등록 성공")
+            return True
+        else:
+            print(f"❌ 서버 등록 실패: {response.status_code}")
+            return False
+    
+    except Exception as e:
+        print(f"❌ 서버 등록 오류: {e}")
+        return False
+
 def send_heartbeat():
     """중앙 서버에 하트비트 전송"""
     try:
@@ -331,6 +356,13 @@ if __name__ == '__main__':
         print("하드웨어 초기화 성공")
     else:
         print("하드웨어 초기화 실패 (시뮬레이션 모드)")
+    
+    # 서버에 로봇 등록
+    print("서버에 로봇 등록 중...")
+    if register_with_server():
+        print("✅ 로봇 등록 완료")
+    else:
+        print("❌ 로봇 등록 실패 - 계속 진행")
     
     # 하트비트 스레드 시작
     heartbeat_thread_obj = threading.Thread(target=heartbeat_thread, daemon=True)

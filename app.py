@@ -348,11 +348,9 @@ def robot_heartbeat(robot_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/robots/<robot_id>/assign', methods=['POST'])
-def assign_robot_to_session():
+def assign_robot_to_session(robot_id):
     """사용자 세션에 로봇 할당 (기존 호환성)"""
     try:
-        data = request.get_json()
-        robot_id = data.get('robot_id')
         session_id = request.sid
 
         if robot_id not in registered_robots:
