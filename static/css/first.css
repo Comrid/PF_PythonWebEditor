@@ -841,28 +841,75 @@
     color: #22c55e;
 }
 
-/* Robot Assignment Styles */
-.robot-assign {
-    background: rgba(74, 222, 128, 0.1);
-    border: 1px solid rgba(74, 222, 128, 0.3);
-    border-radius: 10px;
-    padding: 15px;
-    margin-top: 15px;
-    text-align: center;
+/* Robot Connection Styles */
+.robot-connect {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
 }
 
-.robot-assign p {
+.robot-connect h3 {
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.robot-connect h3 i {
     color: #4ade80;
-    margin-bottom: 15px;
-    font-size: 0.9rem;
 }
 
-.assign-btn {
+.robot-connect p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.connect-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.robot-name-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    padding: 12px 15px;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.robot-name-input:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.robot-name-input:focus {
+    border-color: #4ade80;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+}
+
+.robot-name-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.connect-robot-btn {
     background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
     border: none;
     border-radius: 8px;
     color: white;
-    padding: 10px 20px;
+    padding: 12px 20px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -870,13 +917,40 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 0 auto;
+    white-space: nowrap;
 }
 
-.assign-btn:hover {
+.connect-robot-btn:hover {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
+}
+
+.connect-robot-btn:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.connect-status {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.connect-status.success {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    color: #4ade80;
+}
+
+.connect-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
 }
 
 /* Settings Modal Show State */

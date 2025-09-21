@@ -53,11 +53,16 @@
                             <div class="robot-name" id="selectedRobotName"></div>
                             <div class="robot-details" id="selectedRobotDetails"></div>
                         </div>
-                        <div class="robot-assign" id="robotAssign" style="display: none;">
-                            <p>등록된 로봇을 찾았습니다. 할당하시겠습니까?</p>
-                            <button class="assign-btn" id="assignRobotBtn">
-                                <i class="fas fa-link"></i> 로봇 할당하기
-                            </button>
+                        <div class="robot-connect" id="robotConnect">
+                            <h3><i class="fas fa-robot"></i> 로봇 연동</h3>
+                            <p>로봇 설정 시 입력한 로봇 이름을 입력하세요.</p>
+                            <div class="connect-form">
+                                <input type="text" id="robotNameInput" placeholder="로봇 이름을 입력하세요" class="robot-name-input">
+                                <button class="connect-robot-btn" id="connectRobotBtn">
+                                    <i class="fas fa-link"></i> 로봇 연동하기
+                                </button>
+                            </div>
+                            <div class="connect-status" id="connectStatus" style="display: none;"></div>
                         </div>
                     </div>
                 </div>

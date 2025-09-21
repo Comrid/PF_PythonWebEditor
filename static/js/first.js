@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const robotSelect = document.getElementById('robotSelect');
     const logoutBtn = document.getElementById('logoutBtn');
     const assignRobotBtn = document.getElementById('assignRobotBtn');
+    const connectRobotBtn = document.getElementById('connectRobotBtn');
+    const robotNameInput = document.getElementById('robotNameInput');
     
     if (startEditorBtn) {
         startEditorBtn.addEventListener('click', startEditor);
@@ -46,6 +48,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (assignRobotBtn) {
         assignRobotBtn.addEventListener('click', assignRobot);
+    }
+    if (connectRobotBtn) {
+        connectRobotBtn.addEventListener('click', connectRobot);
+    }
+    if (robotNameInput) {
+        robotNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                connectRobot();
+            }
+        });
     }
     
     // 배경 클릭으로 설정 모달 닫기
@@ -183,6 +195,9 @@ async function loadRobotList() {
         if (response.ok) {
             robotList = await response.json();
             updateRobotDropdown();
+            
+            // 할당되지 않은 로봇이 있는지 확인
+            await checkUnassignedRobots();
         } else {
             console.error('로봇 목록 로드 실패:', response.status);
             showToast('로봇 목록을 불러올 수 없습니다.', 'error');
@@ -190,6 +205,44 @@ async function loadRobotList() {
     } catch (error) {
         console.error('로봇 목록 로드 오류:', error);
         showToast('로봇 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 할당되지 않은 로봇 확인
+async function checkUnassignedRobots() {
+    try {
+        // 등록된 모든 로봇 목록 조회 (할당 여부 무관)
+        const response = await fetch('/api/robots/all');
+        if (response.ok) {
+            const allRobots = await response.json();
+            const assignedRobotIds = robotList.map(robot => robot.robot_id);
+            const unassignedRobots = allRobots.filter(robot => !assignedRobotIds.includes(robot.robot_id));
+            
+            if (unassignedRobots.length > 0) {
+                showUnassignedRobotPrompt(unassignedRobots[0]); // 첫 번째 할당되지 않은 로봇 표시
+            }
+        }
+    } catch (error) {
+        console.error('할당되지 않은 로봇 확인 오류:', error);
+    }
+}
+
+// 할당되지 않은 로봇 프롬프트 표시
+function showUnassignedRobotPrompt(robot) {
+    const robotAssign = document.getElementById('robotAssign');
+    const selectedRobotName = document.getElementById('selectedRobotName');
+    
+    if (robotAssign && selectedRobotName) {
+        selectedRobotName.textContent = robot.name;
+        robotAssign.style.display = 'block';
+        
+        // 로봇 정보 업데이트
+        const robotInfo = document.getElementById('robotInfo');
+        if (robotInfo) {
+            robotInfo.style.display = 'block';
+        }
+        
+        showToast(`새로운 로봇 '${robot.name}'이 발견되었습니다. 할당하시겠습니까?`, 'info');
     }
 }
 
@@ -349,7 +402,70 @@ async function refreshRobotStatus() {
     }
 }
 
-// 로봇 할당
+// 로봇 연동
+async function connectRobot() {
+    const robotName = robotNameInput.value.trim();
+    if (!robotName) {
+        showConnectStatus('로봇 이름을 입력해주세요.', 'error');
+        return;
+    }
+
+    // 버튼 비활성화
+    connectRobotBtn.disabled = true;
+    connectRobotBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 연동 중...';
+
+    try {
+        const response = await fetch('/api/robot/assign', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ robot_name: robotName })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showConnectStatus(result.message, 'success');
+            // 연동 완료 후 로봇 목록 새로고침
+            setTimeout(() => {
+                loadRobotList();
+                // 입력 필드 초기화
+                robotNameInput.value = '';
+                // 연동된 로봇을 자동으로 선택
+                const connectedRobot = robotList.find(robot => robot.name === robotName);
+                if (connectedRobot) {
+                    selectedRobot = connectedRobot;
+                    updateRobotSelection();
+                }
+            }, 1000);
+        } else {
+            showConnectStatus(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('로봇 연동 오류:', error);
+        showConnectStatus('로봇 연동 중 오류가 발생했습니다.', 'error');
+    } finally {
+        // 버튼 활성화
+        connectRobotBtn.disabled = false;
+        connectRobotBtn.innerHTML = '<i class="fas fa-link"></i> 로봇 연동하기';
+    }
+}
+
+// 연결 상태 표시
+function showConnectStatus(message, type) {
+    const statusEl = document.getElementById('connectStatus');
+    statusEl.textContent = message;
+    statusEl.className = `connect-status ${type}`;
+    statusEl.style.display = 'block';
+    
+    // 3초 후 상태 메시지 숨기기
+    setTimeout(() => {
+        statusEl.style.display = 'none';
+    }, 3000);
+}
+
+// 로봇 할당 (기존 함수)
 async function assignRobot() {
     const robotName = document.getElementById('selectedRobotName').textContent;
     if (!robotName) {
