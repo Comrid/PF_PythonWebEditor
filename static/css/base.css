@@ -153,6 +153,30 @@ body {
     gap: 10px;
     align-items: center;
 }
+
+/* Robot Info Display */
+.robot-info-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    margin-left: 20px;
+    padding: 8px 12px;
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 8px;
+}
+
+.robot-name-display {
+    color: #4ade80;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.robot-status-display {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+}
 /* #endregion */
 
 /* #region Main Layout - GridStack Section */

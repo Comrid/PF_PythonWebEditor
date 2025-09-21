@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder Python Web Editor - 로그인</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/first.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Login Container -->
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="{{ url_for('static', filename='img/app-logo.png') }}" alt="App Logo" class="login-logo">
+                <h1>Pathfinder Python Web Editor</h1>
+                <p>라즈베리파이 기반 AI 자율주행 자동차 개발 환경</p>
+            </div>
+
+            <!-- Login Form -->
+            <div class="login-form-container" id="loginFormContainer">
+                <form class="login-form" id="loginForm">
+                    <h2><i class="fas fa-sign-in-alt"></i> 로그인</h2>
+                    
+                    <div class="form-group">
+                        <label for="username">사용자명</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">비밀번호</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    
+                    <button type="submit" class="login-btn">
+                        <i class="fas fa-sign-in-alt"></i> 로그인
+                    </button>
+                </form>
+                
+                <div class="login-footer">
+                    <p>계정이 없으신가요? <a href="#" id="showRegisterForm">회원가입</a></p>
+                </div>
+            </div>
+
+            <!-- Register Form -->
+            <div class="register-form-container" id="registerFormContainer" style="display: none;">
+                <form class="register-form" id="registerForm">
+                    <h2><i class="fas fa-user-plus"></i> 회원가입</h2>
+                    
+                    <div class="form-group">
+                        <label for="reg_username">사용자명</label>
+                        <input type="text" id="reg_username" name="username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg_email">이메일</label>
+                        <input type="email" id="reg_email" name="email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg_password">비밀번호</label>
+                        <input type="password" id="reg_password" name="password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg_password_confirm">비밀번호 확인</label>
+                        <input type="password" id="reg_password_confirm" name="password_confirm" required>
+                    </div>
+                    
+                    <button type="submit" class="register-btn">
+                        <i class="fas fa-user-plus"></i> 회원가입
+                    </button>
+                </form>
+                
+                <div class="register-footer">
+                    <p>이미 계정이 있으신가요? <a href="#" id="showLoginForm">로그인</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const showRegisterForm = document.getElementById('showRegisterForm');
+            const showLoginForm = document.getElementById('showLoginForm');
+            const loginFormContainer = document.getElementById('loginFormContainer');
+            const registerFormContainer = document.getElementById('registerFormContainer');
+
+            // 폼 전환
+            showRegisterForm.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginFormContainer.style.display = 'none';
+                registerFormContainer.style.display = 'block';
+            });
+
+            showLoginForm.addEventListener('click', function(e) {
+                e.preventDefault();
+                registerFormContainer.style.display = 'none';
+                loginFormContainer.style.display = 'block';
+            });
+
+            // 로그인 폼 제출
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(loginForm);
+                const data = {
+                    username: formData.get('username'),
+                    password: formData.get('password')
+                };
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showToast('로그인 성공!', 'success');
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1000);
+                    } else {
+                        showToast(result.error || '로그인에 실패했습니다.', 'error');
+                    }
+                } catch (error) {
+                    console.error('로그인 오류:', error);
+                    showToast('로그인 중 오류가 발생했습니다.', 'error');
+                }
+            });
+
+            // 회원가입 폼 제출
+            registerForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const password = document.getElementById('reg_password').value;
+                const passwordConfirm = document.getElementById('reg_password_confirm').value;
+                
+                if (password !== passwordConfirm) {
+                    showToast('비밀번호가 일치하지 않습니다.', 'error');
+                    return;
+                }
+
+                const formData = new FormData(registerForm);
+                const data = {
+                    username: formData.get('username'),
+                    email: formData.get('email'),
+                    password: password
+                };
+
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showToast('회원가입 성공! 로그인해주세요.', 'success');
+                        registerFormContainer.style.display = 'none';
+                        loginFormContainer.style.display = 'block';
+                        registerForm.reset();
+                    } else {
+                        showToast(result.error || '회원가입에 실패했습니다.', 'error');
+                    }
+                } catch (error) {
+                    console.error('회원가입 오류:', error);
+                    showToast('회원가입 중 오류가 발생했습니다.', 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

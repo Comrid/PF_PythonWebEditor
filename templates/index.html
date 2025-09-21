@@ -201,6 +201,10 @@
                     <div class="status-dot error" id="statusDot"></div>
                     <span id="statusText">Disconnected</span>
                 </div>
+                <div class="robot-info-display" id="robotInfoDisplay" style="display: none;">
+                    <div class="robot-name-display" id="robotNameDisplay"></div>
+                    <div class="robot-status-display" id="robotStatusDisplay"></div>
+                </div>
                 <div class="cpu-monitor" id="cpuMonitor">
                     <div class="cpu-display" id="cpuDisplay">
                         <i class="fas fa-microchip"></i>
@@ -294,7 +298,42 @@
                     window.location.href = '/';
                 });
             }
+            
+            // 로봇 정보 로드
+            loadRobotInfo();
         });
+        
+        // 로봇 정보 로드
+        async function loadRobotInfo() {
+            try {
+                const response = await fetch('/api/robots');
+                if (response.ok) {
+                    const robots = await response.json();
+                    const onlineRobots = robots.filter(robot => robot.online);
+                    
+                    if (onlineRobots.length > 0) {
+                        // 첫 번째 온라인 로봇 정보 표시
+                        const robot = onlineRobots[0];
+                        displayRobotInfo(robot);
+                    }
+                }
+            } catch (error) {
+                console.error('로봇 정보 로드 실패:', error);
+            }
+        }
+        
+        // 로봇 정보 표시
+        function displayRobotInfo(robot) {
+            const robotInfoDisplay = document.getElementById('robotInfoDisplay');
+            const robotNameDisplay = document.getElementById('robotNameDisplay');
+            const robotStatusDisplay = document.getElementById('robotStatusDisplay');
+            
+            if (robotInfoDisplay && robotNameDisplay && robotStatusDisplay) {
+                robotInfoDisplay.style.display = 'block';
+                robotNameDisplay.textContent = robot.name;
+                robotStatusDisplay.textContent = `ID: ${robot.robot_id} | 온라인`;
+            }
+        }
     </script>
 </body>
 </html>

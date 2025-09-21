@@ -107,7 +107,7 @@
     z-index: 10001;
 }
 
-.settings-btn {
+.settings-btn, .logout-btn {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
@@ -122,14 +122,23 @@
     color: rgba(255, 255, 255, 0.8);
 }
 
-.settings-btn:hover {
+.settings-btn:hover, .logout-btn:hover {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.5);
     transform: scale(1.1);
     color: #fff;
 }
 
-.settings-btn i {
+.logout-btn {
+    margin-left: 10px;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.settings-btn i, .logout-btn i {
     font-size: 20px;
 }
 
@@ -142,7 +151,7 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(5px);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 10002;
@@ -558,20 +567,281 @@
     text-align: right;
 }
 
-/* Settings Modal Styles */
-.settings-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10001;
+/* Robot Selection Styles */
+.robot-selection-section {
+    margin: 30px 0;
+    padding: 25px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
+.robot-selection-section h3 {
+    color: #fff;
+    font-size: 1.3rem;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.robot-selection-section h3 i {
+    color: #4ade80;
+}
+
+.robot-selection-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.robot-dropdown {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.robot-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    padding: 12px 15px;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.robot-select:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.robot-select:focus {
+    border-color: #4ade80;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+}
+
+.robot-select option {
+    background: #2c3e50;
+    color: #fff;
+    padding: 10px;
+}
+
+.robot-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.online {
+    background: #4ade80;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.status-indicator.offline {
+    background: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.status-indicator.connecting {
+    background: #f59e0b;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.robot-info {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.robot-name {
+    color: #4ade80;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.robot-details {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Login Page Styles */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    border-radius: 50%;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.login-header h1 {
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.login-form, .register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.login-form h2, .register-form h2 {
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.login-form h2 i, .register-form h2 i {
+    color: #4ade80;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.form-group input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    padding: 12px 15px;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.form-group input:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.form-group input:focus {
+    border-color: #4ade80;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+}
+
+.form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.login-btn, .register-btn {
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.login-btn:hover, .register-btn:hover {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
+}
+
+.login-btn:active, .register-btn:active {
+    transform: translateY(0);
+}
+
+.login-footer, .register-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.login-footer p, .register-footer p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.login-footer a, .register-footer a {
+    color: #4ade80;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.login-footer a:hover, .register-footer a:hover {
+    color: #22c55e;
+}
+
+/* Settings Modal Show State */
 .settings-overlay.show {
     display: flex;
 }
