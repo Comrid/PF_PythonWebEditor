@@ -27,8 +27,8 @@ import threading
 from traceback import format_exc
 
 # 중앙 서버에서는 하드웨어 제어 없음
-Findee = None
-DEBUG_MODE = True
+    Findee = None
+    DEBUG_MODE = True
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -218,9 +218,12 @@ def register_robot_simple():
         if not robot_id or not robot_name:
             return jsonify({"success": False, "error": "robot_id와 robot_name이 필요합니다"}), 400
         
-        # 로봇 등록
+        # 로봇 등록 (URL 설정)
+        # PC 테스트용: 실제 PC의 IP 주소 사용
+        robot_url = f"http://192.168.45.169:5001"  # 실제 PC IP 주소로 변경 필요
         registered_robots[robot_id] = {
             "name": robot_name,
+            "url": robot_url,
             "status": status,
             "created_at": datetime.now().isoformat()
         }
@@ -232,7 +235,7 @@ def register_robot_simple():
         if user_id:
             assign_robot_to_user(user_id, robot_id)
             print(f"로봇 등록 및 사용자 할당됨: {robot_name} (ID: {robot_id}) -> 사용자 {user_id}")
-        else:
+            else:
             print(f"로봇 등록됨: {robot_name} (ID: {robot_id}) - 사용자 할당 필요")
         
         return jsonify({
@@ -542,7 +545,7 @@ def handle_execute_code(data):
 
         # 현재 세션 ID 가져오기
         sid = request.sid
-        
+
         # 할당된 로봇 확인
         robot_id = user_robot_mapping.get(sid)
         if not robot_id:

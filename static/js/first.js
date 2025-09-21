@@ -64,10 +64,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay) {
         settingsOverlay.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeSettings();
-            }
-        });
+        if (e.target === this) {
+            closeSettings();
+        }
+    });
     }
     
     // ESC 키로 설정 모달 닫기
@@ -130,7 +130,7 @@ async function resetDatabase() {
         
         if (response.ok) {
             if (typeof showToast === 'function') {
-                showToast('데이터베이스가 성공적으로 초기화되었습니다.', 'success');
+            showToast('데이터베이스가 성공적으로 초기화되었습니다.', 'success');
             } else {
                 alert('데이터베이스가 성공적으로 초기화되었습니다.');
             }
@@ -138,7 +138,7 @@ async function resetDatabase() {
         } else {
             const error = await response.json();
             if (typeof showToast === 'function') {
-                showToast(`초기화 실패: ${error.error}`, 'error');
+            showToast(`초기화 실패: ${error.error}`, 'error');
             } else {
                 alert(`초기화 실패: ${error.error}`);
             }
@@ -146,7 +146,7 @@ async function resetDatabase() {
     } catch (error) {
         console.error('데이터베이스 초기화 실패:', error);
         if (typeof showToast === 'function') {
-            showToast('데이터베이스 초기화 중 오류가 발생했습니다.', 'error');
+        showToast('데이터베이스 초기화 중 오류가 발생했습니다.', 'error');
         } else {
             alert('데이터베이스 초기화 중 오류가 발생했습니다.');
         }
