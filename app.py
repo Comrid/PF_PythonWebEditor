@@ -205,9 +205,38 @@ def get_robots():
         print(f"로봇 목록 조회 오류: {e}")
         return jsonify([])
 
+@app.route('/api/robot/register', methods=['POST'])
+def register_robot_simple():
+    """로봇 등록 (app_wifi.py에서 호출)"""
+    try:
+        data = request.get_json()
+        robot_id = data.get('robot_id')
+        robot_name = data.get('robot_name')
+        status = data.get('status', 'available')
+        
+        if not robot_id or not robot_name:
+            return jsonify({"success": False, "error": "robot_id와 robot_name이 필요합니다"}), 400
+        
+        # 로봇 등록
+        registered_robots[robot_id] = {
+            "name": robot_name,
+            "status": status,
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # 하트비트 초기화
+        robot_heartbeats[robot_id] = time.time()
+        
+        print(f"로봇 등록됨: {robot_name} (ID: {robot_id})")
+        return jsonify({"success": True, "message": f"로봇 {robot_name}이 등록되었습니다"})
+    
+    except Exception as e:
+        print(f"로봇 등록 오류: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/robots/register', methods=['POST'])
 def register_robot():
-    """새 로봇 등록"""
+    """새 로봇 등록 (기존 호환성)"""
     try:
         data = request.get_json()
         robot_id = data.get('robot_id')
