@@ -443,6 +443,10 @@
                     if (typeof showToast === 'function') {
                         showToast(`로봇 '${editorSelectedRobot?.name || robotId}'이 할당되었습니다.`, 'success');
                     }
+                    
+                    // 디버깅: 할당된 로봇 정보 출력
+                    console.log('할당된 로봇:', editorSelectedRobot);
+                    console.log('로봇 ID:', robotId);
                 } else {
                     const error = await response.json();
                     console.error('로봇 할당 실패:', error.error);

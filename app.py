@@ -359,10 +359,8 @@ def assign_robot_to_session(robot_id):
 
         # 사용자에게 로봇 할당
         if assign_robot_to_user(current_user.id, robot_id):
-            # 세션에도 할당 (기존 호환성)
-            session_id = request.sid
-            user_robot_mapping[session_id] = robot_id
-            
+            # HTTP 요청에서는 세션 ID를 별도로 전달받아야 함
+            # 현재는 데이터베이스에만 저장하고, SocketIO 연결 시 매핑 생성
             return jsonify({
                 "success": True, 
                 "message": f"로봇 {registered_robots[robot_id]['name']}이 할당되었습니다",
@@ -647,6 +645,19 @@ def handle_stop_execution():
 @socketio.on('connect')
 def handle_connect():
     print('클라이언트가 연결되었습니다.')
+    
+    # 사용자가 로그인되어 있는 경우 할당된 로봇 매핑
+    if current_user.is_authenticated:
+        try:
+            user_robots = get_user_robots(current_user.id)
+            if user_robots:
+                # 첫 번째 할당된 로봇을 현재 세션에 매핑
+                robot_id = user_robots[0]
+                user_robot_mapping[request.sid] = robot_id
+                print(f"사용자 {current_user.username}의 로봇 {robot_id}를 세션 {request.sid}에 매핑")
+        except Exception as e:
+            print(f"사용자 로봇 매핑 오류: {e}")
+    
     emit('connected', {'message': '서버에 연결되었습니다.'})
 
 @socketio.on('disconnect')
