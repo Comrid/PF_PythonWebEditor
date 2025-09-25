@@ -212,7 +212,7 @@ async function loadRobotList() {
 async function checkUnassignedRobots() {
     try {
         // 등록된 모든 로봇 목록 조회 (할당 여부 무관)
-        const response = await fetch('/api/robots/all');
+        const response = await fetch('/api/robots');
         if (response.ok) {
             const allRobots = await response.json();
             const assignedRobotIds = robotList.map(robot => robot.robot_id);
