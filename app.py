@@ -490,12 +490,16 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str):
         
         # SocketIO 연결된 로봇인지 확인
         if robot_info.get('url') is None:
-            # SocketIO로 직접 전송
-            socketio.emit('execute_code', {
-                'code': code,
-                'session_id': sid
-            }, room=robot_id)
-            socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
+            # SocketIO로 직접 전송 (로봇 클라이언트의 세션 ID 사용)
+            robot_session_id = robot_info.get('session_id')
+            if robot_session_id:
+                socketio.emit('execute_code', {
+                    'code': code,
+                    'session_id': sid
+                }, room=robot_session_id)
+                socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
+            else:
+                socketio.emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'}, room=sid)
         else:
             # HTTP API로 전송 (기존 방식)
             robot_url = robot_info['url']
@@ -719,17 +723,14 @@ def handle_robot_connected(data):
         
         print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
         
-        # 로봇을 전용 room에 join
-        from flask_socketio import join_room
-        join_room(robot_id)
-        
         # 로봇 등록 (SocketIO 연결 시)
         registered_robots[robot_id] = {
             "name": robot_name,
             "url": None,  # SocketIO 연결이므로 URL 불필요
             "status": "online",
             "hardware_enabled": hardware_enabled,
-            "connected_at": datetime.now().isoformat()
+            "connected_at": datetime.now().isoformat(),
+            "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
         
         # 하트비트 초기화
@@ -757,6 +758,8 @@ def handle_robot_disconnected(data):
         if robot_id in registered_robots:
             print(f"🤖 로봇 클라이언트 연결 해제됨: {robot_id}")
             registered_robots[robot_id]['status'] = 'offline'
+            # 세션 ID 정리
+            registered_robots[robot_id].pop('session_id', None)
             
             # 해당 로봇을 사용하는 사용자 세션 정리
             sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
