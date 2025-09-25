@@ -305,10 +305,29 @@ async function assignRobot(robotId) {
         });
         
         if (response.ok) {
-            showToast('로봇이 성공적으로 할당되었습니다.', 'success');
+            const result = await response.json();
+            showToast(result.message || '로봇이 성공적으로 할당되었습니다.', 'success');
+            
+            // 할당 완료 후 로봇 목록 새로고침
+            await loadRobotList();
+            
+            // 할당된 로봇을 자동으로 선택
+            const assignedRobot = robotList.find(robot => robot.robot_id === robotId);
+            if (assignedRobot) {
+                selectedRobot = assignedRobot;
+                updateRobotStatus();
+                updateStartButton();
+            }
+            
+            // 할당 UI 숨기기 (존재하는 경우)
+            const robotAssignEl = document.getElementById('robotAssign');
+            if (robotAssignEl) {
+                robotAssignEl.style.display = 'none';
+            }
         } else {
-            console.error('로봇 할당 실패:', response.status);
-            showToast('로봇 할당에 실패했습니다.', 'error');
+            const error = await response.json();
+            console.error('로봇 할당 실패:', response.status, error);
+            showToast(error.error || '로봇 할당에 실패했습니다.', 'error');
         }
     } catch (error) {
         console.error('로봇 할당 오류:', error);
@@ -468,36 +487,3 @@ function showConnectStatus(message, type) {
     }, 3000);
 }
 
-// 로봇 할당 (기존 함수)
-async function assignRobot() {
-    const robotName = document.getElementById('selectedRobotName').textContent;
-    if (!robotName) {
-        showToast('할당할 로봇을 선택해주세요.', 'error');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/robot/assign', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ robot_name: robotName })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showToast(result.message, 'success');
-            // 할당 완료 후 로봇 목록 새로고침
-            loadRobotList();
-            // 할당 UI 숨기기
-            document.getElementById('robotAssign').style.display = 'none';
-        } else {
-            showToast(result.error, 'error');
-        }
-    } catch (error) {
-        console.error('로봇 할당 오류:', error);
-        showToast('로봇 할당 중 오류가 발생했습니다.', 'error');
-    }
-}
