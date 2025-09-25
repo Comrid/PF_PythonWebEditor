@@ -235,14 +235,14 @@ def register_robot_simple():
         if not robot_id or not robot_name:
             return jsonify({"success": False, "error": "robot_id와 robot_name이 필요합니다"}), 400
 
-        # 로봇 등록 (URL 설정)
-        # PC 테스트용: 실제 PC의 IP 주소 사용
-        robot_url = f"http://192.168.45.169:5001"  # 실제 PC IP 주소로 변경 필요
+        # 로봇 등록 (SocketIO 전용)
+        # 실제 로봇은 SocketIO로 연결되므로 URL은 None으로 설정
         registered_robots[robot_id] = {
             "name": robot_name,
-            "url": robot_url,
+            "url": None,  # SocketIO 연결된 로봇은 URL이 None
             "status": status,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
+            "session_id": None  # SocketIO 세션 ID는 연결 시 설정됨
         }
 
         # 하트비트 초기화

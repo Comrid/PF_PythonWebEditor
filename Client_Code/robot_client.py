@@ -24,7 +24,7 @@ else:
 
 # 로봇 설정
 ROBOT_ID = f"robot_{uuid.uuid4().hex[:8]}"
-ROBOT_NAME = "Robot2"
+ROBOT_NAME = "Robot3"
 SERVER_URL = "https://pathfinder-kit.duckdns.org"
 
 # SocketIO 클라이언트 생성
