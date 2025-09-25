@@ -73,6 +73,9 @@ registered_robots: dict[str, dict] = {}                      # 등록된 로봇 
 user_robot_mapping: dict[str, str] = {}                      # 사용자 세션 → 로봇 ID 매핑
 robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비트: robot_id → timestamp
 
+# 세션 관리 시스템
+session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
+
 
 
 
@@ -98,7 +101,11 @@ def logout():
 @app.route('/editor')
 @login_required
 def editor():
-    return render_template('index.html')
+    return render_template('index.html', 
+                         user_id=current_user.id,
+                         username=current_user.username,
+                         email=current_user.email,
+                         role=current_user.role)
 
 @app.route('/tutorial')
 @login_required
@@ -174,6 +181,25 @@ def api_get_user():
         "email": current_user.email,
         "role": current_user.role
     })
+
+@app.route('/api/sessions', methods=['GET'])
+@login_required
+def get_active_sessions():
+    """활성 세션 목록 조회 (관리자만)"""
+    if current_user.role != 'admin':
+        return jsonify({"error": "관리자 권한이 필요합니다"}), 403
+    
+    sessions = []
+    for sid, user_info in session_user_mapping.items():
+        robot_id = user_robot_mapping.get(sid)
+        sessions.append({
+            "session_id": sid,
+            "user": user_info,
+            "assigned_robot": robot_id,
+            "robot_online": robot_id in registered_robots if robot_id else False
+        })
+    
+    return jsonify(sessions)
 
 #region Robot Management API
 @app.route('/api/robots', methods=['GET'])
@@ -661,9 +687,19 @@ def handle_stop_execution():
 def handle_connect():
     print('클라이언트가 연결되었습니다.')
     
-    # 사용자가 로그인되어 있는 경우 할당된 로봇 매핑
+    # 사용자가 로그인되어 있는 경우
     if current_user.is_authenticated:
         try:
+            # 세션-사용자 매핑 저장
+            session_user_mapping[request.sid] = {
+                'user_id': current_user.id,
+                'username': current_user.username,
+                'email': current_user.email,
+                'role': current_user.role
+            }
+            print(f"세션 {request.sid}에 사용자 {current_user.username} (ID: {current_user.id}) 매핑")
+            
+            # 할당된 로봇 매핑
             user_robots = get_user_robots(current_user.id)
             if user_robots:
                 # 첫 번째 할당된 로봇을 현재 세션에 매핑
@@ -672,6 +708,8 @@ def handle_connect():
                 print(f"사용자 {current_user.username}의 로봇 {robot_id}를 세션 {request.sid}에 매핑")
         except Exception as e:
             print(f"사용자 로봇 매핑 오류: {e}")
+    else:
+        print(f"세션 {request.sid}에 로그인되지 않은 사용자 연결")
     
     emit('connected', {'message': '서버에 연결되었습니다.'})
 
@@ -681,6 +719,16 @@ def handle_disconnect():
 
     # 연결 해제 시 실행 중인 스레드 정리
     sid = request.sid
+
+    # 세션-사용자 매핑 정리
+    if sid in session_user_mapping:
+        user_info = session_user_mapping.pop(sid)
+        print(f"세션 {sid}에서 사용자 {user_info['username']} (ID: {user_info['user_id']}) 매핑 제거")
+    
+    # 세션-로봇 매핑 정리
+    if sid in user_robot_mapping:
+        robot_id = user_robot_mapping.pop(sid)
+        print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
 
     # 메인 프로세스 스레드 정리
     if sid in running_threads:

@@ -30,6 +30,16 @@
 
     <!-- marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- 사용자 정보 -->
+    <script>
+        window.currentUser = {
+            id: {{ user_id }},
+            username: "{{ username }}",
+            email: "{{ email }}",
+            role: "{{ role }}"
+        };
+    </script>
 </head>
 <body>
     <!-- Toast Container -->
@@ -197,6 +207,11 @@
                 Pathfinder Python Web Editor
             </h1>
             <div class="status-info">
+                <div class="user-info" id="userInfo">
+                    <i class="fas fa-user"></i>
+                    <span id="userDisplayName">{{ username }}</span>
+                    <span id="userRole" class="user-role">{{ role }}</span>
+                </div>
                 <div class="status-item">
                     <div class="status-dot error" id="statusDot"></div>
                     <span id="statusText">Disconnected</span>
@@ -307,6 +322,9 @@
     <script>
         // 헤더 로고 클릭 이벤트
         document.addEventListener('DOMContentLoaded', function() {
+            // 사용자 정보 출력 (디버깅용)
+            console.log('현재 로그인한 사용자:', window.currentUser);
+            
             const headerLogo = document.getElementById('headerLogo');
             if (headerLogo) {
                 headerLogo.addEventListener('click', function() {

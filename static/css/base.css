@@ -154,6 +154,38 @@ body {
     align-items: center;
 }
 
+/* 사용자 정보 스타일 */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 14px;
+    color: #fff;
+}
+
+.user-info i {
+    color: #4ade80;
+    font-size: 16px;
+}
+
+.user-info #userDisplayName {
+    font-weight: 500;
+}
+
+.user-info .user-role {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
 /* Robot Selector */
 .robot-selector {
     display: flex;
