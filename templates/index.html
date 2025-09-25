@@ -319,8 +319,8 @@
         });
         
         // 로봇 선택기 초기화
-        let selectedRobot = null;
-        let robotList = [];
+        let editorSelectedRobot = null;
+        let editorRobotList = [];
 
         // 로봇 선택기 초기화
         function initializeRobotSelector() {
@@ -348,7 +348,7 @@
             try {
                 const response = await fetch('/api/robots');
                 if (response.ok) {
-                    robotList = await response.json();
+                    editorRobotList = await response.json();
                     updateRobotDropdown();
                 }
             } catch (error) {
@@ -367,7 +367,7 @@
             }
             
             // 로봇 목록 추가
-            robotList.forEach(robot => {
+            editorRobotList.forEach(robot => {
                 const item = document.createElement('div');
                 item.className = 'robot-dropdown-item';
                 item.setAttribute('data-value', robot.robot_id);
@@ -387,7 +387,7 @@
 
         // 로봇 선택
         async function selectRobot(robot) {
-            selectedRobot = robot;
+            editorSelectedRobot = robot;
             
             // 드롭다운 텍스트 업데이트
             const robotDropdownText = document.getElementById('robotDropdownText');
@@ -428,14 +428,33 @@
                 if (response.ok) {
                     const result = await response.json();
                     console.log('로봇 할당 성공:', result.message);
+                    
                     // 로봇 목록 다시 로드
-                    loadRobotList();
+                    await loadRobotList();
+                    
+                    // 선택된 로봇 업데이트
+                    editorSelectedRobot = editorRobotList.find(robot => robot.robot_id === robotId);
+                    if (editorSelectedRobot) {
+                        editorSelectedRobot.assigned = true;
+                        updateRobotStatus();
+                    }
+                    
+                    // 성공 메시지 표시
+                    if (typeof showToast === 'function') {
+                        showToast(`로봇 '${editorSelectedRobot?.name || robotId}'이 할당되었습니다.`, 'success');
+                    }
                 } else {
                     const error = await response.json();
                     console.error('로봇 할당 실패:', error.error);
+                    if (typeof showToast === 'function') {
+                        showToast(`로봇 할당 실패: ${error.error}`, 'error');
+                    }
                 }
             } catch (error) {
                 console.error('로봇 할당 오류:', error);
+                if (typeof showToast === 'function') {
+                    showToast('로봇 할당 중 오류가 발생했습니다.', 'error');
+                }
             }
         }
 
@@ -444,13 +463,13 @@
             const robotStatusDot = document.getElementById('robotStatusDot');
             const robotStatusText = document.getElementById('robotStatusText');
             
-            if (selectedRobot) {
+            if (editorSelectedRobot) {
                 if (robotStatusDot) {
-                    robotStatusDot.className = `status-dot ${selectedRobot.online ? 'online' : 'offline'}`;
+                    robotStatusDot.className = `status-dot ${editorSelectedRobot.online ? 'online' : 'offline'}`;
                 }
                 if (robotStatusText) {
-                    const status = selectedRobot.online ? '온라인' : '오프라인';
-                    const assigned = selectedRobot.assigned ? ' (할당됨)' : ' (미할당)';
+                    const status = editorSelectedRobot.online ? '온라인' : '오프라인';
+                    const assigned = editorSelectedRobot.assigned ? ' (할당됨)' : ' (미할당)';
                     robotStatusText.textContent = `${status}${assigned}`;
                 }
             } else {
