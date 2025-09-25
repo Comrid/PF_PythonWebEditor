@@ -438,7 +438,8 @@ async function connectRobot() {
                 const connectedRobot = robotList.find(robot => robot.name === robotName);
                 if (connectedRobot) {
                     selectedRobot = connectedRobot;
-                    updateRobotSelection();
+                    updateRobotStatus();
+                    updateStartButton();
                 }
             }, 1000);
         } else {
