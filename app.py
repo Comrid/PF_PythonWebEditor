@@ -184,13 +184,28 @@ def get_robots():
         current_time = time.time()
         robots = []
 
-        # 모든 등록된 로봇을 표시
-        for robot_id, robot_info in registered_robots.items():
-            last_seen = robot_heartbeats.get(robot_id, 0)
-            is_online = (current_time - last_seen) < 30  # 30초 이내에 하트비트가 있으면 온라인
+        # 사용자에게 할당된 로봇 ID 목록 조회
+        user_robot_ids = get_user_robots(current_user.id)
+        
+        # 등록된 로봇과 할당된 로봇을 모두 표시
+        all_robot_ids = set(registered_robots.keys()) | set(user_robot_ids)
+        
+        for robot_id in all_robot_ids:
+            # 등록된 로봇 정보 가져오기
+            if robot_id in registered_robots:
+                robot_info = registered_robots[robot_id]
+                last_seen = robot_heartbeats.get(robot_id, 0)
+                is_online = (current_time - last_seen) < 30  # 30초 이내에 하트비트가 있으면 온라인
+                hardware_enabled = robot_info.get("hardware_enabled", False)
+                last_seen_str = datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
+            else:
+                # 등록되지 않은 로봇 (데이터베이스에만 있는 경우)
+                robot_info = {"name": f"Robot {robot_id}"}
+                is_online = False
+                hardware_enabled = False
+                last_seen_str = None
 
             # 사용자에게 할당되었는지 확인
-            user_robot_ids = get_user_robots(current_user.id)
             is_assigned = robot_id in user_robot_ids
 
             robots.append({
@@ -198,8 +213,8 @@ def get_robots():
                 "name": robot_info.get("name", f"Robot {robot_id}"),
                 "online": is_online,
                 "assigned": is_assigned,
-                "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None,
-                "hardware_enabled": robot_info.get("hardware_enabled", False)
+                "last_seen": last_seen_str,
+                "hardware_enabled": hardware_enabled
             })
 
         return jsonify(robots)
