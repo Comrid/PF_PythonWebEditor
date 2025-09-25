@@ -179,26 +179,28 @@ def api_get_user():
 @app.route('/api/robots', methods=['GET'])
 @login_required
 def get_robots():
-    """사용자에게 할당된 로봇 목록 조회"""
+    """등록된 모든 로봇 목록 조회 (사용자가 선택할 수 있도록)"""
     try:
-        # 사용자에게 할당된 로봇 ID 목록 조회
-        user_robot_ids = get_user_robots(current_user.id)
-
         current_time = time.time()
         robots = []
 
-        for robot_id in user_robot_ids:
-            if robot_id in registered_robots:
-                robot_info = registered_robots[robot_id]
-                last_seen = robot_heartbeats.get(robot_id, 0)
-                is_online = (current_time - last_seen) < 30  # 30초 이내에 하트비트가 있으면 온라인
+        # 모든 등록된 로봇을 표시
+        for robot_id, robot_info in registered_robots.items():
+            last_seen = robot_heartbeats.get(robot_id, 0)
+            is_online = (current_time - last_seen) < 30  # 30초 이내에 하트비트가 있으면 온라인
 
-                robots.append({
-                    "robot_id": robot_id,
-                    "name": robot_info.get("name", f"Robot {robot_id}"),
-                    "online": is_online,
-                    "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
-                })
+            # 사용자에게 할당되었는지 확인
+            user_robot_ids = get_user_robots(current_user.id)
+            is_assigned = robot_id in user_robot_ids
+
+            robots.append({
+                "robot_id": robot_id,
+                "name": robot_info.get("name", f"Robot {robot_id}"),
+                "online": is_online,
+                "assigned": is_assigned,
+                "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None,
+                "hardware_enabled": robot_info.get("hardware_enabled", False)
+            })
 
         return jsonify(robots)
     except Exception as e:
@@ -348,18 +350,26 @@ def robot_heartbeat(robot_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/robots/<robot_id>/assign', methods=['POST'])
+@login_required
 def assign_robot_to_session(robot_id):
-    """사용자 세션에 로봇 할당 (기존 호환성)"""
+    """사용자에게 로봇 할당"""
     try:
-        session_id = request.sid
-
         if robot_id not in registered_robots:
             return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
 
-        # 사용자 세션에 로봇 할당
-        user_robot_mapping[session_id] = robot_id
-
-        return jsonify({"success": True, "message": f"로봇 {robot_id}이 할당되었습니다"})
+        # 사용자에게 로봇 할당
+        if assign_robot_to_user(current_user.id, robot_id):
+            # 세션에도 할당 (기존 호환성)
+            session_id = request.sid
+            user_robot_mapping[session_id] = robot_id
+            
+            return jsonify({
+                "success": True, 
+                "message": f"로봇 {registered_robots[robot_id]['name']}이 할당되었습니다",
+                "robot_id": robot_id
+            })
+        else:
+            return jsonify({"success": False, "error": "로봇 할당에 실패했습니다"}), 500
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -476,22 +486,32 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str):
             socketio.emit('execution_error', {'error': '할당된 로봇을 찾을 수 없습니다.'}, room=sid)
             return
 
-        robot_url = registered_robots[robot_id]['url']
-
-        # 로봇에 코드 실행 요청 전송
-        response = requests.post(
-            f"{robot_url}/execute",
-            json={
+        robot_info = registered_robots[robot_id]
+        
+        # SocketIO 연결된 로봇인지 확인
+        if robot_info.get('url') is None:
+            # SocketIO로 직접 전송
+            socketio.emit('execute_code', {
                 'code': code,
                 'session_id': sid
-            },
-            timeout=30
-        )
-
-        if response.status_code == 200:
+            }, room=robot_id)
             socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
         else:
-            socketio.emit('execution_error', {'error': f'로봇 실행 요청 실패: {response.text}'}, room=sid)
+            # HTTP API로 전송 (기존 방식)
+            robot_url = robot_info['url']
+            response = requests.post(
+                f"{robot_url}/execute",
+                json={
+                    'code': code,
+                    'session_id': sid
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
+            else:
+                socketio.emit('execution_error', {'error': f'로봇 실행 요청 실패: {response.text}'}, room=sid)
 
     except requests.exceptions.RequestException as e:
         socketio.emit('execution_error', {'error': f'로봇 통신 오류: {str(e)}'}, room=sid)
@@ -687,6 +707,169 @@ def handle_slider_update(payload):
         session_map = {}
         slider_states[sid] = session_map
     session_map[widget_id] = values
+
+#region Robot Client SocketIO Events
+@socketio.on('robot_connected')
+def handle_robot_connected(data):
+    """로봇 클라이언트 연결 처리"""
+    try:
+        robot_id = data.get('robot_id')
+        robot_name = data.get('robot_name')
+        hardware_enabled = data.get('hardware_enabled', False)
+        
+        print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
+        
+        # 로봇을 전용 room에 join
+        from flask_socketio import join_room
+        join_room(robot_id)
+        
+        # 로봇 등록 (SocketIO 연결 시)
+        registered_robots[robot_id] = {
+            "name": robot_name,
+            "url": None,  # SocketIO 연결이므로 URL 불필요
+            "status": "online",
+            "hardware_enabled": hardware_enabled,
+            "connected_at": datetime.now().isoformat()
+        }
+        
+        # 하트비트 초기화
+        robot_heartbeats[robot_id] = time.time()
+        
+        # 연결 확인 응답
+        emit('robot_registered', {
+            'success': True,
+            'message': f'로봇 {robot_name}이 등록되었습니다',
+            'robot_id': robot_id
+        })
+        
+    except Exception as e:
+        print(f"로봇 연결 처리 오류: {e}")
+        emit('robot_registered', {
+            'success': False,
+            'error': str(e)
+        })
+
+@socketio.on('robot_disconnected')
+def handle_robot_disconnected(data):
+    """로봇 클라이언트 연결 해제 처리"""
+    try:
+        robot_id = data.get('robot_id')
+        if robot_id in registered_robots:
+            print(f"🤖 로봇 클라이언트 연결 해제됨: {robot_id}")
+            registered_robots[robot_id]['status'] = 'offline'
+            
+            # 해당 로봇을 사용하는 사용자 세션 정리
+            sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
+            for sid in sessions_to_remove:
+                user_robot_mapping.pop(sid, None)
+                print(f"사용자 세션 {sid}에서 로봇 {robot_id} 할당 해제")
+        
+    except Exception as e:
+        print(f"로봇 연결 해제 처리 오류: {e}")
+
+@socketio.on('robot_heartbeat')
+def handle_robot_heartbeat(data):
+    """로봇 하트비트 처리"""
+    try:
+        robot_id = data.get('robot_id')
+        status = data.get('status', 'online')
+        
+        if robot_id in registered_robots:
+            robot_heartbeats[robot_id] = time.time()
+            registered_robots[robot_id]['status'] = status
+            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
+            
+    except Exception as e:
+        print(f"로봇 하트비트 처리 오류: {e}")
+
+@socketio.on('robot_emit_image')
+def handle_robot_emit_image(data):
+    """로봇에서 이미지 데이터 수신 및 중계"""
+    try:
+        session_id = data.get('session_id')
+        image_data = data.get('image_data')
+        widget_id = data.get('widget_id')
+        
+        if not all([session_id, image_data, widget_id]):
+            return
+        
+        # 브라우저로 이미지 데이터 중계
+        relay_image_data({
+            'i': image_data,
+            'w': widget_id
+        }, session_id)
+        
+    except Exception as e:
+        print(f"로봇 이미지 데이터 중계 오류: {e}")
+
+@socketio.on('robot_emit_text')
+def handle_robot_emit_text(data):
+    """로봇에서 텍스트 데이터 수신 및 중계"""
+    try:
+        session_id = data.get('session_id')
+        text = data.get('text')
+        widget_id = data.get('widget_id')
+        
+        if not all([session_id, text, widget_id]):
+            return
+        
+        # 브라우저로 텍스트 데이터 중계
+        relay_text_data({
+            'text': text,
+            'widget_id': widget_id
+        }, session_id)
+        
+    except Exception as e:
+        print(f"로봇 텍스트 데이터 중계 오류: {e}")
+
+@socketio.on('robot_stdout')
+def handle_robot_stdout(data):
+    """로봇에서 stdout 데이터 수신 및 중계"""
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output')
+        
+        if not all([session_id, output]):
+            return
+        
+        # 브라우저로 stdout 데이터 중계
+        relay_stdout_data({'output': output}, session_id)
+        
+    except Exception as e:
+        print(f"로봇 stdout 데이터 중계 오류: {e}")
+
+@socketio.on('robot_stderr')
+def handle_robot_stderr(data):
+    """로봇에서 stderr 데이터 수신 및 중계"""
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output')
+        
+        if not all([session_id, output]):
+            return
+        
+        # 브라우저로 stderr 데이터 중계
+        relay_stderr_data({'output': output}, session_id)
+        
+    except Exception as e:
+        print(f"로봇 stderr 데이터 중계 오류: {e}")
+
+@socketio.on('robot_finished')
+def handle_robot_finished(data):
+    """로봇에서 finished 데이터 수신 및 중계"""
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output', '실행 완료')
+        
+        if not session_id:
+            return
+        
+        # 브라우저로 finished 데이터 중계
+        relay_finished_data({'output': output}, session_id)
+        
+    except Exception as e:
+        print(f"로봇 finished 데이터 중계 오류: {e}")
+#endregion
 
 
 

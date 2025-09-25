@@ -256,11 +256,13 @@ function updateRobotDropdown() {
         robotSelect.removeChild(robotSelect.lastChild);
     }
     
-    // 로봇 목록 추가
+    // 로봇 목록 추가 (할당 여부와 관계없이 모든 로봇 표시)
     robotList.forEach(robot => {
         const option = document.createElement('option');
         option.value = robot.robot_id;
-        option.textContent = `${robot.name} (${robot.online ? '온라인' : '오프라인'})`;
+        const status = robot.online ? '온라인' : '오프라인';
+        const assigned = robot.assigned ? ' (할당됨)' : ' (미할당)';
+        option.textContent = `${robot.name} (${status})${assigned}`;
         robotSelect.appendChild(option);
     });
     
@@ -346,11 +348,9 @@ function updateRobotStatus() {
     
     // 상태 텍스트 업데이트
     if (statusText) {
-        if (selectedRobot.online) {
-            statusText.textContent = `${selectedRobot.name} - 온라인`;
-        } else {
-            statusText.textContent = `${selectedRobot.name} - 오프라인`;
-        }
+        const status = selectedRobot.online ? '온라인' : '오프라인';
+        const assigned = selectedRobot.assigned ? ' (할당됨)' : ' (미할당)';
+        statusText.textContent = `${selectedRobot.name} - ${status}${assigned}`;
     }
     
     // 로봇 정보 표시
@@ -360,6 +360,8 @@ function updateRobotStatus() {
         selectedRobotDetails.innerHTML = `
             <div><strong>로봇 ID:</strong> ${selectedRobot.robot_id}</div>
             <div><strong>상태:</strong> ${selectedRobot.online ? '온라인' : '오프라인'}</div>
+            <div><strong>할당 상태:</strong> ${selectedRobot.assigned ? '할당됨' : '미할당'}</div>
+            <div><strong>하드웨어:</strong> ${selectedRobot.hardware_enabled ? '활성화' : '비활성화'}</div>
             <div><strong>마지막 연결:</strong> ${selectedRobot.last_seen ? new Date(selectedRobot.last_seen).toLocaleString() : '알 수 없음'}</div>
         `;
     }
@@ -370,7 +372,7 @@ function updateStartButton() {
     const startEditorBtn = document.getElementById('startEditorBtn');
     if (!startEditorBtn) return;
     
-    if (selectedRobot && selectedRobot.online) {
+    if (selectedRobot && selectedRobot.online && selectedRobot.assigned) {
         startEditorBtn.disabled = false;
         startEditorBtn.style.opacity = '1';
         startEditorBtn.style.cursor = 'pointer';
