@@ -201,9 +201,24 @@
                     <div class="status-dot error" id="statusDot"></div>
                     <span id="statusText">Disconnected</span>
                 </div>
-                <div class="robot-info-display" id="robotInfoDisplay" style="display: none;">
-                    <div class="robot-name-display" id="robotNameDisplay"></div>
-                    <div class="robot-status-display" id="robotStatusDisplay"></div>
+                <div class="robot-selector" id="robotSelector">
+                    <div class="robot-dropdown">
+                        <button class="robot-dropdown-btn" id="robotDropdownBtn">
+                            <i class="fas fa-robot"></i>
+                            <span class="robot-dropdown-text" id="robotDropdownText">로봇 선택</span>
+                            <i class="fas fa-chevron-down robot-dropdown-icon"></i>
+                        </button>
+                        <div class="robot-dropdown-menu" id="robotDropdownMenu">
+                            <div class="robot-dropdown-item" data-value="">
+                                <span class="robot-item-name">로봇을 선택하세요</span>
+                            </div>
+                            <!-- 로봇 목록이 여기에 동적으로 추가됨 -->
+                        </div>
+                    </div>
+                    <div class="robot-status-indicator" id="robotStatusIndicator">
+                        <div class="status-dot offline" id="robotStatusDot"></div>
+                        <span id="robotStatusText">로봇 없음</span>
+                    </div>
                 </div>
                 <div class="cpu-monitor" id="cpuMonitor">
                     <div class="cpu-display" id="cpuDisplay">
@@ -299,41 +314,186 @@
                 });
             }
             
-            // 로봇 정보 로드
-            loadRobotInfo();
+            // 로봇 선택기 초기화
+            initializeRobotSelector();
         });
         
-        // 로봇 정보 로드
-        async function loadRobotInfo() {
+        // 로봇 선택기 초기화
+        let selectedRobot = null;
+        let robotList = [];
+
+        // 로봇 선택기 초기화
+        function initializeRobotSelector() {
+            const robotDropdownBtn = document.getElementById('robotDropdownBtn');
+            const robotDropdownMenu = document.getElementById('robotDropdownMenu');
+            
+            if (robotDropdownBtn && robotDropdownMenu) {
+                // 드롭다운 토글
+                robotDropdownBtn.addEventListener('click', toggleRobotDropdown);
+                
+                // 외부 클릭 시 드롭다운 닫기
+                document.addEventListener('click', (e) => {
+                    if (!robotDropdownBtn.contains(e.target) && !robotDropdownMenu.contains(e.target)) {
+                        closeRobotDropdown();
+                    }
+                });
+                
+                // 로봇 목록 로드
+                loadRobotList();
+            }
+        }
+
+        // 로봇 목록 로드
+        async function loadRobotList() {
             try {
                 const response = await fetch('/api/robots');
                 if (response.ok) {
-                    const robots = await response.json();
-                    const onlineRobots = robots.filter(robot => robot.online);
-                    
-                    if (onlineRobots.length > 0) {
-                        // 첫 번째 온라인 로봇 정보 표시
-                        const robot = onlineRobots[0];
-                        displayRobotInfo(robot);
-                    }
+                    robotList = await response.json();
+                    updateRobotDropdown();
                 }
             } catch (error) {
-                console.error('로봇 정보 로드 실패:', error);
+                console.error('로봇 목록 로드 실패:', error);
             }
         }
-        
-        // 로봇 정보 표시
-        function displayRobotInfo(robot) {
-            const robotInfoDisplay = document.getElementById('robotInfoDisplay');
-            const robotNameDisplay = document.getElementById('robotNameDisplay');
-            const robotStatusDisplay = document.getElementById('robotStatusDisplay');
+
+        // 로봇 드롭다운 업데이트
+        function updateRobotDropdown() {
+            const robotDropdownMenu = document.getElementById('robotDropdownMenu');
+            if (!robotDropdownMenu) return;
             
-            if (robotInfoDisplay && robotNameDisplay && robotStatusDisplay) {
-                robotInfoDisplay.style.display = 'block';
-                robotNameDisplay.textContent = robot.name;
-                robotStatusDisplay.textContent = `ID: ${robot.robot_id} | 온라인`;
+            // 기존 옵션 제거 (첫 번째 옵션 제외)
+            while (robotDropdownMenu.children.length > 1) {
+                robotDropdownMenu.removeChild(robotDropdownMenu.lastChild);
+            }
+            
+            // 로봇 목록 추가
+            robotList.forEach(robot => {
+                const item = document.createElement('div');
+                item.className = 'robot-dropdown-item';
+                item.setAttribute('data-value', robot.robot_id);
+                
+                const status = robot.online ? '온라인' : '오프라인';
+                const assigned = robot.assigned ? ' (할당됨)' : ' (미할당)';
+                
+                item.innerHTML = `
+                    <span class="robot-item-name">${robot.name}</span>
+                    <span class="robot-item-status">${status}${assigned}</span>
+                `;
+                
+                item.addEventListener('click', () => selectRobot(robot));
+                robotDropdownMenu.appendChild(item);
+            });
+        }
+
+        // 로봇 선택
+        async function selectRobot(robot) {
+            selectedRobot = robot;
+            
+            // 드롭다운 텍스트 업데이트
+            const robotDropdownText = document.getElementById('robotDropdownText');
+            if (robotDropdownText) {
+                robotDropdownText.textContent = robot.name;
+            }
+            
+            // 선택된 아이템 표시
+            const items = document.querySelectorAll('.robot-dropdown-item');
+            items.forEach(item => {
+                item.classList.remove('selected');
+                if (item.getAttribute('data-value') === robot.robot_id) {
+                    item.classList.add('selected');
+                }
+            });
+            
+            // 로봇 상태 업데이트
+            updateRobotStatus();
+            
+            // 로봇 할당 요청
+            if (!robot.assigned) {
+                await assignRobot(robot.robot_id);
+            }
+            
+            closeRobotDropdown();
+        }
+
+        // 로봇 할당
+        async function assignRobot(robotId) {
+            try {
+                const response = await fetch(`/api/robots/${robotId}/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('로봇 할당 성공:', result.message);
+                    // 로봇 목록 다시 로드
+                    loadRobotList();
+                } else {
+                    const error = await response.json();
+                    console.error('로봇 할당 실패:', error.error);
+                }
+            } catch (error) {
+                console.error('로봇 할당 오류:', error);
             }
         }
+
+        // 로봇 상태 업데이트
+        function updateRobotStatus() {
+            const robotStatusDot = document.getElementById('robotStatusDot');
+            const robotStatusText = document.getElementById('robotStatusText');
+            
+            if (selectedRobot) {
+                if (robotStatusDot) {
+                    robotStatusDot.className = `status-dot ${selectedRobot.online ? 'online' : 'offline'}`;
+                }
+                if (robotStatusText) {
+                    const status = selectedRobot.online ? '온라인' : '오프라인';
+                    const assigned = selectedRobot.assigned ? ' (할당됨)' : ' (미할당)';
+                    robotStatusText.textContent = `${status}${assigned}`;
+                }
+            } else {
+                if (robotStatusDot) {
+                    robotStatusDot.className = 'status-dot offline';
+                }
+                if (robotStatusText) {
+                    robotStatusText.textContent = '로봇 없음';
+                }
+            }
+        }
+
+        // 드롭다운 토글
+        function toggleRobotDropdown() {
+            const robotDropdownBtn = document.getElementById('robotDropdownBtn');
+            const robotDropdownMenu = document.getElementById('robotDropdownMenu');
+            
+            if (robotDropdownMenu.classList.contains('show')) {
+                closeRobotDropdown();
+            } else {
+                openRobotDropdown();
+            }
+        }
+
+        // 드롭다운 열기
+        function openRobotDropdown() {
+            const robotDropdownBtn = document.getElementById('robotDropdownBtn');
+            const robotDropdownMenu = document.getElementById('robotDropdownMenu');
+            
+            robotDropdownBtn.classList.add('active');
+            robotDropdownMenu.classList.add('show');
+        }
+
+        // 드롭다운 닫기
+        function closeRobotDropdown() {
+            const robotDropdownBtn = document.getElementById('robotDropdownBtn');
+            const robotDropdownMenu = document.getElementById('robotDropdownMenu');
+            
+            robotDropdownBtn.classList.remove('active');
+            robotDropdownMenu.classList.remove('show');
+        }
+
+        // 로봇 선택기 초기화는 위에서 처리됨
     </script>
 </body>
 </html>
