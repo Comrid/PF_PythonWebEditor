@@ -230,11 +230,40 @@ def get_admin_status():
                 "robot_last_seen": datetime.fromtimestamp(last_seen).isoformat() if robot_id in robot_heartbeats else None
             })
 
-        # 등록된 로봇 정보 (SocketIO 연결된 로봇)
+        # 모든 로봇 정보 수집 (SocketIO 연결된 로봇 + 데이터베이스에만 있는 로봇)
         registered_robots_info = []
-        for robot_id, robot_info in registered_robots.items():
-            last_seen = robot_heartbeats.get(robot_id, 0)
-            is_online = (current_time - last_seen) < 30
+        all_robot_ids = set(registered_robots.keys())
+        
+        # 데이터베이스에서 모든 로봇 ID 가져오기
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT DISTINCT robot_id FROM user_robot_assignments
+                WHERE is_active = TRUE
+            ''')
+            db_robot_ids = [row[0] for row in cursor.fetchall()]
+            all_robot_ids.update(db_robot_ids)
+            conn.close()
+        except Exception as e:
+            print(f"데이터베이스 로봇 조회 오류: {e}")
+
+        # 모든 로봇 정보 처리
+        for robot_id in all_robot_ids:
+            # SocketIO 연결된 로봇인지 확인
+            if robot_id in registered_robots:
+                robot_info = registered_robots[robot_id]
+                last_seen = robot_heartbeats.get(robot_id, 0)
+                is_online = (current_time - last_seen) < 30
+                hardware_enabled = robot_info.get('hardware_enabled', False)
+                last_seen_str = datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
+                robot_name = robot_info.get('name', 'Unknown')
+            else:
+                # 데이터베이스에만 있는 로봇
+                robot_name = get_robot_name_from_db(robot_id)
+                is_online = False
+                hardware_enabled = False
+                last_seen_str = None
 
             # 이 로봇을 사용하는 사용자 찾기
             assigned_users = []
@@ -244,43 +273,12 @@ def get_admin_status():
 
             registered_robots_info.append({
                 "robot_id": robot_id,
-                "name": robot_info.get('name', 'Unknown'),
+                "name": robot_name,
                 "online": is_online,
-                "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None,
-                "hardware_enabled": robot_info.get('hardware_enabled', False),
+                "last_seen": last_seen_str,
+                "hardware_enabled": hardware_enabled,
                 "assigned_users": assigned_users
             })
-
-        # 데이터베이스에만 있는 로봇 정보 추가
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT DISTINCT robot_id FROM user_robot_assignments
-                WHERE is_active = TRUE
-            ''')
-
-            db_robot_ids = [row[0] for row in cursor.fetchall()]
-            conn.close()
-
-            for robot_id in db_robot_ids:
-                if robot_id not in registered_robots:
-                    # 이 로봇을 사용하는 사용자 찾기
-                    assigned_users = []
-                    for sid, user_info in session_user_mapping.items():
-                        if user_robot_mapping.get(sid) == robot_id:
-                            assigned_users.append(user_info)
-
-                    registered_robots_info.append({
-                        "robot_id": robot_id,
-                        "name": get_robot_name_from_db(robot_id),
-                        "online": False,
-                        "last_seen": None,
-                        "hardware_enabled": False,
-                        "assigned_users": assigned_users
-                    })
-        except Exception as e:
-            print(f"데이터베이스 로봇 조회 오류: {e}")
 
         # 데이터베이스 사용자 정보
         db_users = []
@@ -321,7 +319,7 @@ def get_admin_status():
             "db_users": db_users,
             "stats": {
                 "total_sessions": len(session_user_mapping),
-                "total_robots": len(registered_robots),
+                "total_robots": len(registered_robots_info),
                 "online_robots": len([r for r in registered_robots_info if r['online']]),
                 "total_db_users": len(db_users)
             }
