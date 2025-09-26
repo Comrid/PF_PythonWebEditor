@@ -213,21 +213,50 @@ def get_admin_status():
         active_sessions = []
         for sid, user_info in session_user_mapping.items():
             robot_id = user_robot_mapping.get(sid)
+            
+            # SocketIO 세션에 할당된 로봇이 없으면 데이터베이스에서 확인
+            if not robot_id:
+                try:
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT robot_id FROM user_robot_assignments 
+                        WHERE user_id = ? AND is_active = TRUE
+                        ORDER BY assigned_at DESC
+                        LIMIT 1
+                    ''', (user_info.get('user_id'),))
+                    result = cursor.fetchone()
+                    if result:
+                        robot_id = result[0]
+                    conn.close()
+                except Exception as e:
+                    print(f"사용자 {user_info.get('username')}의 할당된 로봇 조회 오류: {e}")
+            
             robot_info = registered_robots.get(robot_id, {}) if robot_id else {}
 
             # 로봇 온라인 상태 확인
             is_robot_online = False
+            robot_last_seen = None
             if robot_id in robot_heartbeats:
                 last_seen = robot_heartbeats[robot_id]
                 is_robot_online = (current_time - last_seen) < 30
+                robot_last_seen = datetime.fromtimestamp(last_seen).isoformat()
+
+            # 로봇 이름 가져오기
+            robot_name = "Unknown"
+            if robot_id:
+                if robot_id in registered_robots:
+                    robot_name = registered_robots[robot_id].get('name', f"Robot {robot_id}")
+                else:
+                    robot_name = get_robot_name_from_db(robot_id)
 
             active_sessions.append({
                 "session_id": sid,
                 "user": user_info,
                 "assigned_robot": robot_id,
-                "robot_name": robot_info.get('name', 'Unknown'),
+                "robot_name": robot_name,
                 "robot_online": is_robot_online,
-                "robot_last_seen": datetime.fromtimestamp(last_seen).isoformat() if robot_id in robot_heartbeats else None
+                "robot_last_seen": robot_last_seen
             })
 
         # 모든 로봇 정보 수집 (SocketIO 연결된 로봇 + 데이터베이스에만 있는 로봇)
@@ -267,9 +296,39 @@ def get_admin_status():
 
             # 이 로봇을 사용하는 사용자 찾기
             assigned_users = []
+            
+            # 1. SocketIO 연결된 세션에서 할당된 사용자 찾기
             for sid, user_info in session_user_mapping.items():
                 if user_robot_mapping.get(sid) == robot_id:
                     assigned_users.append(user_info)
+            
+            # 2. 데이터베이스에서 할당된 사용자 찾기 (SocketIO 연결되지 않은 사용자 포함)
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT u.id, u.username, u.email, u.role
+                    FROM users u
+                    JOIN user_robot_assignments ura ON u.id = ura.user_id
+                    WHERE ura.robot_id = ? AND ura.is_active = TRUE
+                ''', (robot_id,))
+                
+                db_assigned_users = cursor.fetchall()
+                conn.close()
+                
+                # 데이터베이스에서 찾은 사용자들을 추가 (중복 제거)
+                for user_row in db_assigned_users:
+                    user_id, username, email, role = user_row
+                    # 이미 SocketIO 세션에서 추가된 사용자가 아닌 경우만 추가
+                    if not any(user.get('user_id') == user_id for user in assigned_users):
+                        assigned_users.append({
+                            'user_id': user_id,
+                            'username': username,
+                            'email': email,
+                            'role': role
+                        })
+            except Exception as e:
+                print(f"데이터베이스에서 할당된 사용자 조회 오류: {e}")
 
             registered_robots_info.append({
                 "robot_id": robot_id,
@@ -532,10 +591,14 @@ def assign_robot_to_session(robot_id):
 
         # 사용자에게 로봇 할당
         if assign_robot_to_user(current_user.id, robot_id):
-            # 현재 세션의 user_robot_mapping 즉시 업데이트
-            current_sid = request.sid
-            user_robot_mapping[current_sid] = robot_id
-            print(f"사용자 {current_user.username}의 세션 {current_sid}에 로봇 {robot_id} 할당")
+            # HTTP 요청에서는 세션 ID를 직접 가져올 수 없으므로, 
+            # 사용자의 모든 활성 세션에 로봇 할당
+            user_sessions = [sid for sid, user_info in session_user_mapping.items() 
+                           if user_info.get('user_id') == current_user.id]
+            
+            for sid in user_sessions:
+                user_robot_mapping[sid] = robot_id
+                print(f"사용자 {current_user.username}의 세션 {sid}에 로봇 {robot_id} 할당")
             
             # 로봇 이름 가져오기
             robot_name = "Unknown"
