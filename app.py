@@ -112,6 +112,16 @@ def editor():
 def tutorial():
     return render_template('tutorial.html')
 
+@app.route('/admin')
+@login_required
+def admin():
+    """관리자 페이지 - 현재 접속한 사용자, 세션, 로봇 정보 표시"""
+    return render_template('admin.html',
+                         user_id=current_user.id,
+                         username=current_user.username,
+                         email=current_user.email,
+                         role=current_user.role)
+
 #region Authentication API
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
@@ -200,6 +210,104 @@ def get_active_sessions():
         })
     
     return jsonify(sessions)
+
+@app.route('/api/admin/status', methods=['GET'])
+@login_required
+def get_admin_status():
+    """관리자 페이지용 전체 상태 정보 조회"""
+    try:
+        # 현재 시간
+        current_time = time.time()
+        
+        # 활성 세션 정보
+        active_sessions = []
+        for sid, user_info in session_user_mapping.items():
+            robot_id = user_robot_mapping.get(sid)
+            robot_info = registered_robots.get(robot_id, {}) if robot_id else {}
+            
+            # 로봇 온라인 상태 확인
+            is_robot_online = False
+            if robot_id in robot_heartbeats:
+                last_seen = robot_heartbeats[robot_id]
+                is_robot_online = (current_time - last_seen) < 30
+            
+            active_sessions.append({
+                "session_id": sid,
+                "user": user_info,
+                "assigned_robot": robot_id,
+                "robot_name": robot_info.get('name', 'Unknown'),
+                "robot_online": is_robot_online,
+                "robot_last_seen": datetime.fromtimestamp(last_seen).isoformat() if robot_id in robot_heartbeats else None
+            })
+        
+        # 등록된 로봇 정보
+        registered_robots_info = []
+        for robot_id, robot_info in registered_robots.items():
+            last_seen = robot_heartbeats.get(robot_id, 0)
+            is_online = (current_time - last_seen) < 30
+            
+            # 이 로봇을 사용하는 사용자 찾기
+            assigned_users = []
+            for sid, user_info in session_user_mapping.items():
+                if user_robot_mapping.get(sid) == robot_id:
+                    assigned_users.append(user_info)
+            
+            registered_robots_info.append({
+                "robot_id": robot_id,
+                "name": robot_info.get('name', 'Unknown'),
+                "online": is_online,
+                "last_seen": datetime.fromtimestamp(last_seen).isoformat() if last_seen else None,
+                "hardware_enabled": robot_info.get('hardware_enabled', False),
+                "assigned_users": assigned_users
+            })
+        
+        # 데이터베이스 사용자 정보
+        db_users = []
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT u.id, u.username, u.email, u.role, u.created_at, u.last_login,
+                       COUNT(ura.robot_id) as assigned_robots
+                FROM users u
+                LEFT JOIN user_robot_assignments ura ON u.id = ura.user_id AND ura.is_active = TRUE
+                GROUP BY u.id, u.username, u.email, u.role, u.created_at, u.last_login
+            ''')
+            
+            for row in cursor.fetchall():
+                db_users.append({
+                    "id": row[0],
+                    "username": row[1],
+                    "email": row[2],
+                    "role": row[3],
+                    "created_at": row[4],
+                    "last_login": row[5],
+                    "assigned_robots_count": row[6]
+                })
+            conn.close()
+        except Exception as e:
+            print(f"데이터베이스 사용자 조회 오류: {e}")
+        
+        return jsonify({
+            "current_user": {
+                "id": current_user.id,
+                "username": current_user.username,
+                "email": current_user.email,
+                "role": current_user.role
+            },
+            "active_sessions": active_sessions,
+            "registered_robots": registered_robots_info,
+            "db_users": db_users,
+            "stats": {
+                "total_sessions": len(session_user_mapping),
+                "total_robots": len(registered_robots),
+                "online_robots": len([r for r in registered_robots_info if r['online']]),
+                "total_db_users": len(db_users)
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 #region Robot Management API
 @app.route('/api/robots', methods=['GET'])
@@ -517,7 +625,7 @@ def robot_finished():
 #endregion
 
 #region Code Execution
-def execute_code_on_robot(code: str, sid: str, robot_id: str):
+def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = None):
     """로봇에 코드 실행 요청 전송"""
     try:
         # 할당된 로봇 확인
@@ -527,6 +635,14 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str):
 
         robot_info = registered_robots[robot_id]
         
+        # 사용자 정보 준비
+        user_data = {
+            'user_id': user_info.get('user_id') if user_info else None,
+            'username': user_info.get('username', 'Unknown') if user_info else 'Unknown',
+            'email': user_info.get('email') if user_info else None,
+            'role': user_info.get('role', 'user') if user_info else 'user'
+        }
+        
         # SocketIO 연결된 로봇인지 확인
         if robot_info.get('url') is None:
             # SocketIO로 직접 전송 (로봇 클라이언트의 세션 ID 사용)
@@ -534,9 +650,13 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str):
             if robot_session_id:
                 socketio.emit('execute_code', {
                     'code': code,
-                    'session_id': sid
+                    'session_id': sid,
+                    'user_info': user_data
                 }, room=robot_session_id)
-                socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
+                socketio.emit('execution_started', {
+                    'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...',
+                    'user': user_data['username']
+                }, room=sid)
             else:
                 socketio.emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'}, room=sid)
         else:
@@ -607,14 +727,21 @@ def handle_execute_code(data):
         # 현재 세션 ID 가져오기
         sid = request.sid
 
+        # 현재 사용자 정보 가져오기
+        user_info = session_user_mapping.get(sid, {})
+        user_id = user_info.get('user_id')
+        username = user_info.get('username', 'Unknown')
+
+        print(f"사용자 {username} (ID: {user_id})이 코드 실행을 요청했습니다.")
+
         # 할당된 로봇 확인
         robot_id = user_robot_mapping.get(sid)
         if not robot_id:
             emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
             return
 
-        # 로봇에 코드 실행 요청 전송
-        execute_code_on_robot(code, sid, robot_id)
+        # 로봇에 코드 실행 요청 전송 (사용자 정보 포함)
+        execute_code_on_robot(code, sid, robot_id, user_info)
 
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
