@@ -22,7 +22,7 @@ from datetime import datetime
 
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
-from auth import User, authenticate_user, create_user, get_user_robots, assign_robot_to_user
+from auth import User, authenticate_user, create_user, get_user_robots, assign_robot_to_user, get_robot_name_from_db
 from pathlib import Path
 
 # 데이터베이스 경로
@@ -31,7 +31,7 @@ DB_PATH = Path(__file__).parent / "static" / "db" / "auth.db"
 import threading
 from traceback import format_exc
 
-DEBUG_MODE = True
+    DEBUG_MODE = True
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
