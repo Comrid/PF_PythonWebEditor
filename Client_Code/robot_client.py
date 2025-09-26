@@ -59,7 +59,7 @@ def emit_image(image, widget_id):
     """이미지를 중앙 서버로 전송"""
     if not robot_status['current_session']:
         return
-    
+
     try:
         if hasattr(image, 'shape'):  # numpy 배열인지 확인
             # 이미지를 JPEG로 인코딩
@@ -67,17 +67,17 @@ def emit_image(image, widget_id):
             if not ok:
                 print("❌ JPEG 인코딩 실패")
                 return
-            
+
             # base64로 인코딩
             image_data = base64.b64encode(buffer.tobytes()).decode('utf-8')
-            
+
             # SocketIO로 전송
             sio.emit('robot_emit_image', {
                 'session_id': robot_status['current_session'],
                 'image_data': image_data,
                 'widget_id': widget_id
             })
-    
+
     except Exception as e:
         print(f"❌ 이미지 전송 실패: {e}")
 
@@ -85,7 +85,7 @@ def emit_text(text, widget_id):
     """텍스트를 중앙 서버로 전송"""
     if not robot_status['current_session']:
         return
-    
+
     try:
         sio.emit('robot_emit_text', {
             'session_id': robot_status['current_session'],
@@ -99,12 +99,12 @@ def execute_python_code(code, session_id):
     """Python 코드 실행"""
     robot_status['current_session'] = session_id
     robot_status['executing_code'] = True
-    
+
     try:
         # stdout과 stderr를 캡처하기 위한 StringIO 객체
         stdout_capture = io.StringIO()
         stderr_capture = io.StringIO()
-        
+
         # 코드 실행 컨텍스트
         with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
             # 실행 네임스페이스 설정
@@ -138,10 +138,10 @@ def execute_python_code(code, session_id):
                 'type': type,
                 'isinstance': isinstance,
             }
-            
+
             # 코드 실행
             exec(code, exec_globals)
-        
+
         # stdout 출력 처리
         stdout_output = stdout_capture.getvalue()
         if stdout_output:
@@ -151,7 +151,7 @@ def execute_python_code(code, session_id):
                     'output': line
                 })
                 print(f"출력: {line}")
-        
+
         # stderr 출력 처리
         stderr_output = stderr_capture.getvalue()
         if stderr_output:
@@ -161,14 +161,14 @@ def execute_python_code(code, session_id):
                     'output': line
                 })
                 print(f"경고: {line}")
-        
+
         # 실행 완료 알림
         sio.emit('robot_finished', {
             'session_id': session_id,
             'output': '실행 완료'
         })
         print("✅ 코드 실행 완료")
-        
+
     except Exception as e:
         # 오류 발생 시 서버로 전송
         error_msg = f"{type(e).__name__}: {str(e)}"
@@ -177,13 +177,13 @@ def execute_python_code(code, session_id):
             'output': error_msg
         })
         print(f"❌ 실행 오류: {error_msg}")
-        
+
         # 실행 완료 알림 (오류 발생해도)
         sio.emit('robot_finished', {
             'session_id': session_id,
             'output': '실행 완료 (오류 발생)'
         })
-    
+
     finally:
         # 정리
         robot_status['executing_code'] = False
@@ -196,9 +196,9 @@ def connect():
     print(f"🔧 로봇 이름: {ROBOT_NAME}")
     print(f"🐍 Python 버전: {sys.version}")
     print(f"🔧 하드웨어 활성화: {HARDWARE_ENABLED}")
-    
+
     robot_status['connected'] = True
-    
+
     # 서버에 로봇 등록
     print("📤 서버에 로봇 등록 요청 전송...")
     sio.emit('robot_connected', {
@@ -217,12 +217,12 @@ def execute_code(data):
     """서버로부터 코드 실행 요청 수신"""
     code = data.get('code', '')
     session_id = data.get('session_id', '')
-    
+
     print(f"\n📨 서버로부터 코드 수신:")
     print("=" * 50)
     print(code)
     print("=" * 50)
-    
+
     # 별도 스레드에서 코드 실행
     thread = threading.Thread(
         target=execute_python_code,
@@ -263,28 +263,28 @@ def heartbeat_thread():
 def main():
     print("🚀 PF Python Web Editor Robot Client 시작")
     print(f"🔗 서버 연결 시도: {SERVER_URL}")
-    
+
     # 하드웨어 초기화
     if init_hardware():
         print("✅ 하드웨어 초기화 성공")
     else:
         print("⚠️ 하드웨어 초기화 실패 (시뮬레이션 모드)")
-    
+
     try:
         # 서버에 연결
         sio.connect(SERVER_URL)
-        
+
         # 하트비트 스레드 시작
         heartbeat_thread_obj = threading.Thread(target=heartbeat_thread, daemon=True)
         heartbeat_thread_obj.start()
-        
+
         # 연결 유지
         print("\n⚡ 로봇 클라이언트 실행 중... (Ctrl+C로 종료)")
         print("💡 서버 웹페이지에서 코드를 작성하고 실행해보세요!")
-        
+
         while True:
             time.sleep(1)
-    
+
     except KeyboardInterrupt:
         print("\n🛑 로봇 클라이언트 종료 중...")
     except Exception as e:
@@ -299,7 +299,7 @@ def main():
                 print(f"⚠️ 연결 해제 중 오류: {e}")
         else:
             print("ℹ️ 이미 연결이 해제된 상태입니다")
-        
+
         print("✅ 로봇 클라이언트 종료 완료")
 
 if __name__ == '__main__':

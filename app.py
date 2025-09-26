@@ -3,18 +3,9 @@
 from __future__ import annotations
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO, emit
-try:
-    from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-except ImportError:
-    print("Flask-Login이 설치되지 않았습니다. 설치 중...")
-    import subprocess
-    import sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "Flask-Login==0.6.3"])
-    from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from secrets import token_hex
 import psutil
-import os
-import json
 import requests
 import time
 import sqlite3
@@ -22,17 +13,13 @@ from datetime import datetime
 
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
-from auth import User, authenticate_user, create_user, get_user_robots, assign_robot_to_user, get_robot_name_from_db
+from auth import *
 from pathlib import Path
 
 # 데이터베이스 경로
 DB_PATH = Path(__file__).parent / "static" / "db" / "auth.db"
 
 import threading
-from traceback import format_exc
-
-    DEBUG_MODE = True
-
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
@@ -104,7 +91,7 @@ def logout():
 @app.route('/editor')
 @login_required
 def editor():
-    return render_template('index.html', 
+    return render_template('index.html',
                          user_id=current_user.id,
                          username=current_user.username,
                          email=current_user.email,
@@ -201,7 +188,7 @@ def get_active_sessions():
     """활성 세션 목록 조회 (관리자만)"""
     if current_user.role != 'admin':
         return jsonify({"error": "관리자 권한이 필요합니다"}), 403
-    
+
     sessions = []
     for sid, user_info in session_user_mapping.items():
         robot_id = user_robot_mapping.get(sid)
@@ -211,7 +198,7 @@ def get_active_sessions():
             "assigned_robot": robot_id,
             "robot_online": robot_id in registered_robots if robot_id else False
         })
-    
+
     return jsonify(sessions)
 
 @app.route('/api/admin/status', methods=['GET'])
@@ -221,19 +208,19 @@ def get_admin_status():
     try:
         # 현재 시간
         current_time = time.time()
-        
+
         # 활성 세션 정보
         active_sessions = []
         for sid, user_info in session_user_mapping.items():
             robot_id = user_robot_mapping.get(sid)
             robot_info = registered_robots.get(robot_id, {}) if robot_id else {}
-            
+
             # 로봇 온라인 상태 확인
             is_robot_online = False
             if robot_id in robot_heartbeats:
                 last_seen = robot_heartbeats[robot_id]
                 is_robot_online = (current_time - last_seen) < 30
-            
+
             active_sessions.append({
                 "session_id": sid,
                 "user": user_info,
@@ -242,19 +229,19 @@ def get_admin_status():
                 "robot_online": is_robot_online,
                 "robot_last_seen": datetime.fromtimestamp(last_seen).isoformat() if robot_id in robot_heartbeats else None
             })
-        
+
         # 등록된 로봇 정보 (SocketIO 연결된 로봇)
         registered_robots_info = []
         for robot_id, robot_info in registered_robots.items():
             last_seen = robot_heartbeats.get(robot_id, 0)
             is_online = (current_time - last_seen) < 30
-            
+
             # 이 로봇을 사용하는 사용자 찾기
             assigned_users = []
             for sid, user_info in session_user_mapping.items():
                 if user_robot_mapping.get(sid) == robot_id:
                     assigned_users.append(user_info)
-            
+
             registered_robots_info.append({
                 "robot_id": robot_id,
                 "name": robot_info.get('name', 'Unknown'),
@@ -263,19 +250,19 @@ def get_admin_status():
                 "hardware_enabled": robot_info.get('hardware_enabled', False),
                 "assigned_users": assigned_users
             })
-        
+
         # 데이터베이스에만 있는 로봇 정보 추가
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT DISTINCT robot_id FROM user_robot_assignments 
+                SELECT DISTINCT robot_id FROM user_robot_assignments
                 WHERE is_active = TRUE
             ''')
-            
+
             db_robot_ids = [row[0] for row in cursor.fetchall()]
             conn.close()
-            
+
             for robot_id in db_robot_ids:
                 if robot_id not in registered_robots:
                     # 이 로봇을 사용하는 사용자 찾기
@@ -283,7 +270,7 @@ def get_admin_status():
                     for sid, user_info in session_user_mapping.items():
                         if user_robot_mapping.get(sid) == robot_id:
                             assigned_users.append(user_info)
-                    
+
                     registered_robots_info.append({
                         "robot_id": robot_id,
                         "name": get_robot_name_from_db(robot_id),
@@ -294,7 +281,7 @@ def get_admin_status():
                     })
         except Exception as e:
             print(f"데이터베이스 로봇 조회 오류: {e}")
-        
+
         # 데이터베이스 사용자 정보
         db_users = []
         try:
@@ -307,7 +294,7 @@ def get_admin_status():
                 LEFT JOIN user_robot_assignments ura ON u.id = ura.user_id AND ura.is_active = TRUE
                 GROUP BY u.id, u.username, u.email, u.role, u.created_at, u.last_login
             ''')
-            
+
             for row in cursor.fetchall():
                 db_users.append({
                     "id": row[0],
@@ -321,7 +308,7 @@ def get_admin_status():
             conn.close()
         except Exception as e:
             print(f"데이터베이스 사용자 조회 오류: {e}")
-        
+
         return jsonify({
             "current_user": {
                 "id": current_user.id,
@@ -339,7 +326,7 @@ def get_admin_status():
                 "total_db_users": len(db_users)
             }
         })
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -354,10 +341,10 @@ def get_robots():
 
         # 사용자에게 할당된 로봇 ID 목록 조회
         user_robot_ids = get_user_robots(current_user.id)
-        
+
         # 등록된 로봇과 할당된 로봇을 모두 표시
         all_robot_ids = set(registered_robots.keys()) | set(user_robot_ids)
-        
+
         for robot_id in all_robot_ids:
             # 등록된 로봇 정보 가져오기
             if robot_id in registered_robots:
@@ -546,7 +533,7 @@ def assign_robot_to_session(robot_id):
             # HTTP 요청에서는 세션 ID를 별도로 전달받아야 함
             # 현재는 데이터베이스에만 저장하고, SocketIO 연결 시 매핑 생성
             return jsonify({
-                "success": True, 
+                "success": True,
                 "message": f"로봇 {registered_robots[robot_id]['name']}이 할당되었습니다",
                 "robot_id": robot_id
             })
@@ -669,7 +656,7 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
             return
 
         robot_info = registered_robots[robot_id]
-        
+
         # 사용자 정보 준비
         user_data = {
             'user_id': user_info.get('user_id') if user_info else None,
@@ -677,7 +664,7 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
             'email': user_info.get('email') if user_info else None,
             'role': user_info.get('role', 'user') if user_info else 'user'
         }
-        
+
         # SocketIO 연결된 로봇인지 확인
         if robot_info.get('url') is None:
             # SocketIO로 직접 전송 (로봇 클라이언트의 세션 ID 사용)
@@ -848,7 +835,7 @@ def handle_stop_execution():
 @socketio.on('connect')
 def handle_connect():
     print('클라이언트가 연결되었습니다.')
-    
+
     # 사용자가 로그인되어 있는 경우
     if current_user.is_authenticated:
         try:
@@ -860,7 +847,7 @@ def handle_connect():
                 'role': current_user.role
             }
             print(f"세션 {request.sid}에 사용자 {current_user.username} (ID: {current_user.id}) 매핑")
-            
+
             # 할당된 로봇 매핑
             user_robots = get_user_robots(current_user.id)
             if user_robots:
@@ -872,7 +859,7 @@ def handle_connect():
             print(f"사용자 로봇 매핑 오류: {e}")
     else:
         print(f"세션 {request.sid}에 로그인되지 않은 사용자 연결")
-    
+
     emit('connected', {'message': '서버에 연결되었습니다.'})
 
 @socketio.on('disconnect')
@@ -886,7 +873,7 @@ def handle_disconnect():
     if sid in session_user_mapping:
         user_info = session_user_mapping.pop(sid)
         print(f"세션 {sid}에서 사용자 {user_info['username']} (ID: {user_info['user_id']}) 매핑 제거")
-    
+
     # 세션-로봇 매핑 정리
     if sid in user_robot_mapping:
         robot_id = user_robot_mapping.pop(sid)
@@ -956,9 +943,9 @@ def handle_robot_connected(data):
         robot_id = data.get('robot_id')
         robot_name = data.get('robot_name')
         hardware_enabled = data.get('hardware_enabled', False)
-        
+
         print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
-        
+
         # 로봇 등록 (SocketIO 연결 시)
         registered_robots[robot_id] = {
             "name": robot_name,
@@ -968,17 +955,17 @@ def handle_robot_connected(data):
             "connected_at": datetime.now().isoformat(),
             "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
-        
+
         # 하트비트 초기화
         robot_heartbeats[robot_id] = time.time()
-        
+
         # 연결 확인 응답
         emit('robot_registered', {
             'success': True,
             'message': f'로봇 {robot_name}이 등록되었습니다',
             'robot_id': robot_id
         })
-        
+
     except Exception as e:
         print(f"로봇 연결 처리 오류: {e}")
         emit('robot_registered', {
@@ -996,13 +983,13 @@ def handle_robot_disconnected(data):
             registered_robots[robot_id]['status'] = 'offline'
             # 세션 ID 정리
             registered_robots[robot_id].pop('session_id', None)
-            
+
             # 해당 로봇을 사용하는 사용자 세션 정리
             sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
             for sid in sessions_to_remove:
                 user_robot_mapping.pop(sid, None)
                 print(f"사용자 세션 {sid}에서 로봇 {robot_id} 할당 해제")
-        
+
     except Exception as e:
         print(f"로봇 연결 해제 처리 오류: {e}")
 
@@ -1012,12 +999,12 @@ def handle_robot_heartbeat(data):
     try:
         robot_id = data.get('robot_id')
         status = data.get('status', 'online')
-        
+
         if robot_id in registered_robots:
             robot_heartbeats[robot_id] = time.time()
             registered_robots[robot_id]['status'] = status
             registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
-            
+
     except Exception as e:
         print(f"로봇 하트비트 처리 오류: {e}")
 
@@ -1028,16 +1015,16 @@ def handle_robot_emit_image(data):
         session_id = data.get('session_id')
         image_data = data.get('image_data')
         widget_id = data.get('widget_id')
-        
+
         if not all([session_id, image_data, widget_id]):
             return
-        
+
         # 브라우저로 이미지 데이터 중계
         relay_image_data({
             'i': image_data,
             'w': widget_id
         }, session_id)
-        
+
     except Exception as e:
         print(f"로봇 이미지 데이터 중계 오류: {e}")
 
@@ -1048,16 +1035,16 @@ def handle_robot_emit_text(data):
         session_id = data.get('session_id')
         text = data.get('text')
         widget_id = data.get('widget_id')
-        
+
         if not all([session_id, text, widget_id]):
             return
-        
+
         # 브라우저로 텍스트 데이터 중계
         relay_text_data({
             'text': text,
             'widget_id': widget_id
         }, session_id)
-        
+
     except Exception as e:
         print(f"로봇 텍스트 데이터 중계 오류: {e}")
 
@@ -1067,13 +1054,13 @@ def handle_robot_stdout(data):
     try:
         session_id = data.get('session_id')
         output = data.get('output')
-        
+
         if not all([session_id, output]):
             return
-        
+
         # 브라우저로 stdout 데이터 중계
         relay_stdout_data({'output': output}, session_id)
-        
+
     except Exception as e:
         print(f"로봇 stdout 데이터 중계 오류: {e}")
 
@@ -1083,13 +1070,13 @@ def handle_robot_stderr(data):
     try:
         session_id = data.get('session_id')
         output = data.get('output')
-        
+
         if not all([session_id, output]):
             return
-        
+
         # 브라우저로 stderr 데이터 중계
         relay_stderr_data({'output': output}, session_id)
-        
+
     except Exception as e:
         print(f"로봇 stderr 데이터 중계 오류: {e}")
 
@@ -1099,13 +1086,13 @@ def handle_robot_finished(data):
     try:
         session_id = data.get('session_id')
         output = data.get('output', '실행 완료')
-        
+
         if not session_id:
             return
-        
+
         # 브라우저로 finished 데이터 중계
         relay_finished_data({'output': output}, session_id)
-        
+
     except Exception as e:
         print(f"로봇 finished 데이터 중계 오류: {e}")
 #endregion
@@ -1149,4 +1136,4 @@ def api_cpu_usage():
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=DEBUG_MODE, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000)
+    socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000)
