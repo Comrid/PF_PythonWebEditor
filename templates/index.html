@@ -408,29 +408,34 @@
 
         // 로봇 선택
         async function selectRobot(robot) {
-            editorSelectedRobot = robot;
+            console.log('로봇 선택:', robot);
             
-            // 드롭다운 텍스트 업데이트
-            const robotDropdownText = document.getElementById('robotDropdownText');
-            if (robotDropdownText) {
-                robotDropdownText.textContent = robot.name;
-            }
+            // 로봇 할당 요청 (항상 할당)
+            const assignSuccess = await assignRobot(robot.robot_id);
             
-            // 선택된 아이템 표시
-            const items = document.querySelectorAll('.robot-dropdown-item');
-            items.forEach(item => {
-                item.classList.remove('selected');
-                if (item.getAttribute('data-value') === robot.robot_id) {
-                    item.classList.add('selected');
+            if (assignSuccess) {
+                // 할당 성공 후 UI 업데이트
+                editorSelectedRobot = robot;
+                
+                // 드롭다운 텍스트 업데이트
+                const robotDropdownText = document.getElementById('robotDropdownText');
+                if (robotDropdownText) {
+                    robotDropdownText.textContent = robot.name;
                 }
-            });
-            
-            // 로봇 상태 업데이트
-            updateRobotStatus();
-            
-            // 로봇 할당 요청
-            if (!robot.assigned) {
-                await assignRobot(robot.robot_id);
+                
+                // 선택된 아이템 표시
+                const items = document.querySelectorAll('.robot-dropdown-item');
+                items.forEach(item => {
+                    item.classList.remove('selected');
+                    if (item.getAttribute('data-value') === robot.robot_id) {
+                        item.classList.add('selected');
+                    }
+                });
+                
+                // 로봇 상태 업데이트
+                updateRobotStatus();
+            } else {
+                console.error('로봇 할당 실패로 인해 선택이 취소됩니다.');
             }
             
             closeRobotDropdown();
@@ -439,6 +444,7 @@
         // 로봇 할당
         async function assignRobot(robotId) {
             try {
+                console.log('로봇 할당 시도:', robotId);
                 const response = await fetch(`/api/robots/${robotId}/assign`, {
                     method: 'POST',
                     headers: {
@@ -450,36 +456,26 @@
                     const result = await response.json();
                     console.log('로봇 할당 성공:', result.message);
                     
-                    // 로봇 목록 다시 로드
-                    await loadRobotList();
-                    
-                    // 선택된 로봇 업데이트
-                    editorSelectedRobot = editorRobotList.find(robot => robot.robot_id === robotId);
-                    if (editorSelectedRobot) {
-                        editorSelectedRobot.assigned = true;
-                        updateRobotStatus();
-                    }
-                    
                     // 성공 메시지 표시
                     if (typeof showToast === 'function') {
-                        showToast(`로봇 '${editorSelectedRobot?.name || robotId}'이 할당되었습니다.`, 'success');
+                        showToast(result.message, 'success');
                     }
                     
-                    // 디버깅: 할당된 로봇 정보 출력
-                    console.log('할당된 로봇:', editorSelectedRobot);
-                    console.log('로봇 ID:', robotId);
+                    return true;
                 } else {
                     const error = await response.json();
                     console.error('로봇 할당 실패:', error.error);
                     if (typeof showToast === 'function') {
                         showToast(`로봇 할당 실패: ${error.error}`, 'error');
                     }
+                    return false;
                 }
             } catch (error) {
                 console.error('로봇 할당 오류:', error);
                 if (typeof showToast === 'function') {
                     showToast('로봇 할당 중 오류가 발생했습니다.', 'error');
                 }
+                return false;
             }
         }
 

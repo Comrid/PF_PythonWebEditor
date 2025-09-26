@@ -334,18 +334,17 @@ def get_admin_status():
 @app.route('/api/robots', methods=['GET'])
 @login_required
 def get_robots():
-    """등록된 모든 로봇 목록 조회 (사용자가 선택할 수 있도록)"""
+    """사용자에게 할당된 로봇 목록 조회"""
     try:
         current_time = time.time()
         robots = []
 
         # 사용자에게 할당된 로봇 ID 목록 조회
         user_robot_ids = get_user_robots(current_user.id)
+        print(f"사용자 {current_user.username}의 할당된 로봇: {user_robot_ids}")
 
-        # 등록된 로봇과 할당된 로봇을 모두 표시
-        all_robot_ids = set(registered_robots.keys()) | set(user_robot_ids)
-
-        for robot_id in all_robot_ids:
+        # 할당된 로봇만 표시
+        for robot_id in user_robot_ids:
             # 등록된 로봇 정보 가져오기
             if robot_id in registered_robots:
                 robot_info = registered_robots[robot_id]
@@ -361,18 +360,16 @@ def get_robots():
                 hardware_enabled = False
                 last_seen_str = None
 
-            # 사용자에게 할당되었는지 확인
-            is_assigned = robot_id in user_robot_ids
-
             robots.append({
                 "robot_id": robot_id,
                 "name": robot_info.get("name", f"Robot {robot_id}"),
                 "online": is_online,
-                "assigned": is_assigned,
+                "assigned": True,  # 할당된 로봇만 표시하므로 항상 True
                 "last_seen": last_seen_str,
                 "hardware_enabled": hardware_enabled
             })
 
+        print(f"사용자 {current_user.username}에게 반환할 로봇 목록: {len(robots)}개")
         return jsonify(robots)
     except Exception as e:
         print(f"로봇 목록 조회 오류: {e}")
@@ -525,16 +522,33 @@ def robot_heartbeat(robot_id):
 def assign_robot_to_session(robot_id):
     """사용자에게 로봇 할당"""
     try:
-        if robot_id not in registered_robots:
+        # 로봇이 등록되어 있는지 확인 (SocketIO 연결된 로봇 또는 데이터베이스에 있는 로봇)
+        robot_exists = robot_id in registered_robots
+        if not robot_exists:
+            # 데이터베이스에서 확인
+            user_robot_ids = get_user_robots(current_user.id)
+            robot_exists = robot_id in user_robot_ids
+        
+        if not robot_exists:
             return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
 
         # 사용자에게 로봇 할당
         if assign_robot_to_user(current_user.id, robot_id):
-            # HTTP 요청에서는 세션 ID를 별도로 전달받아야 함
-            # 현재는 데이터베이스에만 저장하고, SocketIO 연결 시 매핑 생성
+            # 현재 세션의 user_robot_mapping 즉시 업데이트
+            current_sid = request.sid
+            user_robot_mapping[current_sid] = robot_id
+            print(f"사용자 {current_user.username}의 세션 {current_sid}에 로봇 {robot_id} 할당")
+            
+            # 로봇 이름 가져오기
+            robot_name = "Unknown"
+            if robot_id in registered_robots:
+                robot_name = registered_robots[robot_id].get('name', f"Robot {robot_id}")
+            else:
+                robot_name = get_robot_name_from_db(robot_id)
+            
             return jsonify({
                 "success": True,
-                "message": f"로봇 {registered_robots[robot_id]['name']}이 할당되었습니다",
+                "message": f"로봇 {robot_name}이 할당되었습니다",
                 "robot_id": robot_id
             })
         else:
@@ -900,13 +914,8 @@ def handle_connect():
             }
             print(f"세션 {request.sid}에 사용자 {current_user.username} (ID: {current_user.id}) 매핑")
 
-            # 할당된 로봇 매핑
-            user_robots = get_user_robots(current_user.id)
-            if user_robots:
-                # 첫 번째 할당된 로봇을 현재 세션에 매핑
-                robot_id = user_robots[0]
-                user_robot_mapping[request.sid] = robot_id
-                print(f"사용자 {current_user.username}의 로봇 {robot_id}를 세션 {request.sid}에 매핑")
+            # 자동 할당 비활성화 - 사용자가 직접 선택하도록 함
+            print(f"사용자 {current_user.username}의 로봇 할당은 에디터에서 직접 선택해야 합니다.")
         except Exception as e:
             print(f"사용자 로봇 매핑 오류: {e}")
     else:
