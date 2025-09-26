@@ -384,14 +384,21 @@
             
             try {
                 const response = await fetch('/api/robots');
+                console.log('📡 API 응답 받음:', response);
+                
                 // 디버깅을 위해 전역 변수로 노출
                 window.lastApiResponse = response;
                 console.log('📡 API 응답 상태:', response.status);
+                console.log('📡 API 응답 OK:', response.ok);
                 
                 if (response.ok) {
-                    editorRobotList = await response.json();
+                    const data = await response.json();
+                    console.log('📡 JSON 파싱 완료:', data);
+                    
+                    editorRobotList = data;
                     console.log('✅ 로봇 목록 로드 성공:', editorRobotList);
                     console.log('📋 로봇 개수:', editorRobotList.length);
+                    
                     updateRobotDropdown();
                 } else {
                     const errorText = await response.text();
@@ -404,11 +411,15 @@
                 editorRobotList = [];
                 updateRobotDropdown();
             }
+            
+            console.log('🔄 로봇 목록 로드 완료');
         }
 
         // 로봇 드롭다운 업데이트
         function updateRobotDropdown() {
             console.log('🔄 드롭다운 업데이트 시작');
+            console.log('📋 현재 editorRobotList:', editorRobotList);
+            console.log('📋 editorRobotList.length:', editorRobotList.length);
             
             const robotDropdownMenu = document.getElementById('robotDropdownMenu');
             if (!robotDropdownMenu) {
@@ -416,8 +427,11 @@
                 return;
             }
             
+            console.log('📋 드롭다운 메뉴 요소 찾음:', robotDropdownMenu);
+            
             // 기존 옵션 모두 제거
             robotDropdownMenu.innerHTML = '';
+            console.log('📋 기존 옵션 제거 완료');
             
             if (editorRobotList.length === 0) {
                 console.log('⚠️ 로봇 목록이 비어있습니다.');
@@ -428,10 +442,13 @@
                     <span class="robot-item-status">로봇을 등록하세요</span>
                 `;
                 robotDropdownMenu.appendChild(item);
+                console.log('📋 빈 목록 메시지 추가 완료');
             } else {
                 console.log(`📋 ${editorRobotList.length}개의 로봇을 드롭다운에 추가`);
                 
                 editorRobotList.forEach((robot, index) => {
+                    console.log(`📋 로봇 ${index + 1} 추가:`, robot);
+                    
                     const item = document.createElement('div');
                     item.className = 'robot-dropdown-item';
                     item.setAttribute('data-robot-id', robot.robot_id);
@@ -446,10 +463,13 @@
                     
                     item.addEventListener('click', () => selectRobot(robot));
                     robotDropdownMenu.appendChild(item);
+                    
+                    console.log(`📋 로봇 ${index + 1} DOM에 추가 완료`);
                 });
             }
             
             console.log('✅ 드롭다운 업데이트 완료');
+            console.log('📋 최종 드롭다운 내용:', robotDropdownMenu.innerHTML);
         }
 
         // 로봇 선택
