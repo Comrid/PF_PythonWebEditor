@@ -384,11 +384,14 @@
             
             try {
                 const response = await fetch('/api/robots');
+                // 디버깅을 위해 전역 변수로 노출
+                window.lastApiResponse = response;
                 console.log('📡 API 응답 상태:', response.status);
                 
                 if (response.ok) {
                     editorRobotList = await response.json();
                     console.log('✅ 로봇 목록 로드 성공:', editorRobotList);
+                    console.log('📋 로봇 개수:', editorRobotList.length);
                     updateRobotDropdown();
                 } else {
                     const errorText = await response.text();
@@ -533,6 +536,30 @@
                 robotDropdownMenu.classList.remove('show');
             }
         }
+
+        // 디버깅용 함수들
+        function debugRobotList() {
+            console.log('=== 로봇 목록 디버깅 ===');
+            console.log('editorRobotList:', editorRobotList);
+            console.log('editorRobotList.length:', editorRobotList.length);
+            console.log('editorSelectedRobot:', editorSelectedRobot);
+            console.log('window.lastApiResponse:', window.lastApiResponse);
+            console.log('========================');
+        }
+
+        function debugApiResponse() {
+            if (window.lastApiResponse) {
+                console.log('API 응답 상태:', window.lastApiResponse.status);
+                console.log('API 응답 OK:', window.lastApiResponse.ok);
+            } else {
+                console.log('API 응답이 없습니다. loadRobotList()를 먼저 실행하세요.');
+            }
+        }
+
+        // 전역 함수로 노출
+        window.debugRobotList = debugRobotList;
+        window.debugApiResponse = debugApiResponse;
+        window.loadRobotList = loadRobotList;
 
         // 로봇 상태 업데이트
         function updateRobotStatus() {
