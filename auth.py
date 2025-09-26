@@ -172,3 +172,29 @@ def assign_robot_to_user(user_id, robot_id):
     except Exception as e:
         print(f"로봇 할당 오류: {e}")
         return False
+
+def get_robot_name_from_db(robot_id):
+    """데이터베이스에서 로봇 이름 조회"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # user_robot_assignments 테이블에서 로봇 ID로 할당된 사용자 찾기
+        cursor.execute('''
+            SELECT ura.robot_id, ura.assigned_at
+            FROM user_robot_assignments ura
+            WHERE ura.robot_id = ? AND ura.is_active = TRUE
+            ORDER BY ura.assigned_at DESC
+            LIMIT 1
+        ''', (robot_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            # 로봇 ID를 기반으로 기본 이름 생성
+            return f"Robot {robot_id[:8]}"
+        return f"Robot {robot_id[:8]}"
+    except Exception as e:
+        print(f"로봇 이름 조회 오류: {e}")
+        return f"Robot {robot_id[:8]}"

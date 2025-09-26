@@ -32,8 +32,8 @@ import threading
 from traceback import format_exc
 
 # 중앙 서버에서는 하드웨어 제어 없음
-Findee = None
-DEBUG_MODE = True
+    Findee = None
+    DEBUG_MODE = True
 
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -245,7 +245,7 @@ def get_admin_status():
                 "robot_last_seen": datetime.fromtimestamp(last_seen).isoformat() if robot_id in robot_heartbeats else None
             })
         
-        # 등록된 로봇 정보
+        # 등록된 로봇 정보 (SocketIO 연결된 로봇)
         registered_robots_info = []
         for robot_id, robot_info in registered_robots.items():
             last_seen = robot_heartbeats.get(robot_id, 0)
@@ -265,6 +265,37 @@ def get_admin_status():
                 "hardware_enabled": robot_info.get('hardware_enabled', False),
                 "assigned_users": assigned_users
             })
+        
+        # 데이터베이스에만 있는 로봇 정보 추가
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT DISTINCT robot_id FROM user_robot_assignments 
+                WHERE is_active = TRUE
+            ''')
+            
+            db_robot_ids = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            
+            for robot_id in db_robot_ids:
+                if robot_id not in registered_robots:
+                    # 이 로봇을 사용하는 사용자 찾기
+                    assigned_users = []
+                    for sid, user_info in session_user_mapping.items():
+                        if user_robot_mapping.get(sid) == robot_id:
+                            assigned_users.append(user_info)
+                    
+                    registered_robots_info.append({
+                        "robot_id": robot_id,
+                        "name": get_robot_name_from_db(robot_id),
+                        "online": False,
+                        "last_seen": None,
+                        "hardware_enabled": False,
+                        "assigned_users": assigned_users
+                    })
+        except Exception as e:
+            print(f"데이터베이스 로봇 조회 오류: {e}")
         
         # 데이터베이스 사용자 정보
         db_users = []
@@ -339,7 +370,8 @@ def get_robots():
                 last_seen_str = datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
             else:
                 # 등록되지 않은 로봇 (데이터베이스에만 있는 경우)
-                robot_info = {"name": f"Robot {robot_id}"}
+                robot_name = get_robot_name_from_db(robot_id)
+                robot_info = {"name": robot_name}
                 is_online = False
                 hardware_enabled = False
                 last_seen_str = None
@@ -563,8 +595,8 @@ def robot_emit_text():
 
         # 브라우저로 텍스트 데이터 중계
         relay_text_data({
-            'text': text,
-            'widget_id': widget_id
+                'text': text,
+                'widget_id': widget_id
         }, session_id)
 
         return jsonify({"success": True})
