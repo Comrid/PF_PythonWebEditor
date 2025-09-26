@@ -17,11 +17,16 @@ import os
 import json
 import requests
 import time
+import sqlite3
 from datetime import datetime
 
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
 from auth import User, authenticate_user, create_user, get_user_robots, assign_robot_to_user
+from pathlib import Path
+
+# 데이터베이스 경로
+DB_PATH = Path(__file__).parent / "static" / "db" / "auth.db"
 
 import threading
 from traceback import format_exc
