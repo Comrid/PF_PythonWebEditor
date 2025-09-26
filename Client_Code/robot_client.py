@@ -4,15 +4,10 @@
 import socketio
 import time
 import threading
-import uuid
 import sys
 import io
 import contextlib
-
-# 로봇 설정
-ROBOT_ID = f"robot_{uuid.uuid4().hex[:8]}"
-ROBOT_NAME = "Robot3"
-SERVER_URL = "https://pathfinder-kit.duckdns.org"
+from robot_config import ROBOT_ID, ROBOT_NAME, SERVER_URL, HARDWARE_ENABLED
 
 # SocketIO 클라이언트 생성
 sio = socketio.Client()
@@ -100,7 +95,7 @@ def connect():
     sio.emit('robot_connected', {
         'robot_id': ROBOT_ID,
         'robot_name': ROBOT_NAME,
-        'hardware_enabled': False
+        'hardware_enabled': HARDWARE_ENABLED
     })
 
 @sio.event

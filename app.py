@@ -564,16 +564,18 @@ def delete_robot(robot_id):
         if current_user.role != 'admin':
             return jsonify({"success": False, "error": "관리자 권한이 필요합니다"}), 403
 
-        # 로봇이 등록되어 있는지 확인
-        if robot_id not in registered_robots:
-            return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
+        # 로봇 이름 가져오기 (등록된 로봇 또는 데이터베이스에서)
+        robot_name = "Unknown"
+        if robot_id in registered_robots:
+            robot_name = registered_robots[robot_id].get('name', robot_id)
+        else:
+            # 데이터베이스에서 로봇 이름 조회
+            robot_name = get_robot_name_from_db(robot_id)
 
-        # 로봇 정보 가져오기
-        robot_info = registered_robots[robot_id]
-        robot_name = robot_info.get('name', robot_id)
-
-        # 등록된 로봇에서 제거
-        del registered_robots[robot_id]
+        # 등록된 로봇에서 제거 (있는 경우에만)
+        if robot_id in registered_robots:
+            del registered_robots[robot_id]
+            print(f"등록된 로봇에서 {robot_id} 제거")
         
         # 하트비트에서 제거
         robot_heartbeats.pop(robot_id, None)
@@ -592,9 +594,10 @@ def delete_robot(robot_id):
                 DELETE FROM user_robot_assignments 
                 WHERE robot_id = ?
             ''', (robot_id,))
+            deleted_count = cursor.rowcount
             conn.commit()
             conn.close()
-            print(f"데이터베이스에서 로봇 {robot_id} 할당 정보 삭제 완료")
+            print(f"데이터베이스에서 로봇 {robot_id} 할당 정보 삭제 완료 (삭제된 행: {deleted_count})")
         except Exception as e:
             print(f"데이터베이스 로봇 삭제 오류: {e}")
 
