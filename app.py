@@ -543,6 +543,58 @@ def assign_robot_to_session(robot_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/robots/<robot_id>/delete', methods=['DELETE'])
+@login_required
+def delete_robot(robot_id):
+    """로봇 삭제 (관리자만)"""
+    try:
+        # 관리자 권한 확인
+        if current_user.role != 'admin':
+            return jsonify({"success": False, "error": "관리자 권한이 필요합니다"}), 403
+
+        # 로봇이 등록되어 있는지 확인
+        if robot_id not in registered_robots:
+            return jsonify({"success": False, "error": "등록되지 않은 로봇입니다"}), 404
+
+        # 로봇 정보 가져오기
+        robot_info = registered_robots[robot_id]
+        robot_name = robot_info.get('name', robot_id)
+
+        # 등록된 로봇에서 제거
+        del registered_robots[robot_id]
+        
+        # 하트비트에서 제거
+        robot_heartbeats.pop(robot_id, None)
+
+        # 해당 로봇을 사용하는 사용자 세션 정리
+        sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
+        for sid in sessions_to_remove:
+            user_robot_mapping.pop(sid, None)
+            print(f"사용자 세션 {sid}에서 로봇 {robot_id} 할당 해제")
+
+        # 데이터베이스에서 로봇 할당 정보 삭제
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                DELETE FROM user_robot_assignments 
+                WHERE robot_id = ?
+            ''', (robot_id,))
+            conn.commit()
+            conn.close()
+            print(f"데이터베이스에서 로봇 {robot_id} 할당 정보 삭제 완료")
+        except Exception as e:
+            print(f"데이터베이스 로봇 삭제 오류: {e}")
+
+        return jsonify({
+            "success": True,
+            "message": f"로봇 {robot_name}이 삭제되었습니다",
+            "robot_id": robot_id
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/robot/emit/image', methods=['POST'])
 def robot_emit_image():
     """로봇에서 이미지 데이터 수신 및 중계"""
