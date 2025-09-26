@@ -8,6 +8,19 @@ import uuid
 import sys
 import io
 import contextlib
+import base64
+import cv2
+import numpy as np
+import platform
+import requests
+
+# 하드웨어 제어 모듈
+if platform.system() == "Linux":
+    from findee import Findee
+    HARDWARE_ENABLED = True
+else:
+    Findee = None
+    HARDWARE_ENABLED = False
 
 # 로봇 설정
 ROBOT_ID = f"robot_{uuid.uuid4().hex[:8]}"
@@ -24,6 +37,64 @@ robot_status = {
     'current_session': None
 }
 
+# 하드웨어 제어 객체
+robot_hardware = None
+
+def init_hardware():
+    """하드웨어 초기화"""
+    global robot_hardware
+    if HARDWARE_ENABLED and Findee:
+        try:
+            robot_hardware = Findee()
+            print("✅ 하드웨어 초기화 완료")
+            return True
+        except Exception as e:
+            print(f"❌ 하드웨어 초기화 실패: {e}")
+            return False
+    return False
+
+# register_with_server 함수 제거 - SocketIO 연결 시 자동 등록됨
+
+def emit_image(image, widget_id):
+    """이미지를 중앙 서버로 전송"""
+    if not robot_status['current_session']:
+        return
+
+    try:
+        if hasattr(image, 'shape'):  # numpy 배열인지 확인
+            # 이미지를 JPEG로 인코딩
+            ok, buffer = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+            if not ok:
+                print("❌ JPEG 인코딩 실패")
+                return
+
+            # base64로 인코딩
+            image_data = base64.b64encode(buffer.tobytes()).decode('utf-8')
+
+            # SocketIO로 전송
+            sio.emit('robot_emit_image', {
+                'session_id': robot_status['current_session'],
+                'image_data': image_data,
+                'widget_id': widget_id
+            })
+
+    except Exception as e:
+        print(f"❌ 이미지 전송 실패: {e}")
+
+def emit_text(text, widget_id):
+    """텍스트를 중앙 서버로 전송"""
+    if not robot_status['current_session']:
+        return
+
+    try:
+        sio.emit('robot_emit_text', {
+            'session_id': robot_status['current_session'],
+            'text': text,
+            'widget_id': widget_id
+        })
+    except Exception as e:
+        print(f"❌ 텍스트 전송 실패: {e}")
+
 def execute_python_code(code, session_id):
     """Python 코드 실행"""
     robot_status['current_session'] = session_id
@@ -36,8 +107,40 @@ def execute_python_code(code, session_id):
 
         # 코드 실행 컨텍스트
         with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
-            # 단순히 코드 실행
-            exec(code)
+            # 실행 네임스페이스 설정
+            exec_globals = {
+                '__builtins__': __builtins__,
+                'Findee': Findee,
+                'robot': robot_hardware,
+                'emit_image': emit_image,
+                'emit_text': emit_text,
+                'print': print,
+                'len': len,
+                'range': range,
+                'enumerate': enumerate,
+                'zip': zip,
+                'map': map,
+                'filter': filter,
+                'sorted': sorted,
+                'sum': sum,
+                'min': min,
+                'max': max,
+                'abs': abs,
+                'round': round,
+                'str': str,
+                'int': int,
+                'float': float,
+                'bool': bool,
+                'list': list,
+                'tuple': tuple,
+                'dict': dict,
+                'set': set,
+                'type': type,
+                'isinstance': isinstance,
+            }
+
+            # 코드 실행
+            exec(code, exec_globals)
 
         # stdout 출력 처리
         stdout_output = stdout_capture.getvalue()
@@ -92,6 +195,7 @@ def connect():
     print(f"🔧 로봇 ID: {ROBOT_ID}")
     print(f"🔧 로봇 이름: {ROBOT_NAME}")
     print(f"🐍 Python 버전: {sys.version}")
+    print(f"🔧 하드웨어 활성화: {HARDWARE_ENABLED}")
 
     robot_status['connected'] = True
 
@@ -100,7 +204,7 @@ def connect():
     sio.emit('robot_connected', {
         'robot_id': ROBOT_ID,
         'robot_name': ROBOT_NAME,
-        'hardware_enabled': False
+        'hardware_enabled': HARDWARE_ENABLED
     })
 
 @sio.event
@@ -159,6 +263,12 @@ def heartbeat_thread():
 def main():
     print("🚀 PF Python Web Editor Robot Client 시작")
     print(f"🔗 서버 연결 시도: {SERVER_URL}")
+
+    # 하드웨어 초기화
+    if init_hardware():
+        print("✅ 하드웨어 초기화 성공")
+    else:
+        print("⚠️ 하드웨어 초기화 실패 (시뮬레이션 모드)")
 
     try:
         # 서버에 연결
