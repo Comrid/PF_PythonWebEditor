@@ -5,7 +5,7 @@
 ROBOT_ID = "robot_4de9c05e"
 
 # 로봇 이름
-ROBOT_NAME = "Robot3"
+ROBOT_NAME = "Robot4"
 
 # 서버 URL
 SERVER_URL = "https://pathfinder-kit.duckdns.org"

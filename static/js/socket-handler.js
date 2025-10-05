@@ -1,4 +1,6 @@
 // Socket-Handler.js
+let socket; // 전역 변수 선언
+
 document.addEventListener('DOMContentLoaded', function() {
     // Socket 초기화
     initializeSocket();
@@ -12,6 +14,7 @@ function initializeSocket() {
         }
 
         socket = window.io();
+        window.socket = socket; // 전역 변수로 설정
 
         // Listener
         //#region connect and disconnect events

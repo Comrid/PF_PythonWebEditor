@@ -42,12 +42,12 @@ function handleRunButtonClick() {
         return;
     }
 
-    if (socket && socket.connected) {
-        socket.emit('execute_code', {code: code});
+    if (window.socket && window.socket.connected) {
+        window.socket.emit('execute_code', {code: code});
     } else {
         showToast(messages.socketio_not_loaded_msg, 'error', useConsoleDebug);
         setTimeout(() => {
-            if (socket && socket.connected) {
+            if (window.socket && window.socket.connected) {
                 handleRunButtonClick();
             } else {
                 showToast(messages.socketio_connect_failed_msg, 'error', useConsoleDebug);
@@ -58,7 +58,7 @@ function handleRunButtonClick() {
 
 // Stop 버튼 클릭 이벤트 핸들러
 function handleStopButtonClick() {
-    if (!socket || !socket.connected) {
+    if (!window.socket || !window.socket.connected) {
         showToast(messages.socketio_not_connected_msg, 'error', useConsoleDebug);
         return;
     }
@@ -69,7 +69,7 @@ function handleStopButtonClick() {
     }
 
     showToast(messages.code_execution_stop_msg, 'info', useConsoleDebug);
-    socket.emit('stop_execution');
+    window.socket.emit('stop_execution');
 }
 
 // Clear Output 버튼 이벤트 핸들러 - 출력 패널 초기화
