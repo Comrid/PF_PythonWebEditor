@@ -62,14 +62,6 @@ socketio = SocketIO(
 )
 
 # 에디터 블루프린트 초기화
-from blueprints.editor_bp import init_editor_globals, register_socketio_handlers
-
-# 전역 변수들을 에디터 블루프린트에 전달
-init_editor_globals(globals())
-
-# SocketIO 핸들러 등록
-register_socketio_handlers(socketio)
-
 # 중앙 서버 상태 관리
 running_threads: dict[str, threading.Thread] = {}           # 실행 중인 스레드를 추적하는 딕셔너리
 stop_flags: dict[str, bool] = {}                            # 실행 중지 플래그를 추적하는 딕셔너리
@@ -84,6 +76,14 @@ robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비�
 
 # 세션 관리 시스템
 session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
+
+from blueprints.editor_bp import init_editor_globals, register_socketio_handlers
+
+# 전역 변수들을 에디터 블루프린트에 전달
+init_editor_globals(globals())
+
+# SocketIO 핸들러 등록
+register_socketio_handlers(socketio)
 
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
