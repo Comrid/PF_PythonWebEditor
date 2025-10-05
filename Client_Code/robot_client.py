@@ -7,7 +7,22 @@ import threading
 import sys
 import io
 import contextlib
-from robot_config import ROBOT_ID, ROBOT_NAME, SERVER_URL, HARDWARE_ENABLED
+
+# Robot Configuration
+# 로봇 설정 파일
+
+# 로봇 ID (서버에 등록된 ID와 동일해야 함)
+ROBOT_ID = "robot_4de9c05e"
+
+# 로봇 이름
+ROBOT_NAME = "Robot4"
+
+# 서버 URL
+SERVER_URL = "https://pathfinder-kit.duckdns.org"
+
+# 하드웨어 활성화 여부
+HARDWARE_ENABLED = False
+
 
 # SocketIO 클라이언트 생성
 sio = socketio.Client()
@@ -19,40 +34,56 @@ robot_status = {
     'current_session': None
 }
 
+class RealtimeOutput:
+    """실시간 출력을 위한 클래스"""
+    def __init__(self, session_id, output_type='stdout'):
+        self.session_id = session_id
+        self.output_type = output_type
+        self.buffer = ""
+    
+    def write(self, text):
+        """출력 텍스트를 실시간으로 전송"""
+        if text:
+            self.buffer += text
+            # 줄바꿈이 있으면 즉시 전송
+            while '\n' in self.buffer:
+                line, self.buffer = self.buffer.split('\n', 1)
+                if line.strip():  # 빈 줄이 아닌 경우만 전송
+                    sio.emit(f'robot_{self.output_type}', {
+                        'session_id': self.session_id,
+                        'output': line
+                    })
+                    print(f"{'출력' if self.output_type == 'stdout' else '경고'}: {line}")
+    
+    def flush(self):
+        """버퍼에 남은 내용을 전송"""
+        if self.buffer.strip():
+            sio.emit(f'robot_{self.output_type}', {
+                'session_id': self.session_id,
+                'output': self.buffer
+            })
+            print(f"{'출력' if self.output_type == 'stdout' else '경고'}: {self.buffer}")
+            self.buffer = ""
+
 def execute_python_code(code, session_id):
-    """Python 코드 실행"""
+    """Python 코드 실행 (실시간 출력)"""
     robot_status['current_session'] = session_id
     robot_status['executing_code'] = True
 
     try:
-        # stdout과 stderr를 캡처하기 위한 StringIO 객체
-        stdout_capture = io.StringIO()
-        stderr_capture = io.StringIO()
+        # 실시간 출력을 위한 객체 생성
+        stdout_handler = RealtimeOutput(session_id, 'stdout')
+        stderr_handler = RealtimeOutput(session_id, 'stderr')
 
-        # 코드 실행 컨텍스트
-        with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
-            # 단순히 코드 실행
-            exec(code)
+        # 코드 실행 컨텍스트 (실시간 출력)
+        with contextlib.redirect_stdout(stdout_handler), contextlib.redirect_stderr(stderr_handler):
+            # 코드를 컴파일하고 실행
+            compiled_code = compile(code, '<string>', 'exec')
+            exec(compiled_code)
 
-        # stdout 출력 처리
-        stdout_output = stdout_capture.getvalue()
-        if stdout_output:
-            for line in stdout_output.splitlines():
-                sio.emit('robot_stdout', {
-                    'session_id': session_id,
-                    'output': line
-                })
-                print(f"출력: {line}")
-
-        # stderr 출력 처리
-        stderr_output = stderr_capture.getvalue()
-        if stderr_output:
-            for line in stderr_output.splitlines():
-                sio.emit('robot_stderr', {
-                    'session_id': session_id,
-                    'output': line
-                })
-                print(f"경고: {line}")
+        # 버퍼에 남은 내용 처리
+        stdout_handler.flush()
+        stderr_handler.flush()
 
         # 실행 완료 알림
         sio.emit('robot_finished', {
