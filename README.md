@@ -344,7 +344,7 @@ PF_PythonWebEditor/
 ├─ templates/
 │  └─ index.html         # 메인 웹 UI(위젯/팝오버/에디터 포함)
 ├─ static/
-│  ├─ css/               # base.css, editor.css, popover.css, new.css, first.css, tutorial.css, challenge.css
+│  ├─ css/               # base.css, editor.css, popover.css, new.css, main.css, tutorial.css, challenge.css
 │  ├─ js/
 │  │  ├─ util.js         # 전역 상태/토스트/예제 코드/디바이스 탐색
 │  │  ├─ editor.js       # Monaco Editor 로드/설정
@@ -355,7 +355,7 @@ PF_PythonWebEditor/
 │  │  ├─ socket-handler.js# 소켓 이벤트 바인딩/출력/이미지/텍스트 수신
 │  │  ├─ popover.js      # 설정/파일/웹캠 팝오버 로직
 │  │  ├─ new.js          # AI-Chat 기능 및 CPU 모니터 UI
-│  │  ├─ first.js        # 초기 화면 및 설정 관리
+│  │  ├─ main.js         # 초기 화면 및 설정 관리
 │  │  ├─ tutorial.js     # 튜토리얼 시스템
 │  │  └─ challenge.js    # 도전과제 시스템
 │  ├─ img/app-logo.png

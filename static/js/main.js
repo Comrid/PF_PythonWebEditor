@@ -1,8 +1,14 @@
-// First Screen Management
+// Main Screen Management
 let selectedRobot = null;
 let robotList = [];
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 사용자 정보 확인
+    if (window.currentUser) {
+        console.log('현재 로그인한 사용자:', window.currentUser);
+    } else {
+        console.warn('사용자 정보를 찾을 수 없습니다.');
+    }
     // 시작 화면 버튼 이벤트 바인딩
     const startEditorBtn = document.getElementById('startEditorBtn');
     const tutorialBtn = document.getElementById('tutorialBtn');
@@ -15,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const assignRobotBtn = document.getElementById('assignRobotBtn');
     const connectRobotBtn = document.getElementById('connectRobotBtn');
     const robotNameInput = document.getElementById('robotNameInput');
-    
+
     if (startEditorBtn) {
         startEditorBtn.addEventListener('click', startEditor);
     }
@@ -59,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // 배경 클릭으로 설정 모달 닫기
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay) {
@@ -69,17 +75,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     }
-    
+
     // ESC 키로 설정 모달 닫기
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeSettings();
         }
     });
-    
+
     // 로봇 목록 로드
     loadRobotList();
-    
+
     // 주기적으로 로봇 상태 업데이트
     setInterval(refreshRobotStatus, 5000);
 });
@@ -113,13 +119,13 @@ async function resetDatabase() {
     if (!confirm('정말로 모든 튜토리얼 진행상황을 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
         return;
     }
-    
+
     const resetBtn = document.getElementById('resetDbBtn');
     if (resetBtn) {
         resetBtn.disabled = true;
         resetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 초기화 중...';
     }
-    
+
     try {
         const response = await fetch('/api/tutorial/reset', {
             method: 'POST',
@@ -127,7 +133,7 @@ async function resetDatabase() {
                 'Content-Type': 'application/json',
             }
         });
-        
+
         if (response.ok) {
             if (typeof showToast === 'function') {
             showToast('데이터베이스가 성공적으로 초기화되었습니다.', 'success');
@@ -168,12 +174,12 @@ async function logout() {
     if (!confirm('로그아웃하시겠습니까?')) {
         return;
     }
-    
+
     try {
         const response = await fetch('/logout', {
             method: 'GET'
         });
-        
+
         if (response.ok) {
             showToast('로그아웃되었습니다.', 'success');
             setTimeout(() => {
@@ -195,7 +201,7 @@ async function loadRobotList() {
         if (response.ok) {
             robotList = await response.json();
             updateRobotDropdown();
-            
+
             // 할당되지 않은 로봇이 있는지 확인
             await checkUnassignedRobots();
         } else {
@@ -217,7 +223,7 @@ async function checkUnassignedRobots() {
             const allRobots = await response.json();
             const assignedRobotIds = robotList.map(robot => robot.robot_id);
             const unassignedRobots = allRobots.filter(robot => !assignedRobotIds.includes(robot.robot_id));
-            
+
             if (unassignedRobots.length > 0) {
                 showUnassignedRobotPrompt(unassignedRobots[0]); // 첫 번째 할당되지 않은 로봇 표시
             }
@@ -231,17 +237,17 @@ async function checkUnassignedRobots() {
 function showUnassignedRobotPrompt(robot) {
     const robotAssign = document.getElementById('robotAssign');
     const selectedRobotName = document.getElementById('selectedRobotName');
-    
+
     if (robotAssign && selectedRobotName) {
         selectedRobotName.textContent = robot.name;
         robotAssign.style.display = 'block';
-        
+
         // 로봇 정보 업데이트
         const robotInfo = document.getElementById('robotInfo');
         if (robotInfo) {
             robotInfo.style.display = 'block';
         }
-        
+
         showToast(`새로운 로봇 '${robot.name}'이 발견되었습니다. 할당하시겠습니까?`, 'info');
     }
 }
@@ -250,12 +256,12 @@ function showUnassignedRobotPrompt(robot) {
 function updateRobotDropdown() {
     const robotSelect = document.getElementById('robotSelect');
     if (!robotSelect) return;
-    
+
     // 기존 옵션 제거 (첫 번째 옵션 제외)
     while (robotSelect.children.length > 1) {
         robotSelect.removeChild(robotSelect.lastChild);
     }
-    
+
     // 로봇 목록 추가 (할당 여부와 관계없이 모든 로봇 표시)
     robotList.forEach(robot => {
         const option = document.createElement('option');
@@ -265,7 +271,7 @@ function updateRobotDropdown() {
         option.textContent = `${robot.name} (${status})${assigned}`;
         robotSelect.appendChild(option);
     });
-    
+
     // 선택된 로봇이 있으면 상태 업데이트
     if (selectedRobot) {
         updateRobotStatus();
@@ -275,17 +281,17 @@ function updateRobotDropdown() {
 // 로봇 선택 처리
 function handleRobotSelection(event) {
     const robotId = event.target.value;
-    
+
     if (!robotId) {
         selectedRobot = null;
         updateRobotStatus();
         updateStartButton();
         return;
     }
-    
+
     // 선택된 로봇 정보 찾기
     selectedRobot = robotList.find(robot => robot.robot_id === robotId);
-    
+
     if (selectedRobot) {
         // 로봇 할당 요청
         assignRobot(robotId);
@@ -303,14 +309,14 @@ async function assignRobot(robotId) {
                 'Content-Type': 'application/json',
             }
         });
-        
+
         if (response.ok) {
             const result = await response.json();
             showToast(result.message || '로봇이 성공적으로 할당되었습니다.', 'success');
-            
+
             // 할당 완료 후 로봇 목록 새로고침
             await loadRobotList();
-            
+
             // 할당된 로봇을 자동으로 선택
             const assignedRobot = robotList.find(robot => robot.robot_id === robotId);
             if (assignedRobot) {
@@ -318,7 +324,7 @@ async function assignRobot(robotId) {
                 updateRobotStatus();
                 updateStartButton();
             }
-            
+
             // 할당 UI 숨기기 (존재하는 경우)
             const robotAssignEl = document.getElementById('robotAssign');
             if (robotAssignEl) {
@@ -342,7 +348,7 @@ function updateRobotStatus() {
     const robotInfo = document.getElementById('robotInfo');
     const selectedRobotName = document.getElementById('selectedRobotName');
     const selectedRobotDetails = document.getElementById('selectedRobotDetails');
-    
+
     if (!selectedRobot) {
         if (statusIndicator) {
             statusIndicator.className = 'status-indicator offline';
@@ -355,7 +361,7 @@ function updateRobotStatus() {
         }
         return;
     }
-    
+
     // 상태 표시기 업데이트
     if (statusIndicator) {
         if (selectedRobot.online) {
@@ -364,14 +370,14 @@ function updateRobotStatus() {
             statusIndicator.className = 'status-indicator offline';
         }
     }
-    
+
     // 상태 텍스트 업데이트
     if (statusText) {
         const status = selectedRobot.online ? '온라인' : '오프라인';
         const assigned = selectedRobot.assigned ? ' (할당됨)' : ' (미할당)';
         statusText.textContent = `${selectedRobot.name} - ${status}${assigned}`;
     }
-    
+
     // 로봇 정보 표시
     if (robotInfo && selectedRobotName && selectedRobotDetails) {
         robotInfo.style.display = 'block';
@@ -390,7 +396,7 @@ function updateRobotStatus() {
 function updateStartButton() {
     const startEditorBtn = document.getElementById('startEditorBtn');
     if (!startEditorBtn) return;
-    
+
     if (selectedRobot && selectedRobot.online && selectedRobot.assigned) {
         startEditorBtn.disabled = false;
         startEditorBtn.style.opacity = '1';
@@ -405,13 +411,13 @@ function updateStartButton() {
 // 주기적 로봇 상태 업데이트
 async function refreshRobotStatus() {
     if (!selectedRobot) return;
-    
+
     try {
         const response = await fetch('/api/robots');
         if (response.ok) {
             const updatedRobotList = await response.json();
             const updatedRobot = updatedRobotList.find(robot => robot.robot_id === selectedRobot.robot_id);
-            
+
             if (updatedRobot) {
                 selectedRobot = updatedRobot;
                 updateRobotStatus();
@@ -480,7 +486,7 @@ function showConnectStatus(message, type) {
     statusEl.textContent = message;
     statusEl.className = `connect-status ${type}`;
     statusEl.style.display = 'block';
-    
+
     // 3초 후 상태 메시지 숨기기
     setTimeout(() => {
         statusEl.style.display = 'none';

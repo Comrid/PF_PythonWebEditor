@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pathfinder Python Web Editor - 로그인</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/first.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -25,22 +25,22 @@
             <div class="login-form-container" id="loginFormContainer">
                 <form class="login-form" id="loginForm">
                     <h2><i class="fas fa-sign-in-alt"></i> 로그인</h2>
-                    
+
                     <div class="form-group">
                         <label for="username">사용자명</label>
                         <input type="text" id="username" name="username" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="password">비밀번호</label>
                         <input type="password" id="password" name="password" required>
                     </div>
-                    
+
                     <button type="submit" class="login-btn">
                         <i class="fas fa-sign-in-alt"></i> 로그인
                     </button>
                 </form>
-                
+
                 <div class="login-footer">
                     <p>계정이 없으신가요? <a href="#" id="showRegisterForm">회원가입</a></p>
                 </div>
@@ -50,32 +50,32 @@
             <div class="register-form-container" id="registerFormContainer" style="display: none;">
                 <form class="register-form" id="registerForm">
                     <h2><i class="fas fa-user-plus"></i> 회원가입</h2>
-                    
+
                     <div class="form-group">
                         <label for="reg_username">사용자명</label>
                         <input type="text" id="reg_username" name="username" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="reg_email">이메일</label>
                         <input type="email" id="reg_email" name="email">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="reg_password">비밀번호</label>
                         <input type="password" id="reg_password" name="password" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="reg_password_confirm">비밀번호 확인</label>
                         <input type="password" id="reg_password_confirm" name="password_confirm" required>
                     </div>
-                    
+
                     <button type="submit" class="register-btn">
                         <i class="fas fa-user-plus"></i> 회원가입
                     </button>
                 </form>
-                
+
                 <div class="register-footer">
                     <p>이미 계정이 있으신가요? <a href="#" id="showLoginForm">로그인</a></p>
                 </div>
@@ -94,6 +94,20 @@
             const loginFormContainer = document.getElementById('loginFormContainer');
             const registerFormContainer = document.getElementById('registerFormContainer');
 
+            // URL 파라미터 확인하여 초기 폼 설정
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            
+            if (mode === 'register') {
+                // 회원가입 모드로 시작
+                loginFormContainer.style.display = 'none';
+                registerFormContainer.style.display = 'block';
+            } else {
+                // 로그인 모드로 시작 (기본값)
+                loginFormContainer.style.display = 'block';
+                registerFormContainer.style.display = 'none';
+            }
+
             // 폼 전환
             showRegisterForm.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -110,7 +124,7 @@
             // 로그인 폼 제출
             loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const formData = new FormData(loginForm);
                 const data = {
                     username: formData.get('username'),
@@ -131,7 +145,7 @@
                     if (response.ok) {
                         showToast('로그인 성공!', 'success');
                         setTimeout(() => {
-                            window.location.href = '/';
+                            window.location.href = '/main';
                         }, 1000);
                     } else {
                         showToast(result.error || '로그인에 실패했습니다.', 'error');
@@ -145,10 +159,10 @@
             // 회원가입 폼 제출
             registerForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const password = document.getElementById('reg_password').value;
                 const passwordConfirm = document.getElementById('reg_password_confirm').value;
-                
+
                 if (password !== passwordConfirm) {
                     showToast('비밀번호가 일치하지 않습니다.', 'error');
                     return;

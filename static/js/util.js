@@ -818,33 +818,8 @@ finally:
 
 function getCode7(){
     return `import threading
-import psutil
 import time
-def monitor_cpu_background(interval: float = 1.0, stop_event = None):
-    if stop_event is None:
-        stop_event = threading.Event()
-
-    def _monitor():
-        print("CPU 모니터링 시작 (백그라운드)")
-        print("=" * 40)
-
-        while not stop_event.is_set():
-            try:
-                cpu_percent = psutil.cpu_percent(interval=interval)
-                cpu_per_core = psutil.cpu_percent(interval=interval, percpu=True)
-
-                print(f"CPU: {cpu_percent:5.1f}% | "
-                      f"코어별: {', '.join([f'{u:4.1f}%' for u in cpu_per_core])}")
-
-            except Exception as e:
-                print(f"모니터링 오류: {e}")
-                break
-
-    monitor_thread = threading.Thread(target=_monitor, daemon=True)
-    monitor_thread.start()
-
-    return stop_event
-stop_monitoring = monitor_cpu_background(interval=1.0)
+# CPU 모니터링 코드는 서버-클라이언트 통신 구축 후 추가 예정
 
 
 # Pathfinder Python Web Editor

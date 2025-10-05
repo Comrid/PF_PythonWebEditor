@@ -3,11 +3,11 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pathfinder Python Web Editor - 시작</title>
+    <title>Pathfinder Python Web Editor</title>
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/first.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -26,7 +26,7 @@
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
-        
+
         <img src="{{ url_for('static', filename='img/app-logo.png') }}" alt="App Logo" class="first-screen-logo">
         <h1 class="first-screen-title">Pathfinder Python Web Editor</h1>
         <p class="first-screen-subtitle">라즈베리파이 기반 AI 자율주행 자동차 개발 환경</p>
@@ -35,47 +35,47 @@
             웹 기반 Python 개발 환경입니다. 브라우저에서 코드를 작성하고 실행하여<br>
             실시간으로 하드웨어를 제어하고 결과를 확인할 수 있습니다.
         </p>
-        
-                <!-- Robot Selection Section -->
-                <div class="robot-selection-section" id="robotSelectionSection">
-                    <h3><i class="fas fa-robot"></i> 로봇 선택</h3>
-                    <div class="robot-selection-container">
-                        <div class="robot-dropdown">
-                            <select id="robotSelect" class="robot-select">
-                                <option value="">로봇을 선택하세요...</option>
-                            </select>
-                            <div class="robot-status" id="robotStatus">
-                                <div class="status-indicator offline" id="statusIndicator"></div>
-                                <span id="statusText">로봇을 선택하세요</span>
-                            </div>
-                        </div>
-                        <div class="robot-info" id="robotInfo" style="display: none;">
-                            <div class="robot-name" id="selectedRobotName"></div>
-                            <div class="robot-details" id="selectedRobotDetails"></div>
-                        </div>
-                        <div class="robot-connect" id="robotConnect">
-                            <h3><i class="fas fa-robot"></i> 로봇 연동</h3>
-                            <p>로봇 설정 시 입력한 로봇 이름을 입력하세요.</p>
-                            <div class="connect-form">
-                                <input type="text" id="robotNameInput" placeholder="로봇 이름을 입력하세요" class="robot-name-input">
-                                <button class="connect-robot-btn" id="connectRobotBtn">
-                                    <i class="fas fa-link"></i> 로봇 연동하기
-                                </button>
-                            </div>
-                            <div class="connect-status" id="connectStatus" style="display: none;"></div>
-                        </div>
+
+        <!-- Robot Selection Section -->
+        <div class="robot-selection-section" id="robotSelectionSection">
+            <h3><i class="fas fa-robot"></i> 로봇 선택</h3>
+            <div class="robot-selection-container">
+                <div class="robot-dropdown">
+                    <select id="robotSelect" class="robot-select">
+                        <option value="">로봇을 선택하세요...</option>
+                    </select>
+                    <div class="robot-status" id="robotStatus">
+                        <div class="status-indicator offline" id="statusIndicator"></div>
+                        <span id="statusText">로봇을 선택하세요</span>
                     </div>
                 </div>
-
-                <div class="first-screen-buttons">
-                    <button class="first-screen-btn primary" id="startEditorBtn" disabled>
-                        <i class="fas fa-play"></i> 에디터 사용하기
-                    </button>
-                    <button class="first-screen-btn secondary" id="tutorialBtn">
-                        <i class="fas fa-graduation-cap"></i> 튜토리얼
-                    </button>
+                <div class="robot-info" id="robotInfo" style="display: none;">
+                    <div class="robot-name" id="selectedRobotName"></div>
+                    <div class="robot-details" id="selectedRobotDetails"></div>
                 </div>
-        
+                <div class="robot-connect" id="robotConnect">
+                    <h3><i class="fas fa-robot"></i> 로봇 연동</h3>
+                    <p>로봇 설정 시 입력한 로봇 이름을 입력하세요.</p>
+                    <div class="connect-form">
+                        <input type="text" id="robotNameInput" placeholder="로봇 이름을 입력하세요" class="robot-name-input">
+                        <button class="connect-robot-btn" id="connectRobotBtn">
+                            <i class="fas fa-link"></i> 로봇 연동하기
+                        </button>
+                    </div>
+                    <div class="connect-status" id="connectStatus" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="first-screen-buttons">
+            <button class="first-screen-btn primary" id="startEditorBtn" disabled>
+                <i class="fas fa-play"></i> 에디터 사용하기
+            </button>
+            <button class="first-screen-btn secondary" id="tutorialBtn">
+                <i class="fas fa-graduation-cap"></i> 튜토리얼
+            </button>
+        </div>
+
         <!-- Trophy Icon for Challenges -->
         <div class="first-screen-trophy" id="trophyIcon" title="도전과제 보기">
             <button class="trophy-btn">
@@ -110,6 +110,6 @@
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/challenge.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/first.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 </body>
 </html>
