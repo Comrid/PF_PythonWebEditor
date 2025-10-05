@@ -24,12 +24,13 @@ robot_heartbeats = {}
 pid_states = {}
 gesture_states = {}
 slider_states = {}
+socketio = None
 
 def init_editor_globals(app_globals):
     """app.py의 전역 변수들을 초기화"""
     global running_threads, stop_flags, session_user_mapping
     global user_robot_mapping, registered_robots, robot_heartbeats
-    global pid_states, gesture_states, slider_states
+    global pid_states, gesture_states, slider_states, socketio
 
     running_threads = app_globals.get('running_threads', {})
     stop_flags = app_globals.get('stop_flags', {})
@@ -40,6 +41,7 @@ def init_editor_globals(app_globals):
     pid_states = app_globals.get('pid_states', {})
     gesture_states = app_globals.get('gesture_states', {})
     slider_states = app_globals.get('slider_states', {})
+    socketio = app_globals.get('socketio', None)
 
 
 #region Code Execution Functions
@@ -48,7 +50,6 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
     try:
         # 할당된 로봇 확인
         if robot_id not in registered_robots:
-            from flask_socketio import socketio
             socketio.emit('execution_error', {'error': '할당된 로봇을 찾을 수 없습니다.'}, room=sid)
             return
 
@@ -92,16 +93,13 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
                 socketio.emit('execution_error', {'error': f'로봇 실행 요청 실패: {response.text}'}, room=sid)
 
     except requests.exceptions.RequestException as e:
-        from flask_socketio import socketio
         socketio.emit('execution_error', {'error': f'로봇 통신 오류: {str(e)}'}, room=sid)
     except Exception as e:
-        from flask_socketio import socketio
         socketio.emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'}, room=sid)
 
 def relay_image_data(data: dict, session_id: str):
     """로봇에서 받은 이미지 데이터를 브라우저로 중계"""
     try:
-        from flask_socketio import socketio
         socketio.emit('image_data', data, room=session_id)
     except Exception as e:
         print(f"DEBUG: 이미지 데이터 중계 실패: {e}")
@@ -109,7 +107,6 @@ def relay_image_data(data: dict, session_id: str):
 def relay_text_data(data: dict, session_id: str):
     """로봇에서 받은 텍스트 데이터를 브라우저로 중계"""
     try:
-        from flask_socketio import socketio
         socketio.emit('text_data', data, room=session_id)
     except Exception as e:
         print(f"DEBUG: 텍스트 데이터 중계 실패: {e}")
@@ -117,7 +114,6 @@ def relay_text_data(data: dict, session_id: str):
 def relay_stdout_data(data: dict, session_id: str):
     """로봇에서 받은 stdout 데이터를 브라우저로 중계"""
     try:
-        from flask_socketio import socketio
         socketio.emit('stdout', data, room=session_id)
     except Exception as e:
         print(f"DEBUG: stdout 데이터 중계 실패: {e}")
@@ -125,7 +121,6 @@ def relay_stdout_data(data: dict, session_id: str):
 def relay_stderr_data(data: dict, session_id: str):
     """로봇에서 받은 stderr 데이터를 브라우저로 중계"""
     try:
-        from flask_socketio import socketio
         socketio.emit('stderr', data, room=session_id)
     except Exception as e:
         print(f"DEBUG: stderr 데이터 중계 실패: {e}")
@@ -133,7 +128,6 @@ def relay_stderr_data(data: dict, session_id: str):
 def relay_finished_data(data: dict, session_id: str):
     """로봇에서 받은 finished 데이터를 브라우저로 중계"""
     try:
-        from flask_socketio import socketio
         socketio.emit('finished', data, room=session_id)
     except Exception as e:
         print(f"DEBUG: finished 데이터 중계 실패: {e}")
