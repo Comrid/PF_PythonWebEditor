@@ -1,7 +1,19 @@
 // Socket-Handler.js
 let socket; // 전역 변수 선언
 
+// 전역 변수들 (util.js에서 정의됨)
+let messages = {};
+let useConsoleDebug = false;
+
 document.addEventListener('DOMContentLoaded', function() {
+    // 전역 변수들 초기화
+    if (typeof window.messages !== 'undefined') {
+        messages = window.messages;
+    }
+    if (typeof window.useConsoleDebug !== 'undefined') {
+        useConsoleDebug = window.useConsoleDebug;
+    }
+    
     // Socket 초기화
     initializeSocket();
 });
