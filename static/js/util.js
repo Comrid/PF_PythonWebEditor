@@ -59,10 +59,6 @@ window.setGeminiAPIKey = setGeminiAPIKey;
 // Toast with console debug
 const useConsoleDebug = true;
 
-// 전역 변수로 노출
-window.useConsoleDebug = useConsoleDebug;
-window.messages = messages;
-
 // global variables
 let isConnected = false;
 let codeRunning = false;
