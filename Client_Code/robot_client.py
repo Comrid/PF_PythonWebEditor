@@ -40,6 +40,9 @@ class RealtimeOutput:
         self.session_id = session_id
         self.output_type = output_type
         self.buffer = ""
+        # 원본 stdout/stderr 저장 (디버깅용)
+        self.original_stdout = None
+        self.original_stderr = None
     
     def write(self, text):
         """출력 텍스트를 실시간으로 전송"""
@@ -49,11 +52,14 @@ class RealtimeOutput:
             while '\n' in self.buffer:
                 line, self.buffer = self.buffer.split('\n', 1)
                 if line.strip():  # 빈 줄이 아닌 경우만 전송
+                    # SocketIO로 전송
                     sio.emit(f'robot_{self.output_type}', {
                         'session_id': self.session_id,
                         'output': line
                     })
-                    print(f"{'출력' if self.output_type == 'stdout' else '경고'}: {line}")
+                    # 디버깅용 로그 (원본 stdout 사용)
+                    if self.original_stdout:
+                        self.original_stdout.write(f"[{self.output_type.upper()}] {line}\n")
     
     def flush(self):
         """버퍼에 남은 내용을 전송"""
@@ -62,7 +68,9 @@ class RealtimeOutput:
                 'session_id': self.session_id,
                 'output': self.buffer
             })
-            print(f"{'출력' if self.output_type == 'stdout' else '경고'}: {self.buffer}")
+            # 디버깅용 로그 (원본 stdout 사용)
+            if self.original_stdout:
+                self.original_stdout.write(f"[{self.output_type.upper()}] {self.buffer}\n")
             self.buffer = ""
 
 def execute_python_code(code, session_id):
@@ -71,9 +79,17 @@ def execute_python_code(code, session_id):
     robot_status['executing_code'] = True
 
     try:
+        # 원본 stdout/stderr 저장
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        
         # 실시간 출력을 위한 객체 생성
         stdout_handler = RealtimeOutput(session_id, 'stdout')
         stderr_handler = RealtimeOutput(session_id, 'stderr')
+        
+        # 원본 stdout/stderr 참조 저장
+        stdout_handler.original_stdout = original_stdout
+        stderr_handler.original_stdout = original_stdout
 
         # 코드 실행 컨텍스트 (실시간 출력)
         with contextlib.redirect_stdout(stdout_handler), contextlib.redirect_stderr(stderr_handler):
@@ -90,7 +106,8 @@ def execute_python_code(code, session_id):
             'session_id': session_id,
             'output': '실행 완료'
         })
-        print("✅ 코드 실행 완료")
+        # 원본 stdout 사용하여 로그 출력
+        original_stdout.write("✅ 코드 실행 완료\n")
 
     except Exception as e:
         # 오류 발생 시 서버로 전송
@@ -99,7 +116,8 @@ def execute_python_code(code, session_id):
             'session_id': session_id,
             'output': error_msg
         })
-        print(f"❌ 실행 오류: {error_msg}")
+        # 원본 stdout 사용하여 로그 출력
+        original_stdout.write(f"❌ 실행 오류: {error_msg}\n")
 
         # 실행 완료 알림 (오류 발생해도)
         sio.emit('robot_finished', {
