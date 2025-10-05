@@ -24,13 +24,12 @@ robot_heartbeats = {}
 pid_states = {}
 gesture_states = {}
 slider_states = {}
-socketio = None
 
 def init_editor_globals(app_globals):
     """app.py의 전역 변수들을 초기화"""
     global running_threads, stop_flags, session_user_mapping
     global user_robot_mapping, registered_robots, robot_heartbeats
-    global pid_states, gesture_states, slider_states, socketio
+    global pid_states, gesture_states, slider_states
 
     running_threads = app_globals.get('running_threads', {})
     stop_flags = app_globals.get('stop_flags', {})
@@ -41,7 +40,6 @@ def init_editor_globals(app_globals):
     pid_states = app_globals.get('pid_states', {})
     gesture_states = app_globals.get('gesture_states', {})
     slider_states = app_globals.get('slider_states', {})
-    socketio = app_globals.get('socketio', None)
 
 
 #region Code Execution Functions
@@ -50,8 +48,7 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
     try:
         # 할당된 로봇 확인
         if robot_id not in registered_robots:
-            socketio.emit('execution_error', {'error': '할당된 로봇을 찾을 수 없습니다.'}, room=sid)
-            return
+            return {'error': '할당된 로봇을 찾을 수 없습니다.'}
 
         robot_info = registered_robots[robot_id]
 
@@ -66,19 +63,19 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
         # SocketIO 연결된 로봇인지 확인
         if robot_info.get('url') is None:
             # SocketIO로 직접 전송 (로봇 클라이언트의 세션 ID 사용)
-            from flask_socketio import socketio
             robot_session_id = robot_info.get('session_id')
             if robot_session_id:
-                socketio.emit('execute_code', {
+                # 이 부분은 app.py에서 처리하도록 반환
+                return {
+                    'type': 'socketio',
+                    'robot_session_id': robot_session_id,
                     'code': code,
                     'session_id': sid,
-                    'user_info': user_data
-                }, room=robot_session_id)
-                socketio.emit('execution_started', {
-                    'message': f'로봇 {robot_info.get("name", robot_id)}에서 코드 실행을 시작합니다...'
-                }, room=sid)
+                    'user_info': user_data,
+                    'robot_name': robot_info.get("name", robot_id)
+                }
             else:
-                socketio.emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'}, room=sid)
+                return {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'}
         else:
             # HTTP 요청으로 전송 (기존 방식)
             robot_url = robot_info.get('url')
@@ -88,49 +85,39 @@ def execute_code_on_robot(code: str, sid: str, robot_id: str, user_info: dict = 
                 timeout=30
             )
             if response.status_code == 200:
-                socketio.emit('execution_started', {'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}, room=sid)
+                return {'success': True, 'message': f'로봇 {robot_id}에서 코드 실행을 시작합니다...'}
             else:
-                socketio.emit('execution_error', {'error': f'로봇 실행 요청 실패: {response.text}'}, room=sid)
+                return {'error': f'로봇 실행 요청 실패: {response.text}'}
 
     except requests.exceptions.RequestException as e:
-        socketio.emit('execution_error', {'error': f'로봇 통신 오류: {str(e)}'}, room=sid)
+        return {'error': f'로봇 통신 오류: {str(e)}'}
     except Exception as e:
-        socketio.emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'}, room=sid)
+        return {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'}
 
 def relay_image_data(data: dict, session_id: str):
     """로봇에서 받은 이미지 데이터를 브라우저로 중계"""
-    try:
-        socketio.emit('image_data', data, room=session_id)
-    except Exception as e:
-        print(f"DEBUG: 이미지 데이터 중계 실패: {e}")
+    # 이 함수는 app.py에서 직접 처리하도록 변경
+    return {'type': 'image_data', 'data': data, 'session_id': session_id}
 
 def relay_text_data(data: dict, session_id: str):
     """로봇에서 받은 텍스트 데이터를 브라우저로 중계"""
-    try:
-        socketio.emit('text_data', data, room=session_id)
-    except Exception as e:
-        print(f"DEBUG: 텍스트 데이터 중계 실패: {e}")
+    # 이 함수는 app.py에서 직접 처리하도록 변경
+    return {'type': 'text_data', 'data': data, 'session_id': session_id}
 
 def relay_stdout_data(data: dict, session_id: str):
     """로봇에서 받은 stdout 데이터를 브라우저로 중계"""
-    try:
-        socketio.emit('stdout', data, room=session_id)
-    except Exception as e:
-        print(f"DEBUG: stdout 데이터 중계 실패: {e}")
+    # 이 함수는 app.py에서 직접 처리하도록 변경
+    return {'type': 'stdout', 'data': data, 'session_id': session_id}
 
 def relay_stderr_data(data: dict, session_id: str):
     """로봇에서 받은 stderr 데이터를 브라우저로 중계"""
-    try:
-        socketio.emit('stderr', data, room=session_id)
-    except Exception as e:
-        print(f"DEBUG: stderr 데이터 중계 실패: {e}")
+    # 이 함수는 app.py에서 직접 처리하도록 변경
+    return {'type': 'stderr', 'data': data, 'session_id': session_id}
 
 def relay_finished_data(data: dict, session_id: str):
     """로봇에서 받은 finished 데이터를 브라우저로 중계"""
-    try:
-        socketio.emit('finished', data, room=session_id)
-    except Exception as e:
-        print(f"DEBUG: finished 데이터 중계 실패: {e}")
+    # 이 함수는 app.py에서 직접 처리하도록 변경
+    return {'type': 'finished', 'data': data, 'session_id': session_id}
 #endregion
 
 #region SocketIO Event Handlers
@@ -162,7 +149,16 @@ def register_socketio_handlers(socketio):
                 return
 
             # 로봇에 코드 실행 요청 전송 (사용자 정보 포함)
-            execute_code_on_robot(code, sid, robot_id, user_info)
+            result = execute_code_on_robot(code, sid, robot_id, user_info)
+            
+            # 결과 처리
+            if 'error' in result:
+                emit('execution_error', {'error': result['error']})
+            elif result.get('type') == 'socketio':
+                # SocketIO로 전송해야 하는 경우, app.py에서 처리하도록 반환
+                return result
+            elif result.get('success'):
+                emit('execution_started', {'message': result['message']})
 
         except Exception as e:
             emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
@@ -175,7 +171,7 @@ def register_socketio_handlers(socketio):
             thread = running_threads.get(sid, None)
 
             if thread is None:
-                socketio.emit('execution_error', {'error': '실행 중인 코드가 없습니다.'}, room=sid)
+                emit('execution_error', {'error': '실행 중인 코드가 없습니다.'})
                 return
 
             # 1단계: 중지 플래그 설정 (안전한 종료 시도)
@@ -207,15 +203,15 @@ def register_socketio_handlers(socketio):
 
                 if thread.is_alive():
                     print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
-                    socketio.emit('execution_stopped', {
+                    emit('execution_stopped', {
                         'message': '코드 실행 중지 요청이 완료되었습니다.',
                         'warning': '스레드가 완전히 종료되지 않았을 수 있습니다.'
-                    }, room=sid)
+                    })
                 else:
                     print(f"DEBUG: 강제 종료 성공")
-                    socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
+                    emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'})
             else:
-                socketio.emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'}, room=sid)
+                emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'})
 
             # 최종 정리: 스레드가 실제로 종료된 경우에만 정리 (그 외에는 execute_code()의 finally에 위임)
             try:
@@ -227,7 +223,7 @@ def register_socketio_handlers(socketio):
 
         except Exception as e:
             print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
-            socketio.emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
+            emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
 
     @socketio.on('gesture_update')
     def handle_gesture_update(data):
@@ -281,10 +277,13 @@ def register_socketio_handlers(socketio):
                 return
 
             # 브라우저로 이미지 데이터 중계
-            relay_image_data({
+            result = relay_image_data({
                 'i': image_data,
                 'w': widget_id
             }, session_id)
+            
+            # app.py에서 처리하도록 반환
+            return result
 
         except Exception as e:
             print(f"로봇 이미지 데이터 중계 오류: {e}")
@@ -300,10 +299,13 @@ def register_socketio_handlers(socketio):
                 return
 
             # 브라우저로 텍스트 데이터 중계
-            relay_text_data({
+            result = relay_text_data({
                 'text': text,
                 'widget_id': widget_id
             }, session_id)
+            
+            # app.py에서 처리하도록 반환
+            return result
 
         except Exception as e:
             print(f"로봇 텍스트 데이터 중계 오류: {e}")
@@ -318,7 +320,10 @@ def register_socketio_handlers(socketio):
                 return
 
             # 브라우저로 stdout 데이터 중계
-            relay_stdout_data({'output': output}, session_id)
+            result = relay_stdout_data({'output': output}, session_id)
+            
+            # app.py에서 처리하도록 반환
+            return result
 
         except Exception as e:
             print(f"로봇 stdout 데이터 중계 오류: {e}")
@@ -333,7 +338,10 @@ def register_socketio_handlers(socketio):
                 return
 
             # 브라우저로 stderr 데이터 중계
-            relay_stderr_data({'output': output}, session_id)
+            result = relay_stderr_data({'output': output}, session_id)
+            
+            # app.py에서 처리하도록 반환
+            return result
 
         except Exception as e:
             print(f"로봇 stderr 데이터 중계 오류: {e}")
@@ -348,7 +356,10 @@ def register_socketio_handlers(socketio):
                 return
 
             # 브라우저로 finished 데이터 중계
-            relay_finished_data({'output': output}, session_id)
+            result = relay_finished_data({'output': output}, session_id)
+            
+            # app.py에서 처리하도록 반환
+            return result
 
         except Exception as e:
             print(f"로봇 finished 데이터 중계 오류: {e}")

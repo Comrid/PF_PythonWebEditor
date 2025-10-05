@@ -77,13 +77,13 @@ robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비�
 # 세션 관리 시스템
 session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
 
-from blueprints.editor_bp import init_editor_globals, register_socketio_handlers
+from blueprints.editor_bp import init_editor_globals, register_socketio_handlers, execute_code_on_robot
 
 # 전역 변수들을 에디터 블루프린트에 전달
 init_editor_globals(globals())
 
-# SocketIO 핸들러 등록
-register_socketio_handlers(socketio)
+# SocketIO 핸들러 등록 (editor_bp의 핸들러들은 app.py로 이동됨)
+# register_socketio_handlers(socketio)
 
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
@@ -313,6 +313,241 @@ def handle_connect():
         print(f"세션 {request.sid}에 로그인되지 않은 사용자 연결")
 
     emit('connected', {'message': '서버에 연결되었습니다.'})
+
+#region Editor SocketIO Handlers
+@socketio.on('execute_code')
+def handle_execute_code(data):
+    try:
+        code = data.get('code', '')
+        if not code:
+            emit('execution_error', {'error': '코드가 제공되지 않았습니다.'})
+            return
+
+        # 현재 세션 ID 가져오기
+        sid = request.sid
+
+        # 현재 사용자 정보 가져오기
+        user_info = session_user_mapping.get(sid, {})
+        user_id = user_info.get('user_id')
+        username = user_info.get('username', 'Unknown')
+
+        print(f"사용자 {username} (ID: {user_id})이 코드 실행을 요청했습니다.")
+
+        # 할당된 로봇 확인
+        robot_id = user_robot_mapping.get(sid)
+        if not robot_id:
+            emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
+            return
+
+        # 로봇에 코드 실행 요청 전송 (사용자 정보 포함)
+        result = execute_code_on_robot(code, sid, robot_id, user_info)
+        
+        # 결과 처리
+        if 'error' in result:
+            emit('execution_error', {'error': result['error']})
+        elif result.get('type') == 'socketio':
+            # SocketIO로 전송
+            robot_session_id = result['robot_session_id']
+            socketio.emit('execute_code', {
+                'code': result['code'],
+                'session_id': result['session_id'],
+                'user_info': result['user_info']
+            }, room=robot_session_id)
+            socketio.emit('execution_started', {
+                'message': f'로봇 {result["robot_name"]}에서 코드 실행을 시작합니다...'
+            }, room=sid)
+        elif result.get('success'):
+            emit('execution_started', {'message': result['message']})
+
+    except Exception as e:
+        emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
+
+@socketio.on('stop_execution')
+def handle_stop_execution():
+    """실행 중인 코드를 중지"""
+    try:
+        sid = request.sid
+        thread = running_threads.get(sid, None)
+
+        if thread is None:
+            emit('execution_error', {'error': '실행 중인 코드가 없습니다.'})
+            return
+
+        # 1단계: 중지 플래그 설정 (안전한 종료 시도)
+        stop_flags[sid] = True
+
+        if thread.is_alive():
+            # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
+            def raise_in_thread(thread, exc_type = SystemExit):
+                import ctypes
+                if thread is None or not thread.is_alive():
+                    return False
+
+                func = ctypes.pythonapi.PyThreadState_SetAsyncExc
+                func.argtypes = [ctypes.c_ulong, ctypes.py_object]
+                func.restype = ctypes.c_int
+
+                tid = ctypes.c_ulong(thread.ident)
+                res = func(tid, ctypes.py_object(exc_type))
+
+                if res > 1:
+                    func(tid, ctypes.py_object(0))
+                    return False
+
+                return res == 1
+            # 강제 종료 실행 (안전 헬퍼 사용)
+            ok = raise_in_thread(thread, SystemExit)
+
+            thread.join(timeout=2.0)  # 2초 대기
+
+            if thread.is_alive():
+                print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
+                emit('execution_stopped', {
+                    'message': '코드 실행 중지 요청이 완료되었습니다.',
+                    'warning': '스레드가 완전히 종료되지 않았을 수 있습니다.'
+                })
+            else:
+                print(f"DEBUG: 강제 종료 성공")
+                emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'})
+        else:
+            emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'})
+
+        # 최종 정리: 스레드가 실제로 종료된 경우에만 정리 (그 외에는 execute_code()의 finally에 위임)
+        try:
+            if not thread.is_alive():
+                running_threads.pop(sid, None)
+                stop_flags.pop(sid, None)
+        except Exception:
+            pass
+
+    except Exception as e:
+        print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
+        emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
+
+@socketio.on('gesture_update')
+def handle_gesture_update(data):
+    sid = request.sid
+    data = data.get('data')
+    if data:
+        gesture_states[sid] = data
+
+@socketio.on('pid_update')
+def handle_pid_update(payload):
+    sid = request.sid
+    try:
+        widget_id = payload.get('widget_id')
+        p = float(payload.get('p', 0.0))
+        i = float(payload.get('i', 0.0))
+        d = float(payload.get('d', 0.0))
+    except Exception:
+        return
+    if not widget_id:
+        return
+    session_map = pid_states.get(sid)
+    if session_map is None:
+        session_map = {}
+        pid_states[sid] = session_map
+    session_map[widget_id] = {'p': p, 'i': i, 'd': d}
+
+@socketio.on('slider_update')
+def handle_slider_update(payload):
+    sid = request.sid
+    try:
+        widget_id = payload.get('widget_id')
+        values = payload.get('values')
+    except Exception:
+        return
+    if not widget_id:
+        return
+    session_map = gesture_states.get(sid)
+    if session_map is None:
+        session_map = {}
+        gesture_states[sid] = session_map
+    session_map[widget_id] = values
+
+@socketio.on('robot_emit_image')
+def handle_robot_emit_image(data):
+    try:
+        session_id = data.get('session_id')
+        image_data = data.get('image_data')
+        widget_id = data.get('widget_id')
+
+        if not all([session_id, image_data, widget_id]):
+            return
+
+        # 브라우저로 이미지 데이터 중계
+        socketio.emit('image_data', {
+            'i': image_data,
+            'w': widget_id
+        }, room=session_id)
+
+    except Exception as e:
+        print(f"로봇 이미지 데이터 중계 오류: {e}")
+
+@socketio.on('robot_emit_text')
+def handle_robot_emit_text(data):
+    try:
+        session_id = data.get('session_id')
+        text = data.get('text')
+        widget_id = data.get('widget_id')
+
+        if not all([session_id, text, widget_id]):
+            return
+
+        # 브라우저로 텍스트 데이터 중계
+        socketio.emit('text_data', {
+            'text': text,
+            'widget_id': widget_id
+        }, room=session_id)
+
+    except Exception as e:
+        print(f"로봇 텍스트 데이터 중계 오류: {e}")
+
+@socketio.on('robot_stdout')
+def handle_robot_stdout(data):
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output')
+
+        if not all([session_id, output]):
+            return
+
+        # 브라우저로 stdout 데이터 중계
+        socketio.emit('stdout', {'output': output}, room=session_id)
+
+    except Exception as e:
+        print(f"로봇 stdout 데이터 중계 오류: {e}")
+
+@socketio.on('robot_stderr')
+def handle_robot_stderr(data):
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output')
+
+        if not all([session_id, output]):
+            return
+
+        # 브라우저로 stderr 데이터 중계
+        socketio.emit('stderr', {'output': output}, room=session_id)
+
+    except Exception as e:
+        print(f"로봇 stderr 데이터 중계 오류: {e}")
+
+@socketio.on('robot_finished')
+def handle_robot_finished(data):
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output', '실행 완료')
+
+        if not session_id:
+            return
+
+        # 브라우저로 finished 데이터 중계
+        socketio.emit('finished', {'output': output}, room=session_id)
+
+    except Exception as e:
+        print(f"로봇 finished 데이터 중계 오류: {e}")
+#endregion
 
 @socketio.on('disconnect')
 def handle_disconnect():
