@@ -84,11 +84,52 @@ def setup_robot():
             return jsonify({"success": False, "error": "로봇 이름은 3자 이상이어야 합니다."}), 400
 
         if platform.system() == "Linux":
-            # 와이파이 정보 저장
-            subprocess.run(f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null", shell=True, check=True)
-            subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env > /dev/null", shell=True, check=True)
-            subprocess.run("sudo /usr/local/bin/pf-netmode.sh", shell=True, check=True)
-            subprocess.run("sudo reboot", shell=True, check=True)
+            try:
+                # 1. nmcli 명령어로 WiFi에 연결합니다. (Bookworm 방식)
+                # 이 명령어 하나로 연결, 프로필 저장이 모두 처리됩니다.
+                print(f"Connecting to SSID: {ssid}...")
+                connect_command = [
+                    "sudo", "nmcli", "device", "wifi", "connect",
+                    ssid, "password", password
+                ]
+                # 30초 타임아웃 및 오류 출력을 위해 capture_output 설정
+                subprocess.run(connect_command, check=True, text=True, capture_output=True, timeout=30)
+
+                # 2. 연결 성공 시, CLIENT 모드로 전환합니다.
+                print("WiFi connection successful. Switching to CLIENT mode...")
+                # /etc/pf_env 파일 업데이트
+                subprocess.run(
+                    "echo 'MODE=CLIENT' | sudo tee /etc/pf_env",
+                    shell=True, check=True
+                )
+
+                # Bookworm 전용 모드 전환 스크립트 실행
+                subprocess.run(
+                    ["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"],
+                    check=True
+                )
+
+                print("Successfully switched to CLIENT mode.")
+                # 성공 메시지를 UI로 보내는 로직이 여기에 위치하면 좋습니다.
+
+            except subprocess.TimeoutExpired:
+                # 연결 시간 초과 시 오류 처리
+                error_message = "Error: Connection timed out. Please check SSID and password."
+                print(error_message)
+                # 오류 메시지를 UI로 보내는 로직 추가
+
+            except subprocess.CalledProcessError as e:
+                # nmcli 명령어 실패 시 오류를 분석하여 더 친절하게 안내
+                error_output = e.stderr.strip()
+                if "Error: No network with SSID" in error_output:
+                    error_message = f"Error: SSID '{ssid}' not found. Please check the Wi-Fi name."
+                elif "Error: Connection activation failed: (7) Secrets were required" in error_output:
+                    error_message = "Error: Incorrect password."
+                else:
+                    error_message = f"Error: Connection failed. Details: {error_output}"
+                print(error_message)
+                # 오류 메시지를 UI로 보내는 로직 추가
+
         else:
             print("Window Debug")
 
