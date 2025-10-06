@@ -88,6 +88,7 @@ def setup_robot():
             subprocess.run(f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null", shell=True, check=True)
             subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env > /dev/null", shell=True, check=True)
             subprocess.run("sudo /usr/local/bin/pf-netmode.sh", shell=True, check=True)
+            subprocess.run("sudo reboot", shell=True, check=True)
         else:
             print("Window Debug")
 

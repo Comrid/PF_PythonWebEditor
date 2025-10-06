@@ -29,13 +29,21 @@ grep -q "dtoverlay=disable-bt" /boot/config.txt || echo "dtoverlay=disable-bt" |
 echo "[3/11] 사용자($ACTUAL_USER)에게 네트워크 관리 그룹(netdev) 권한을 부여합니다..."
 sudo usermod -a -G netdev ${ACTUAL_USER}
 
-# --- [5] GitHub 리포지토리 클론 ---
-echo "[5/11] GitHub에서 최신 소스코드를 다운로드합니다..."
+# --- [4] GitHub 리포지토리 클론 ---
+echo "[4/11] GitHub에서 최신 소스코드를 다운로드합니다..."
+if [ -d "$CLONE_DIR" ]; then
+    sudo rm -rf "$CLONE_DIR"
+fi
 sudo -u ${ACTUAL_USER} git clone ${GIT_REPO_URL} ${CLONE_DIR}
 
 # --- [6] Python 라이브러리 설치 ---
 echo "[6/11] Python 라이브러리를 설치합니다..."
-sudo pip3 install flask flask-socketio numpy==1.26.4
+sudo pip3 install flask flask-socketio numpy==1.26.4 --break-system-packages
+
+# --- [7] wlan0에 고정 IP 할당 (AP 모드용) ---
+# hostapd 서비스 및 dnsmasq 서비즈 종료(AP 관련 서비스 종료)
+sudo systemctl stop hostapd || true
+sudo systemctl stop dnsmasq || true
 
 # --- [7] 기존 Wi-Fi 설정 초기화 ---
 echo "[7/11] OS 설치 시 저장된 Wi-Fi 설정을 초기화하여 AP 모드로 부팅을 보장합니다..."
@@ -46,24 +54,6 @@ update_config=1
 country=KR
 EOF
 sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # --- [8] wlan0에 고정 IP 할당 (AP 모드용) ---
@@ -79,14 +69,6 @@ interface $WAN_IF
 EOF
 
 
-
-
-
-
-
-
-
-
 # --- [9] dnsmasq 및 hostapd 설정 ---
 echo "[9/11] dnsmasq와 hostapd를 설정합니다..."
 sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig || true
@@ -99,7 +81,6 @@ domain=wlan
 address=/#/10.42.0.1
 dhcp-option=114,http://10.42.0.1/
 EOF
-
 
 
 sudo tee /etc/hostapd/hostapd.conf >/dev/null << EOF
@@ -133,14 +114,6 @@ sudo systemctl enable hostapd
 sudo systemctl enable dnsmasq
 
 
-
-
-
-
-
-
-
-
 # --- [10] 로봇 클라이언트용 systemd 서비스 등록 ---
 echo "[10/11] 로봇 클라이언트용 서비스를 등록합니다..."
 # 1. WiFi 설정 서비스 (app_wifi.py)
@@ -161,11 +134,6 @@ WantedBy=multi-user.target
 UNIT
 
 
-
-
-
-
-
 # 2. 로봇 클라이언트 서비스 (robot_client.py)
 sudo tee /etc/systemd/system/robot_client.service >/dev/null <<UNIT
 [Unit]
@@ -182,12 +150,6 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 UNIT
-
-
-
-
-
-
 
 
 # --- [11] 동적 모드 전환 스크립트 생성 ---
