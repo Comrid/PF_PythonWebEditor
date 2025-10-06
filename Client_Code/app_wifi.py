@@ -84,9 +84,8 @@ def setup_robot():
             return jsonify({"success": False, "error": "로봇 이름은 3자 이상이어야 합니다."}), 400
 
         if platform.system() == "Linux":
-            # 와이파이 정보 저장 및 재설정
+            # 와이파이 정보 저장
             subprocess.run(f"wpa_passphrase '{ssid}' '{password}' | sudo tee -a {WPA_SUPPLICANT_PATH} > /dev/null", shell=True, check=True)
-            subprocess.run("sudo wpa_cli -i wlan0 reconfigure", shell=True, check=True)
             subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env > /dev/null", shell=True, check=True)
             subprocess.run("sudo /usr/local/bin/pf-netmode.sh", shell=True, check=True)
         else:
