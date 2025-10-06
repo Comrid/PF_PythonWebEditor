@@ -1,0 +1,15 @@
+[Unit]
+Description=PathFinder Mode Manager
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/environment
+ExecStart=/home/pi/PF_PythonWebEditor/Client_Code/pf_mode_manager.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
