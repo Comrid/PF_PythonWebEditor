@@ -178,10 +178,14 @@ def execute_code(data):
 def stop_execution(data):
     global running_thread, stop_flag
     try:
+        session_id = data.get('session_id', '')
         thread = running_thread
 
         if thread is None:
-            print("실행 중인 코드가 없습니다.")
+            sio.emit('robot_stderr', {
+                'session_id': session_id,
+                'output': '실행 중인 코드가 없습니다.'
+            })
             return
 
         # 1단계: 중지 플래그 설정 (안전한 종료 시도)
@@ -226,6 +230,10 @@ def stop_execution(data):
 
     except Exception as e:
         print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
+        sio.emit('robot_stderr', {
+            'session_id': session_id,
+            'output': f'코드 중지 중 오류가 발생했습니다: {str(e)}'
+        })
 
 def heartbeat_thread():
     while True:

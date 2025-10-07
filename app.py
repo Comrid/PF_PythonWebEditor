@@ -345,11 +345,14 @@ def handle_disconnect():
 
 
 
-def require_robot_assignment(f):
-    """로봇 할당 및 세션 확인 데코레이터"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 현재 세션 ID 가져오기
+@socketio.on('execute_code') # 서버 < 웹, 서버 > 로봇
+def handle_execute_code(data):
+    try:
+        code = data.get('code', '')
+        if not code:
+            emit('execution_error', {'error': '코드가 제공되지 않았습니다.'})
+            return
+
         sid = request.sid
 
         # 로봇 할당 확인
@@ -364,26 +367,6 @@ def require_robot_assignment(f):
             emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
             return
 
-        # 로봇 정보를 kwargs에 추가
-        kwargs['robot_id'] = robot_id
-        kwargs['robot_session_id'] = robot_session_id
-
-        return f(*args, **kwargs)
-    return decorated_function
-
-@socketio.on('execute_code') # 서버 < 웹, 서버 > 로봇
-@require_robot_assignment
-def handle_execute_code(data):
-    try:
-        code = data.get('code', '')
-        if not code:
-            emit('execution_error', {'error': '코드가 제공되지 않았습니다.'})
-            return
-
-        sid = request.sid
-        robot_id = user_robot_mapping.get(sid)
-        robot_session_id = registered_robots[robot_id].get('session_id')
-
         socketio.emit('execute_code', {'code': code, 'session_id': sid}, room=robot_session_id)
         emit('execution_started', {'message': f'로봇 {registered_robots[robot_id].get("name", robot_id)}에서 코드 실행을 시작합니다...'})
 
@@ -392,12 +375,21 @@ def handle_execute_code(data):
 
 
 @socketio.on('stop_execution')
-@require_robot_assignment
 def handle_stop_execution():
     try:
         sid = request.sid
+
+        # 로봇 할당 확인
         robot_id = user_robot_mapping.get(sid)
-        robot_session_id = registered_robots.get(robot_id, {}).get('session_id')
+        if not robot_id or robot_id not in registered_robots:
+            emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
+            return
+
+        # 로봇 세션 ID 확인
+        robot_session_id = registered_robots[robot_id].get('session_id')
+        if not robot_session_id:
+            emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
+            return
 
         socketio.emit('stop_execution', {'session_id': sid}, room=robot_session_id)
         emit('execution_stopped', {'message': '코드 중지 요청을 로봇에 전달했습니다.'})
