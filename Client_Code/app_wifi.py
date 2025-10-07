@@ -119,24 +119,15 @@ def setup_robot():
                 print("Switching to CLIENT mode...")
                 subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env", shell=True, check=True)
 
-                # 7. 먼저 응답을 전송한 후 모드 전환
-                response = jsonify({
+                subprocess.Popen(["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"])
+                print("Successfully triggered CLIENT mode switch.")
+
+                return jsonify({
                     "success": True,
                     "message": "WiFi 정보 저장 성공! 클라이언트 모드로 전환합니다.",
                     "robot_name": robot_name,
                     "robot_id": robot_id
                 })
-
-                # 8. 응답 전송 후 모드 전환 (백그라운드에서 실행)
-                import threading
-                def switch_mode():
-                    time.sleep(1)  # 2초 대기 후 모드 전환
-                    subprocess.run(["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"], check=True)
-                    print("Successfully triggered CLIENT mode switch.")
-
-                threading.Thread(target=switch_mode, daemon=True).start()
-
-                return response
 
             except subprocess.TimeoutExpired:
                 error_message = "정보 저장 시간 초과. 시스템을 확인해주세요."
