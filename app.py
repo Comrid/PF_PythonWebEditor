@@ -68,6 +68,7 @@ slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 
 # 로봇 관리 시스템
 registered_robots: dict[str, dict] = {}                      # 등록된 로봇 정보: robot_id → {name, url, status, last_seen}
 user_robot_mapping: dict[str, str] = {}                      # 사용자 세션 → 로봇 ID 매핑
+robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비트: robot_id → timestamp
 
 # 세션 관리 시스템
 session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
@@ -78,6 +79,7 @@ session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
 app.config['user_robot_mapping'] = user_robot_mapping
+app.config['robot_heartbeats'] = robot_heartbeats
 app.config['session_user_mapping'] = session_user_mapping
 app.config['socketio'] = socketio
 
@@ -551,6 +553,9 @@ def handle_robot_connected(data):
             "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
 
+        # 하트비트 초기화
+        robot_heartbeats[robot_id] = time.time()
+
         emit('robot_registered', {
             'success': True,
             'message': f'로봇 {robot_name}이 등록되었습니다'
@@ -561,6 +566,18 @@ def handle_robot_connected(data):
             'success': False,
             'error': str(e)
         })
+
+@socketio.on('robot_heartbeat')
+def handle_robot_heartbeat(data):
+    """로봇 하트비트 처리"""
+    try:
+        robot_id = data.get('robot_id')
+        if robot_id in registered_robots:
+            robot_heartbeats[robot_id] = time.time()
+            registered_robots[robot_id]['status'] = 'online'
+            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
+    except Exception as e:
+        print(f"로봇 하트비트 처리 오류: {e}")
 
 @socketio.on('robot_disconnected')
 def handle_robot_disconnected(data):
