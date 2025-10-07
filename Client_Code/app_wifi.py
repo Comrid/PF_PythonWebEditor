@@ -75,43 +75,51 @@ def setup_robot():
         if not (3 <= len(robot_name) <= 10) or not re.match(r'^[a-zA-Z0-9]+$', robot_name):
             return jsonify({"success": False, "error": "로봇 이름은 3~10자의 영문자와 숫자만 사용할 수 있습니다."}), 400
 
+        # app_wifi.py의 connect API 내부 코드입니다.
+
         if platform.system() == "Linux":
             try:
                 # --- 수정된 부분 시작 ---
-                # 1. nmcli 명령어로 WiFi 연결 정보를 저장합니다. (즉시 연결은 시도하지 않음)
-                print(f"Saving connection info for SSID: {ssid}...")
+                # 1. 고정된 프로필 이름을 사용합니다. (pf-netmode-bookworm.sh와 연동)
+                PROFILE_NAME = "Pathfinder-Client"
+                print(f"Saving connection info for SSID: {ssid} as profile: {PROFILE_NAME}")
 
-                # 기존에 같은 이름(SSID)의 연결 프로필이 있다면 먼저 삭제하여 중복을 방지합니다.
-                # check=False로 설정하여, 프로필이 없어서 삭제에 실패해도 오류로 처리하지 않습니다.
-                delete_command = ["sudo", "nmcli", "connection", "delete", ssid]
-                subprocess.run(delete_command, text=True, capture_output=True)
-                print(f"Attempted to delete any existing profile named '{ssid}'.")
+                # 2. 기존에 같은 이름의 프로필이 있다면 먼저 삭제하여 설정을 갱신합니다.
+                subprocess.run(["sudo", "nmcli", "connection", "delete", PROFILE_NAME], capture_output=True)
+                print(f"Attempted to delete any existing profile named '{PROFILE_NAME}'.")
 
-                # 새로운 연결 프로필을 추가합니다.
+                # 3. 새로운 연결 프로필을 추가합니다.
                 add_command = [
                     "sudo", "nmcli", "connection", "add",
                     "type", "wifi",
-                    "con-name", ssid, # 연결 이름을 SSID와 동일하게 설정
+                    "con-name", PROFILE_NAME,  # <--- 고정된 이름 사용
                     "ifname", "wlan0",
-                    "ssid", ssid,
-                    "--",
-                    "wifi-sec.key-mgmt", "wpa-psk",
-                    "wifi-sec.psk", password
+                    "ssid", ssid
                 ]
                 subprocess.run(add_command, check=True, text=True, capture_output=True, timeout=15)
-                print("WiFi connection info saved successfully.")
+                print(f"Profile '{PROFILE_NAME}' created successfully.")
+
+                # 4. 생성된 프로필에 비밀번호와 '자동 연결' 설정을 추가합니다.
+                modify_command = [
+                    "sudo", "nmcli", "connection", "modify", PROFILE_NAME,
+                    "wifi-sec.key-mgmt", "wpa-psk",
+                    "wifi-sec.psk", password,
+                    "connection.autoconnect", "yes"  # <--- 자동 연결 활성화
+                ]
+                subprocess.run(modify_command, check=True, text=True, capture_output=True, timeout=15)
+                print(f"Profile '{PROFILE_NAME}' modified for autoconnect.")
                 # --- 수정된 부분 끝 ---
 
-                # 2. 로봇 설정 업데이트 (성공 시에만 실행)
+                # 5. 로봇 설정 업데이트
                 robot_id = f"robot_{uuid.uuid4().hex[:8]}"
                 update_robot_config(robot_name, robot_id)
                 print(f"Robot config updated. Name: {robot_name}, ID: {robot_id}")
 
-                # 3. CLIENT 모드로 전환 준비
+                # 6. CLIENT 모드로 전환 준비
                 print("Switching to CLIENT mode...")
                 subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env", shell=True, check=True)
                 
-                # 4. 모드 전환 스크립트 실행
+                # 7. 모드 전환 스크립트 실행 (재부팅 대신 즉시 전환)
                 subprocess.run(["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"], check=True)
                 print("Successfully triggered CLIENT mode switch.")
                 
@@ -128,15 +136,14 @@ def setup_robot():
                 return jsonify({"success": False, "error": error_message}), 500
 
             except subprocess.CalledProcessError as e:
-                error_output = e.stderr.strip()
+                error_output = e.stderr.strip() if e.stderr else e.stdout.strip()
                 print(f"Error: nmcli command failed. Stderr: {error_output}")
                 error_message = f"WiFi 정보 저장 실패: {error_output}"
                 return jsonify({"success": False, "error": error_message}), 500
         else:
-            # 윈도우/맥 환경에서의 테스트용
+            # 윈도우/맥 환경에서의 테스트용 코드
             print("Windows/macOS Debug: Simulating success.")
             robot_id = f"robot_{uuid.uuid4().hex[:8]}"
-            # update_robot_config(robot_name, robot_id) # 실제 파일 쓰기는 방지
             return jsonify({
                 "success": True,
                 "message": "시뮬레이션 성공",

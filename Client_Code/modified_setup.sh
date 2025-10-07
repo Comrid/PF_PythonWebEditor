@@ -1,227 +1,204 @@
 #!/bin/bash
 set -e
 
+# --- 변수 설정 ---
 ACTUAL_USER=${SUDO_USER:-pi}
 WAN_IF="wlan0"
 AP_SSID="PF_Kit_Wifi"
 AP_PASSWORD="12345678"
-COUNTRY_CODE="KR"
 GIT_REPO_URL="https://github.com/Comrid/PF_PythonWebEditor.git"
 CLONE_DIR="/home/${ACTUAL_USER}/PF_PythonWebEditor"
-APP_MAIN_MODULE="app:app"
-APP_WIFI_MODULE="app_wifi:app"
 
-echo "🚀 Pathfinder 순차적 모드 전환 (wlan0 직접 사용) 설정을 시작합니다 (User=$ACTUAL_USER)"
+echo "🚀 (Bookworm 버전) Pathfinder 순차적 모드 전환 설정을 시작합니다 (User=$ACTUAL_USER)"
 sleep 2
 
 # --- [1] 필수 패키지 설치 ---
-echo "[1/11] 필수 패키지를 설치합니다..."
+echo "[1/12] 필수 패키지를 설치합니다 (NetworkManager 중심)..."
 sudo apt-get update
 echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | sudo debconf-set-selections
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | sudo debconf-set-selections
-sudo apt-get install -y hostapd dnsmasq git python3-pip python3-opencv iptables-persistent iw iproute2
+sudo apt-get install -y git python3-pip python3-opencv iw iproute2 network-manager iptables-persistent
 
-# --- [2] 블루투스 비활성화(부트로더 레벨 비활성화) ---
-echo "[2/11] 블루투스 기능을 비활성화합니다..."
+# --- [2] 블루투스 비활성화 ---
+echo "[2/12] 블루투스 기능을 비활성화합니다..."
 grep -q "dtoverlay=disable-bt" /boot/config.txt || echo "dtoverlay=disable-bt" | sudo tee -a /boot/config.txt
 
 # --- [3] 사용자 권한 설정 ---
-echo "[3/11] 사용자($ACTUAL_USER)에게 네트워크 관리 그룹(netdev) 권한을 부여합니다..."
+echo "[3/12] 사용자($ACTUAL_USER)에게 네트워크 관리 그룹(netdev) 권한을 부여합니다..."
 sudo usermod -a -G netdev ${ACTUAL_USER}
 
 # --- [4] GitHub 리포지토리 클론 ---
-echo "[4/11] GitHub에서 최신 소스코드를 다운로드합니다..."
+echo "[4/12] GitHub에서 최신 소스코드를 다운로드합니다..."
 if [ -d "$CLONE_DIR" ]; then
     sudo rm -rf "$CLONE_DIR"
 fi
 sudo -u ${ACTUAL_USER} git clone ${GIT_REPO_URL} ${CLONE_DIR}
 
-# --- [6] Python 라이브러리 설치 ---
-echo "[6/11] Python 라이브러리를 설치합니다..."
+# --- [5] Python 라이브러리 설치 ---
+echo "[5/12] Python 라이브러리를 설치합니다..."
 sudo pip3 install flask flask-socketio numpy==1.26.4 --break-system-packages
 
-# --- [7] wlan0에 고정 IP 할당 (AP 모드용) ---
-# hostapd 서비스 및 dnsmasq 서비즈 종료(AP 관련 서비스 종료)
-sudo systemctl stop hostapd || true
-sudo systemctl stop dnsmasq || true
+# --- [6] NetworkManager 프로필 생성 및 초기화 ---
+echo "[6/12] NetworkManager 영구 네트워크 프로필을 생성 및 초기화합니다..."
 
-# --- [7] 기존 Wi-Fi 설정 초기화 ---
-echo "[7/11] OS 설치 시 저장된 Wi-Fi 설정을 초기화하여 AP 모드로 부팅을 보장합니다..."
-sudo rm /etc/wpa_supplicant/wpa_supplicant.conf || true
-sudo tee /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null << EOF
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=KR
-EOF
-sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
-
-
-# --- [8] wlan0에 고정 IP 할당 (AP 모드용) ---
-# hostapd 서비스 및 dnsmasq 서비즈 종료(AP 관련 서비스 종료)
-sudo systemctl stop hostapd || true
-sudo systemctl stop dnsmasq || true
-
-echo "[8/11] wlan0에 고정 IP(10.42.0.1)를 할당합니다..."
-sudo tee -a /etc/dhcpcd.conf >/dev/null << EOF
-interface $WAN_IF
-    static ip_address=10.42.0.1/24
-    nohook wpa_supplicant
-EOF
+# 6-1. 기존에 존재할 수 있는 모든 Wi-Fi 클라이언트 연결 프로필을 삭제하여 AP 모드로 부팅되도록 보장합니다.
+# 'nmcli -t -f NAME,TYPE con show'로 모든 연결을 가져와 'wifi' 타입인 것만 반복 처리
+while IFS= read -r line; do
+    # 'preconfigured' 또는 사용자가 추가했을 수 있는 다른 Wi-Fi 프로필을 삭제
+    con_name=$(echo "$line" | cut -d: -f1)
+    if [ "$con_name" != "" ] && [ "$con_name" != "Pathfinder-AP" ]; then
+        echo "기존 Wi-Fi 프로필 '$con_name'을(를) 삭제합니다."
+        sudo nmcli con delete "$con_name" || true
+    fi
+done <<< "$(nmcli -t -f NAME,TYPE con show | grep ':802-11-wireless')"
 
 
-# --- [9] dnsmasq 및 hostapd 설정 ---
-echo "[9/11] dnsmasq와 hostapd를 설정합니다..."
-sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig || true
-sudo tee /etc/dnsmasq.conf > /dev/null << EOF
-interface=wlan0
-dhcp-range=10.42.0.10,10.42.0.200,12h
-dhcp-option=3,10.42.0.1
-dhcp-option=6,10.42.0.1
-domain=wlan
-address=/#/10.42.0.1
-dhcp-option=114,http://10.42.0.1/
-EOF
+# 6-2. 영구적인 AP 모드 프로필을 생성합니다.
+sudo nmcli connection add type wifi ifname ${WAN_IF} con-name "Pathfinder-AP" autoconnect no mode ap ssid "${AP_SSID}"
+sudo nmcli connection modify "Pathfinder-AP" 802-11-wireless-security.key-mgmt wpa-psk
+sudo nmcli connection modify "Pathfinder-AP" 802-11-wireless-security.psk "${AP_PASSWORD}"
+sudo nmcli connection modify "Pathfinder-AP" ipv4.method shared
+sudo nmcli connection modify "Pathfinder-AP" ipv4.addresses 10.42.0.1/24
 
+# --- [7] 로봇 클라이언트용 systemd 서비스 등록 ---
+echo "[7/12] 로봇 클라이언트용 서비스를 등록합니다..."
 
-sudo tee /etc/hostapd/hostapd.conf >/dev/null << EOF
-interface=wlan0
-driver=nl80211
-ssid=$AP_SSID
-hw_mode=g
-channel=6
-ht_capab=[SHORT-GI-20]
-wmm_enabled=1 # Wifi Multi Media
-beacon_int=100
-dtim_period=1 # 1이면 실시간, 2이면 절전
-max_num_sta=8
-# 안정성 설정
-auth_algs=1
-ignore_broadcast_ssid=0
-macaddr_acl=0
-# 보안 설정
-wpa=2
-wpa_passphrase=$AP_PASSWORD
-wpa_key_mgmt=WPA-PSK
-rsn_pairwise=CCMP
-country_code=KR
-EOF
-
-
-echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' | sudo tee /etc/default/hostapd >/dev/null
-
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
-sudo systemctl enable dnsmasq
-
-
-# --- [10] 로봇 클라이언트용 systemd 서비스 등록 ---
-echo "[10/11] 로봇 클라이언트용 서비스를 등록합니다..."
-# 1. WiFi 설정 서비스 (app_wifi.py)
+# WiFi 설정 서비스 (AP 모드에서 실행)
 sudo tee /etc/systemd/system/wifi_setup.service >/dev/null <<UNIT
 [Unit]
-Description=Pathfinder WiFi Setup App
-After=hostapd.service dnsmasq.service
-Wants=hostapd.service dnsmasq.service
+Description=Pathfinder WiFi Setup App (Bookworm)
+After=pf-netmode.service
 [Service]
 Type=simple
-User=$ACTUAL_USER
+User=${ACTUAL_USER}
 Group=netdev
-WorkingDirectory=$CLONE_DIR/Client_Code
+WorkingDirectory=${CLONE_DIR}/Client_Code
 ExecStart=/usr/bin/python3 app_wifi.py
 Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 UNIT
 
-
-# 2. 로봇 클라이언트 서비스 (robot_client.py)
+# 로봇 클라이언트 서비스 (Client 모드에서 실행)
 sudo tee /etc/systemd/system/robot_client.service >/dev/null <<UNIT
 [Unit]
-Description=Pathfinder Robot Client
-After=network-online.target
-Wants=network-online.target
+Description=Pathfinder Robot Client (Bookworm)
+After=pf-netmode.service
 [Service]
 Type=simple
-User=$ACTUAL_USER
+User=${ACTUAL_USER}
 Group=netdev
-WorkingDirectory=$CLONE_DIR/Client_Code
+WorkingDirectory=${CLONE_DIR}/Client_Code
 ExecStart=/usr/bin/python3 robot_client.py
 Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 UNIT
 
-
-# --- [11] 동적 모드 전환 스크립트 생성 ---
-echo "[11/11] 동적 네트워크 모드 전환 스크립트를 생성합니다..."
-
-# 1. 모드 전환 메인 스크립트 (pf-netmode.sh)
-sudo tee /usr/local/bin/pf-netmode.sh >/dev/null << EOF
+# --- [8] 동적 모드 전환 스크립트 생성 ---
+echo "[8/12] 캡티브 포털 기능이 포함된 동적 모드 전환 스크립트를 생성합니다..."
+sudo tee /usr/local/bin/pf-netmode-bookworm.sh >/dev/null << 'EOF'
 #!/bin/bash
 set -e
-# 환경 변수 파일에서 모드 읽기
+
+# /etc/pf_env 파일이 없으면 AP 모드를 기본값으로 사용
+if [ ! -f /etc/pf_env ]; then
+    echo "MODE=AP" | sudo tee /etc/pf_env > /dev/null
+fi
 source /etc/pf_env
 
-if [ "\$MODE" = "AP" ]; then
-    tee /etc/dnsmasq.conf >/dev/null <<'DNS'
-interface=wlan0
-dhcp-range=10.42.0.10,10.42.0.200,12h
-dhcp-option=3,10.42.0.1
-dhcp-option=6,10.42.0.1
-address=/#/10.42.0.1
-dhcp-option=114,http://10.42.0.1/
-DNS
-    systemctl restart dhcpcd
+# 현재 wlan0 인터페이스에서 활성화된 연결을 가져옴 (없으면 공백)
+CURRENT_CONNECTION=$(nmcli -t -f NAME,DEVICE con show --active | grep 'wlan0' | cut -d: -f1)
 
-    for i in {1..15}; do
-        if ip addr show wlan0 | grep -q "inet 10.42.0.1"; then break; fi
-        sleep 1
-    done
+if [ "$MODE" = "AP" ]; then
+    echo "[pf-netmode] AP 모드로 전환합니다..."
+    # 1. 다른 Wi-Fi 연결이 활성화되어 있다면 비활성화
+    if [[ "$CURRENT_CONNECTION" && "$CURRENT_CONNECTION" != "Pathfinder-AP" ]]; then
+        sudo nmcli con down "$CURRENT_CONNECTION"
+    fi
 
-    systemctl unmask hostapd || true
-    systemctl enable hostapd || true
-    systemctl start hostapd || true
-    systemctl enable dnsmasq || true
-    systemctl start dnsmasq || true
+    # 2. AP 프로필 활성화
+    sudo nmcli con up "Pathfinder-AP"
 
-    systemctl stop robot_client.service || true
-    systemctl start wifi_setup.service
+    # 3. 캡티브 포털을 위한 방화벽 규칙 설정
+    echo "[pf-netmode] 캡티브 포털을 위한 방화벽을 설정합니다..."
+    sudo iptables -F
+    sudo iptables -t nat -F
+    # NetworkManager의 내장 DHCP/DNS(포트 53)와 웹서버(포트 5000) 허용
+    sudo iptables -A INPUT -i wlan0 -p udp --dport 53 -j ACCEPT
+    sudo iptables -A INPUT -i wlan0 -p tcp --dport 5000 -j ACCEPT
+    # HTTP(80) 요청을 웹서버(5000)로 리디렉션
+    sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp --dport 80 -j REDIRECT --to-port 5000
 
-    echo "[pf-netmode] AP 모드로 전환 완료 (app_wifi.py 실행)"
+    # 4. 서비스 전환
+    sudo systemctl stop robot_client.service || true
+    sudo systemctl start wifi_setup.service
+    echo "[pf-netmode] AP 모드 및 캡티브 포털 활성화 완료."
 
-elif [ "\$MODE" = "CLIENT" ]; then
-    systemctl stop hostapd || true
-    systemctl stop dnsmasq || true
-    systemctl disable hostapd || true
-    systemctl disable dnsmasq || true
+elif [ "$MODE" = "CLIENT" ]; then
+    echo "[pf-netmode] CLIENT 모드로 전환합니다..."
+    # 1. AP 프로필 비활성화
+    if [ "$CURRENT_CONNECTION" = "Pathfinder-AP" ]; then
+        sudo nmcli con down "Pathfinder-AP"
+    fi
+    
+    # 2. 캡티브 포털 방화벽 규칙 초기화
+    echo "[pf-netmode] AP 모드 방화벽 규칙을 초기화합니다..."
+    sudo iptables -F
+    sudo iptables -t nat -F
 
-    tee "/etc/dhcpcd.conf" > /dev/null << EOC
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-EOC
-    systemctl restart dhcpcd
+    # 3. 클라이언트 프로필 활성화
+    # app_wifi.py가 생성한 클라이언트 프로필이 'autoconnect=yes'이므로
+    # NetworkManager가 AP 연결이 끊어지면 자동으로 해당 프로필에 연결을 시도합니다.
+    # 만약 'Pathfinder-Client' 프로필이 존재한다면 수동으로 활성화해줄 수도 있습니다.
+    if nmcli con show "Pathfinder-Client" > /dev/null 2>&1; then
+        sudo nmcli con up "Pathfinder-Client"
+    fi
 
-    systemctl stop wifi_setup.service || true
-    systemctl start robot_client.service
-    echo "[pf-netmode] CLIENT 모드로 전환 완료 (robot_client.py 실행)"
+    # 4. 서비스 전환
+    sudo systemctl stop wifi_setup.service || true
+    sudo systemctl start robot_client.service
+    echo "[pf-netmode] CLIENT 모드 전환 완료."
 fi
-iptables-save > /etc/iptables/rules.v4
-EOF
-sudo chmod +x /usr/local/bin/pf-netmode.sh
 
-# --- sudoers 및 초기 모드 설정 ---
-echo "sudoers 권한과 초기 모드를 설정합니다..."
+# 변경된 방화벽 규칙을 저장하여 재부팅 후에도 유지되도록 합니다.
+sudo iptables-save | sudo tee /etc/iptables/rules.v4 > /dev/null
+EOF
+sudo chmod +x /usr/local/bin/pf-netmode-bookworm.sh
+
+# --- [9] 부팅 시 네트워크 모드를 설정하는 서비스 등록 ---
+echo "[9/12] 부팅 시 네트워크 모드를 자동으로 설정하는 서비스를 등록합니다..."
+sudo tee /etc/systemd/system/pf-netmode.service >/dev/null <<'UNIT'
+[Unit]
+Description=Pathfinder Network Mode Initializer
+After=NetworkManager.service
+Before=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pf-netmode-bookworm.sh
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# --- [10] sudoers 설정 ---
+echo "[10/12] sudoers 권한을 설정합니다..."
 SUDOERS_FILE="/etc/sudoers.d/010_${ACTUAL_USER}-nopasswd-wifi"
-echo "${ACTUAL_USER} ALL=(ALL) NOPASSWD: /usr/sbin/wpa_passphrase, /usr/bin/tee -a /etc/wpa_supplicant/wpa_supplicant.conf, /sbin/wpa_cli -i wlan0 reconfigure, /bin/systemctl stop wifi_setup.service, /bin/systemctl start robot_client.service" | sudo tee ${SUDOERS_FILE}
+# app_wifi.py가 nmcli와 systemctl을 비밀번호 없이 사용하도록 권한 부여
+echo "${ACTUAL_USER} ALL=(ALL) NOPASSWD: /usr/bin/nmcli, /bin/systemctl" | sudo tee ${SUDOERS_FILE}
 sudo chmod 440 ${SUDOERS_FILE}
 
+# --- [11] 서비스 활성화 및 초기 모드 설정 ---
+echo "[11/12] 서비스를 활성화하고 초기 AP 모드를 설정합니다..."
 sudo systemctl daemon-reload
+sudo systemctl enable robot_client.service
 sudo systemctl enable wifi_setup.service
+# 새로 만든 pf-netmode 서비스를 활성화하여 부팅 시마다 실행되도록 합니다.
+sudo systemctl enable pf-netmode.service
 
-# 최초 부팅 시에는 인터넷이 없으므로 AP 모드로 시작
+# 최초 부팅 시에는 AP 모드로 시작하도록 설정합니다.
 echo "MODE=AP" | sudo tee /etc/pf_env >/dev/null
-sudo /usr/local/bin/pf-netmode.sh
 
-echo "✅ 모든 설정이 완료되었습니다! 시스템을 재부팅합니다."
-echo "재부팅 후 SSID='$AP_SSID'에 접속하여 'http://pathfinder-kit.duckdns.org'로 접속하세요."
+# --- [12] 완료 및 재부팅 ---
+echo "[12/12] ✅ 모든 설정이 완료되었습니다! 시스템을 재부팅합니다."
+sleep 5
 sudo reboot
