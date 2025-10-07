@@ -25,11 +25,18 @@ def connect():
 
     # 서버에 로봇 등록
     print("📤 서버에 로봇 등록 요청 전송...")
-    sio.emit('robot_connected', {
+    sio.emit('robot_connected', { # 로봇 > 서버
         'robot_id': ROBOT_ID,
         'robot_name': ROBOT_NAME,
         'hardware_enabled': HARDWARE_ENABLED
     })
+
+@sio.event
+def robot_registered(data):
+    if data.get('success'):
+        print(f"로봇 등록 성공: {data.get('message')}")
+    else:
+        print(f"로봇 등록 실패: {data.get('error')}")
 
 # 연결 끊김: 5초 마다 재연결 시도
 @sio.event

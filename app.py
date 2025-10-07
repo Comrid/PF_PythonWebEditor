@@ -14,7 +14,6 @@ from datetime import datetime
 from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
 from blueprints.admin_bp import admin_bp
-from blueprints.editor_bp import editor_bp
 from blueprints.robot_bp import robot_bp
 
 # Auth
@@ -31,7 +30,6 @@ app.config['SECRET_KEY'] = token_hex(32)
 app.register_blueprint(custom_code_bp)
 app.register_blueprint(tutorial_bp)
 app.register_blueprint(admin_bp)
-app.register_blueprint(editor_bp)
 app.register_blueprint(robot_bp)
 
 # Flask-Login 초기화
@@ -63,8 +61,6 @@ socketio = SocketIO(
 
 # 에디터 블루프린트 초기화
 # 중앙 서버 상태 관리
-running_threads: dict[str, threading.Thread] = {}           # 실행 중인 스레드를 추적하는 딕셔너리
-stop_flags: dict[str, bool] = {}                            # 실행 중지 플래그를 추적하는 딕셔너리
 gesture_states: dict[str, dict[str, dict[str, float]]] = {} # 제스처 최신 상태 저장: 세션별 → 위젯별
 pid_states: dict[str, dict[str, dict[str, float]]] = {}     # PID 최신 값 저장: 세션별 → 위젯ID별 {p,i,d}
 slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
@@ -72,23 +68,16 @@ slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 
 # 로봇 관리 시스템
 registered_robots: dict[str, dict] = {}                      # 등록된 로봇 정보: robot_id → {name, url, status, last_seen}
 user_robot_mapping: dict[str, str] = {}                      # 사용자 세션 → 로봇 ID 매핑
-robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비트: robot_id → timestamp
 
 # 세션 관리 시스템
 session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
 
-from blueprints.editor_bp import init_editor_globals, register_socketio_handlers, execute_code_on_robot
 
-# 전역 변수들을 에디터 블루프린트에 전달
-init_editor_globals(globals())
-
-# SocketIO 핸들러 등록 (editor_bp의 핸들러들은 app.py로 이동됨)
-# register_socketio_handlers(socketio)
+# 전역 변수 초기화는 더 이상 필요하지 않음 (editor_bp 제거됨)
 
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
 app.config['user_robot_mapping'] = user_robot_mapping
-app.config['robot_heartbeats'] = robot_heartbeats
 app.config['session_user_mapping'] = session_user_mapping
 app.config['socketio'] = socketio
 
@@ -302,13 +291,12 @@ def get_active_sessions():
 
 
 #region SocketIO connect/disconnect
-@socketio.on('connect')
+@socketio.on('connect') # 웹 > 서버
 def handle_connect():
     print('클라이언트가 연결되었습니다.')
 
     if current_user.is_authenticated:
         try:
-            # 세션-사용자 매핑 저장
             session_user_mapping[request.sid] = {
                 'user_id': current_user.id,
                 'username': current_user.username,
@@ -324,9 +312,41 @@ def handle_connect():
     else:
         print(f"세션 {request.sid}에 로그인되지 않은 사용자 연결")
 
-    emit('connected', {'message': '서버에 연결되었습니다.'})
+    emit('connected', {'message': '서버에 연결되었습니다.'}) # 서버 > 웹
 
-#region Editor SocketIO Handlers
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('클라이언트가 연결을 해제했습니다.')
+
+    # 연결 해제 시 실행 중인 스레드 정리
+    sid = request.sid
+
+    # 세션-사용자 매핑 정리
+    if sid in session_user_mapping:
+        user_info = session_user_mapping.pop(sid)
+        print(f"세션 {sid}에서 사용자 {user_info['username']} (ID: {user_info['user_id']}) 매핑 제거")
+
+    # 세션-로봇 매핑 정리
+    if sid in user_robot_mapping:
+        robot_id = user_robot_mapping.pop(sid)
+        print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
+
+    # 스레드는 로봇에서 관리하므로 서버에서는 정리 불필요
+
+
+
+
+
+
+
+
+
+
+
+
+
 @socketio.on('execute_code')
 def handle_execute_code(data):
     try:
@@ -347,101 +367,60 @@ def handle_execute_code(data):
 
         # 할당된 로봇 확인
         robot_id = user_robot_mapping.get(sid)
-        if not robot_id:
+        if not robot_id or robot_id not in registered_robots:
             emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
             return
 
-        # 로봇에 코드 실행 요청 전송 (사용자 정보 포함)
-        result = execute_code_on_robot(code, sid, robot_id, user_info)
+        # 로봇 정보 가져오기
+        robot_info = registered_robots[robot_id]
+        robot_session_id = robot_info.get('session_id')
 
-        # 결과 처리
-        if 'error' in result:
-            emit('execution_error', {'error': result['error']})
-        elif result.get('type') == 'socketio':
-            # SocketIO로 전송
-            robot_session_id = result['robot_session_id']
-            socketio.emit('execute_code', {
-                'code': result['code'],
-                'session_id': result['session_id'],
-                'user_info': result['user_info']
-            }, room=robot_session_id)
-            socketio.emit('execution_started', {
-                'message': f'로봇 {result["robot_name"]}에서 코드 실행을 시작합니다...'
-            }, room=sid)
-        elif result.get('success'):
-            emit('execution_started', {'message': result['message']})
+        if not robot_session_id:
+            emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
+            return
+
+        # 로봇에 코드 실행 요청 전송
+        socketio.emit('execute_code', {
+            'code': code,
+            'session_id': sid
+        }, room=robot_session_id)
+
+        emit('execution_started', {
+            'message': f'로봇 {robot_info.get("name", robot_id)}에서 코드 실행을 시작합니다...'
+        })
 
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
 
 
-
-
-
-
-
-
 @socketio.on('stop_execution')
 def handle_stop_execution():
-    """실행 중인 코드를 중지"""
+    """실행 중인 코드를 중지 - 로봇에 중지 요청 전달"""
     try:
         sid = request.sid
-        thread = running_threads.get(sid, None)
 
-        if thread is None:
-            emit('execution_error', {'error': '실행 중인 코드가 없습니다.'})
+        # 할당된 로봇 확인
+        robot_id = user_robot_mapping.get(sid)
+        if not robot_id:
+            emit('execution_error', {'error': '로봇이 할당되지 않았습니다.'})
             return
 
-        # 1단계: 중지 플래그 설정 (안전한 종료 시도)
-        stop_flags[sid] = True
+        # 로봇의 세션 ID 가져오기
+        robot_session_id = registered_robots.get(robot_id, {}).get('session_id')
+        if not robot_session_id:
+            emit('execution_error', {'error': '로봇이 연결되지 않았습니다.'})
+            return
 
-        if thread.is_alive():
-            # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
-            def raise_in_thread(thread, exc_type = SystemExit):
-                import ctypes
-                if thread is None or not thread.is_alive():
-                    return False
+        # 로봇에 중지 요청 전달
+        socketio.emit('stop_execution', {
+            'session_id': sid
+        }, room=robot_session_id)
 
-                func = ctypes.pythonapi.PyThreadState_SetAsyncExc
-                func.argtypes = [ctypes.c_ulong, ctypes.py_object]
-                func.restype = ctypes.c_int
-
-                tid = ctypes.c_ulong(thread.ident)
-                res = func(tid, ctypes.py_object(exc_type))
-
-                if res > 1:
-                    func(tid, ctypes.py_object(0))
-                    return False
-
-                return res == 1
-            # 강제 종료 실행 (안전 헬퍼 사용)
-            ok = raise_in_thread(thread, SystemExit)
-
-            thread.join(timeout=2.0)  # 2초 대기
-
-            if thread.is_alive():
-                print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
-                emit('execution_stopped', {
-                    'message': '코드 실행 중지 요청이 완료되었습니다.',
-                    'warning': '스레드가 완전히 종료되지 않았을 수 있습니다.'
-                })
-            else:
-                print(f"DEBUG: 강제 종료 성공")
-                emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'})
-        else:
-            emit('execution_stopped', {'message': '코드 실행이 중지되었습니다.'})
-
-        # 최종 정리: 스레드가 실제로 종료된 경우에만 정리 (그 외에는 execute_code()의 finally에 위임)
-        try:
-            if not thread.is_alive():
-                running_threads.pop(sid, None)
-                stop_flags.pop(sid, None)
-        except Exception:
-            pass
+        emit('execution_stopped', {'message': '코드 중지 요청을 로봇에 전달했습니다.'})
 
     except Exception as e:
-        print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
-        emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
+        print(f"DEBUG: 코드 중지 요청 중 오류: {str(e)}")
+        emit('execution_error', {'error': f'코드 중지 요청 중 오류가 발생했습니다: {str(e)}'})
 
 
 
@@ -570,78 +549,18 @@ def handle_robot_finished(data):
 
     except Exception as e:
         print(f"로봇 finished 데이터 중계 오류: {e}")
-#endregion
 
 
 
 
-
-
-
-
-
-
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print('클라이언트가 연결을 해제했습니다.')
-
-    # 연결 해제 시 실행 중인 스레드 정리
-    sid = request.sid
-
-    # 세션-사용자 매핑 정리
-    if sid in session_user_mapping:
-        user_info = session_user_mapping.pop(sid)
-        print(f"세션 {sid}에서 사용자 {user_info['username']} (ID: {user_info['user_id']}) 매핑 제거")
-
-    # 세션-로봇 매핑 정리
-    if sid in user_robot_mapping:
-        robot_id = user_robot_mapping.pop(sid)
-        print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
-
-    # 메인 프로세스 스레드 정리
-    if sid in running_threads:
-        try:
-            stop_flags[sid] = True
-            running_threads.pop(sid, None)
-            stop_flags.pop(sid, None)
-        except Exception:
-            pass
-#endregion
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#region Robot Client SocketIO Events
-@socketio.on('robot_connected')
+@socketio.on('robot_connected') # 서버 < 로봇
 def handle_robot_connected(data):
-    """로봇 클라이언트 연결 처리"""
     try:
         robot_id = data.get('robot_id')
         robot_name = data.get('robot_name')
         hardware_enabled = data.get('hardware_enabled', False)
-
         print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
 
-        # 로봇 등록 (SocketIO 연결 시)
         registered_robots[robot_id] = {
             "name": robot_name,
             "url": None,  # SocketIO 연결이므로 URL 불필요
@@ -651,16 +570,10 @@ def handle_robot_connected(data):
             "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
 
-        # 하트비트 초기화
-        robot_heartbeats[robot_id] = time.time()
-
-        # 연결 확인 응답
         emit('robot_registered', {
             'success': True,
-            'message': f'로봇 {robot_name}이 등록되었습니다',
-            'robot_id': robot_id
+            'message': f'로봇 {robot_name}이 등록되었습니다'
         })
-
     except Exception as e:
         print(f"로봇 연결 처리 오류: {e}")
         emit('robot_registered', {
@@ -687,25 +600,6 @@ def handle_robot_disconnected(data):
 
     except Exception as e:
         print(f"로봇 연결 해제 처리 오류: {e}")
-
-@socketio.on('robot_heartbeat')
-def handle_robot_heartbeat(data):
-    """로봇 하트비트 처리"""
-    try:
-        robot_id = data.get('robot_id')
-        status = data.get('status', 'online')
-
-        if robot_id in registered_robots:
-            robot_heartbeats[robot_id] = time.time()
-            registered_robots[robot_id]['status'] = status
-            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
-
-    except Exception as e:
-        print(f"로봇 하트비트 처리 오류: {e}")
-
-
-
-
 
 
 

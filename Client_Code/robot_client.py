@@ -189,6 +189,8 @@ def main():
         # 서버에 연결
         sio.connect(SERVER_URL)
 
+        sio.emit('execute_code', )
+
         # 하트비트 스레드 시작
         heartbeat_thread_obj = threading.Thread(target=heartbeat_thread, daemon=True)
         heartbeat_thread_obj.start()
