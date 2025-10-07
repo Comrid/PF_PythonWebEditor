@@ -175,18 +175,13 @@ def execute_code(data):
         })
 
 @sio.event
-def stop_code(data):
+def stop_execution(data):
     global running_thread, stop_flag
-    """실행 중인 코드를 중지"""
     try:
-        session_id = data.get('session_id', '')
         thread = running_thread
 
         if thread is None:
-            sio.emit('robot_stderr', {
-                'session_id': session_id,
-                'output': '실행 중인 코드가 없습니다.'
-            })
+            print("실행 중인 코드가 없습니다.")
             return
 
         # 1단계: 중지 플래그 설정 (안전한 종료 시도)
@@ -218,21 +213,8 @@ def stop_code(data):
 
             if thread.is_alive():
                 print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
-                sio.emit('robot_finished', {
-                    'session_id': session_id,
-                    'output': '코드 실행 중지 요청이 완료되었습니다. (스레드가 완전히 종료되지 않았을 수 있습니다.)'
-                })
             else:
                 print(f"DEBUG: 강제 종료 성공")
-                sio.emit('robot_finished', {
-                    'session_id': session_id,
-                    'output': '코드 실행이 중지되었습니다.'
-                })
-        else:
-            sio.emit('robot_finished', {
-                'session_id': session_id,
-                'output': '코드 실행이 중지되었습니다.'
-            })
 
         # 최종 정리: 스레드가 실제로 종료된 경우에만 정리 (그 외에는 exec_code()의 finally에 위임)
         try:
@@ -244,25 +226,16 @@ def stop_code(data):
 
     except Exception as e:
         print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
-        sio.emit('robot_stderr', {
-            'session_id': session_id,
-            'output': f'코드 중지 중 오류가 발생했습니다: {str(e)}'
-        })
 
 def heartbeat_thread():
-    """하트비트 전송 스레드"""
     while True:
-        if robot_status['connected']:
+        if sio.connected:
             try:
-                sio.emit('robot_heartbeat', {
-                    'robot_id': ROBOT_ID,
-                    'status': 'online'
-                })
+                sio.emit('robot_heartbeat', {'robot_id': ROBOT_ID})
                 print("하트비트 전송")
             except Exception as e:
                 print(f"하트비트 전송 실패: {e}")
-        time.sleep(10)  # 10초마다 전송
-
+        time.sleep(10)
 
 def main():
     try:
