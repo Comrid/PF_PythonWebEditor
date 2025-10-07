@@ -85,11 +85,10 @@ def setup_robot():
                 print(f"Saving connection info for SSID: {ssid} as profile: {PROFILE_NAME}")
 
                 # 2. 기존에 같은 이름의 프로필이 있다면 먼저 삭제하여 설정을 갱신합니다.
-                jsonify({"success": True, "message": "동일한 이름의 프로필이 있다면 삭제합니다"})
                 subprocess.run(["sudo", "nmcli", "connection", "delete", PROFILE_NAME], capture_output=True)
+                print(f"Attempted to delete any existing profile named '{PROFILE_NAME}'.")
 
                 # 3. 새로운 연결 프로필을 추가합니다.
-                jsonify({"success": True, "message": "새로운 연결 프로필을 추가합니다"})
                 add_command = [
                     "sudo", "nmcli", "connection", "add",
                     "type", "wifi",
@@ -98,10 +97,9 @@ def setup_robot():
                     "ssid", ssid
                 ]
                 subprocess.run(add_command, check=True, text=True, capture_output=True, timeout=15)
-                jsonify({"success": True, "message": f"{PROFILE_NAME} 프로필을 추가 완료"})
+                print(f"Profile '{PROFILE_NAME}' created successfully.")
 
                 # 4. 생성된 프로필에 비밀번호와 '자동 연결' 설정을 추가합니다.
-                jsonify({"success": True, "message": "생성된 프로필에 비밀번호와 '자동 연결' 설정을 추가합니다"})
                 modify_command = [
                     "sudo", "nmcli", "connection", "modify", PROFILE_NAME,
                     "wifi-sec.key-mgmt", "wpa-psk",
@@ -109,29 +107,36 @@ def setup_robot():
                     "connection.autoconnect", "yes"  # <--- 자동 연결 활성화
                 ]
                 subprocess.run(modify_command, check=True, text=True, capture_output=True, timeout=15)
-                jsonify({"success": True, "message": f"{PROFILE_NAME} 프로필을 수정 완료"})
+                print(f"Profile '{PROFILE_NAME}' modified for autoconnect.")
                 # --- 수정된 부분 끝 ---
 
                 # 5. 로봇 설정 업데이트
-                jsonify({"success": True, "message": "로봇 설정 업데이트"})
                 robot_id = f"robot_{uuid.uuid4().hex[:8]}"
                 update_robot_config(robot_name, robot_id)
-                jsonify({"success": True, "message": f"로봇 설정 업데이트 완료. 이름: {robot_name}, ID: {robot_id}"})
+                print(f"Robot config updated. Name: {robot_name}, ID: {robot_id}")
 
                 # 6. CLIENT 모드로 전환 준비
-                jsonify({"success": True, "message": "CLIENT 모드로 전환 준비"})
+                print("Switching to CLIENT mode...")
                 subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env", shell=True, check=True)
 
-                # 7. 모드 전환 스크립트 실행 (재부팅 대신 즉시 전환)
-                subprocess.run(["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"], check=True)
-                jsonify({"success": True, "message": "CLIENT 모드로 전환 완료"})
-
-                return jsonify({
+                # 7. 먼저 응답을 전송한 후 모드 전환
+                response = jsonify({
                     "success": True,
                     "message": "WiFi 정보 저장 성공! 클라이언트 모드로 전환합니다.",
                     "robot_name": robot_name,
                     "robot_id": robot_id
                 })
+
+                # 8. 응답 전송 후 모드 전환 (백그라운드에서 실행)
+                import threading
+                def switch_mode():
+                    time.sleep(1)  # 2초 대기 후 모드 전환
+                    subprocess.run(["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"], check=True)
+                    print("Successfully triggered CLIENT mode switch.")
+
+                threading.Thread(target=switch_mode, daemon=True).start()
+
+                return response
 
             except subprocess.TimeoutExpired:
                 error_message = "정보 저장 시간 초과. 시스템을 확인해주세요."

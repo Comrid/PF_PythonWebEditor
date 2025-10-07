@@ -36,7 +36,7 @@ sudo -u ${ACTUAL_USER} git clone ${GIT_REPO_URL} ${CLONE_DIR}
 
 # --- [5] Python 라이브러리 설치 ---
 echo "[5/12] Python 라이브러리를 설치합니다..."
-sudo pip3 install flask flask-socketio numpy==1.26.4 --break-system-packages
+sudo pip3 install flask flask-socketio numpy==1.26.4 websocket-client --break-system-packages
 
 # --- [6] NetworkManager 프로필 생성 및 초기화 ---
 echo "[6/12] NetworkManager 영구 네트워크 프로필을 생성 및 초기화합니다..."
