@@ -104,6 +104,7 @@ app.config['socketio'] = socketio
 # 6. register : 회원가입 페이지
 # 7. admin : 관리자 페이지
 
+#region 페이지 라우팅 목록
 @app.route('/')
 def index():
     # 로그인하지 않은 사용자는 guest로 처리
@@ -180,6 +181,7 @@ def admin():
                          username=current_user.username,
                          email=current_user.email,
                          role=current_user.role)
+#endregion
 
 #region Authentication API
 @app.route('/api/auth/login', methods=['POST'])
@@ -288,12 +290,22 @@ def get_active_sessions():
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 #region SocketIO connect/disconnect
 @socketio.on('connect')
 def handle_connect():
     print('클라이언트가 연결되었습니다.')
 
-    # 사용자가 로그인되어 있는 경우
     if current_user.is_authenticated:
         try:
             # 세션-사용자 매핑 저장
@@ -341,7 +353,7 @@ def handle_execute_code(data):
 
         # 로봇에 코드 실행 요청 전송 (사용자 정보 포함)
         result = execute_code_on_robot(code, sid, robot_id, user_info)
-        
+
         # 결과 처리
         if 'error' in result:
             emit('execution_error', {'error': result['error']})
@@ -361,6 +373,13 @@ def handle_execute_code(data):
 
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
+
+
+
+
+
+
+
 
 @socketio.on('stop_execution')
 def handle_stop_execution():
@@ -423,6 +442,12 @@ def handle_stop_execution():
     except Exception as e:
         print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")
         emit('execution_error', {'error': f'코드 중지 중 오류가 발생했습니다: {str(e)}'})
+
+
+
+
+
+
 
 @socketio.on('gesture_update')
 def handle_gesture_update(data):
@@ -503,35 +528,33 @@ def handle_robot_emit_text(data):
     except Exception as e:
         print(f"로봇 텍스트 데이터 중계 오류: {e}")
 
+
+
+
+
+
+
 @socketio.on('robot_stdout')
 def handle_robot_stdout(data):
     try:
         session_id = data.get('session_id')
         output = data.get('output')
-
         if not all([session_id, output]):
             return
-
-        # 브라우저로 stdout 데이터 중계
         socketio.emit('stdout', {'output': output}, room=session_id)
-
     except Exception as e:
-        print(f"로봇 stdout 데이터 중계 오류: {e}")
+        print(f"Robot stdout data relay error: {e}")
 
 @socketio.on('robot_stderr')
 def handle_robot_stderr(data):
     try:
         session_id = data.get('session_id')
         output = data.get('output')
-
         if not all([session_id, output]):
             return
-
-        # 브라우저로 stderr 데이터 중계
         socketio.emit('stderr', {'output': output}, room=session_id)
-
     except Exception as e:
-        print(f"로봇 stderr 데이터 중계 오류: {e}")
+        print(f"Robot stderr data relay error: {e}")
 
 @socketio.on('robot_finished')
 def handle_robot_finished(data):
@@ -548,6 +571,16 @@ def handle_robot_finished(data):
     except Exception as e:
         print(f"로봇 finished 데이터 중계 오류: {e}")
 #endregion
+
+
+
+
+
+
+
+
+
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -575,6 +608,26 @@ def handle_disconnect():
         except Exception:
             pass
 #endregion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #region Robot Client SocketIO Events

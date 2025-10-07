@@ -8,12 +8,9 @@ from flask import Flask, render_template, request, jsonify, redirect
 import subprocess
 import re
 import uuid
-import time
 import os
 import platform
 
-AP_IP = "10.42.0.1"
-WPA_SUPPLICANT_PATH = "/etc/wpa_supplicant/wpa_supplicant.conf"
 SERVER_URL = "https://pathfinder-kit.duckdns.org"
 
 app = Flask(__name__)
@@ -41,23 +38,9 @@ def update_robot_config(robot_name, robot_id):
     with open(config_path, 'w') as f:
         f.writelines(updated_lines)
 
-
-
-# --- 모든 요청이 라우트 함수에 도달하기 전에 실행됩니다. ---
-@app.before_request
-def redirect_to_canonical_host():
-    """msftconnecttest.com 등 원치 않는 호스트 이름으로 접속 시, SERVER_URL으로 리디렉션합니다."""
-    pass
-    # host = request.host.split(':')[0]
-    # if host not in [SERVER_URL, AP_IP]:
-    #     return redirect(f"http://{SERVER_URL}{request.full_path}", code=302)
-
-
 @app.route("/generate_204")
 def captive_probe_redirect():
     return redirect(SERVER_URL, code=302)
-
-
 
 @app.route('/connect', methods=['POST'])
 def setup_robot():
@@ -75,52 +58,42 @@ def setup_robot():
         if not (3 <= len(robot_name) <= 10) or not re.match(r'^[a-zA-Z0-9]+$', robot_name):
             return jsonify({"success": False, "error": "로봇 이름은 3~10자의 영문자와 숫자만 사용할 수 있습니다."}), 400
 
-        # app_wifi.py의 connect API 내부 코드입니다.
 
         if platform.system() == "Linux":
             try:
-                # --- 수정된 부분 시작 ---
-                # 1. 고정된 프로필 이름을 사용합니다. (pf-netmode-bookworm.sh와 연동)
                 PROFILE_NAME = "Pathfinder-Client"
-                print(f"Saving connection info for SSID: {ssid} as profile: {PROFILE_NAME}")
 
-                # 2. 기존에 같은 이름의 프로필이 있다면 먼저 삭제하여 설정을 갱신합니다.
+                # 동일한 이름의 프로필이 있다면 삭제
                 subprocess.run(["sudo", "nmcli", "connection", "delete", PROFILE_NAME], capture_output=True)
-                print(f"Attempted to delete any existing profile named '{PROFILE_NAME}'.")
 
-                # 3. 새로운 연결 프로필을 추가합니다.
+                # 새로운 프로필 추가
                 add_command = [
                     "sudo", "nmcli", "connection", "add",
                     "type", "wifi",
-                    "con-name", PROFILE_NAME,  # <--- 고정된 이름 사용
+                    "con-name", PROFILE_NAME,
                     "ifname", "wlan0",
                     "ssid", ssid
                 ]
                 subprocess.run(add_command, check=True, text=True, capture_output=True, timeout=15)
-                print(f"Profile '{PROFILE_NAME}' created successfully.")
 
-                # 4. 생성된 프로필에 비밀번호와 '자동 연결' 설정을 추가합니다.
+                # 생성된 프로필에 비밀번호와 자동 연결 설정
                 modify_command = [
                     "sudo", "nmcli", "connection", "modify", PROFILE_NAME,
                     "wifi-sec.key-mgmt", "wpa-psk",
                     "wifi-sec.psk", password,
-                    "connection.autoconnect", "yes"  # <--- 자동 연결 활성화
+                    "connection.autoconnect", "yes"
                 ]
                 subprocess.run(modify_command, check=True, text=True, capture_output=True, timeout=15)
-                print(f"Profile '{PROFILE_NAME}' modified for autoconnect.")
-                # --- 수정된 부분 끝 ---
 
-                # 5. 로봇 설정 업데이트
+                # 로봇 설정 업데이트
                 robot_id = f"robot_{uuid.uuid4().hex[:8]}"
                 update_robot_config(robot_name, robot_id)
-                print(f"Robot config updated. Name: {robot_name}, ID: {robot_id}")
 
-                # 6. CLIENT 모드로 전환 준비
-                print("Switching to CLIENT mode...")
+                # /etc/pf_env 파일 수정
                 subprocess.run("echo 'MODE=CLIENT' | sudo tee /etc/pf_env", shell=True, check=True)
 
+                # 모드 전환 스크립트 실행(백그라운드)
                 subprocess.Popen(["sudo", "/usr/local/bin/pf-netmode-bookworm.sh"])
-                print("Successfully triggered CLIENT mode switch.")
 
                 return jsonify({
                     "success": True,
@@ -129,16 +102,8 @@ def setup_robot():
                     "robot_id": robot_id
                 })
 
-            except subprocess.TimeoutExpired:
-                error_message = "정보 저장 시간 초과. 시스템을 확인해주세요."
-                print(f"Error: {error_message}")
-                return jsonify({"success": False, "error": error_message}), 500
-
-            except subprocess.CalledProcessError as e:
-                error_output = e.stderr.strip() if e.stderr else e.stdout.strip()
-                print(f"Error: nmcli command failed. Stderr: {error_output}")
-                error_message = f"WiFi 정보 저장 실패: {error_output}"
-                return jsonify({"success": False, "error": error_message}), 500
+            except Exception as e:
+                return jsonify({"success": False, "error": str(e) + "(WIFI SETUP ERROR)"}), 500
         else:
             # 윈도우/맥 환경에서의 테스트용 코드
             print("Windows/macOS Debug: Simulating success.")
@@ -151,8 +116,7 @@ def setup_robot():
             })
 
     except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")
-        return jsonify({"success": False, "error": f"서버 내부 오류가 발생했습니다: {str(e)}"}), 500
+        return jsonify({"success": False, "error": str(e) + "(API ERROR)"}), 500
 
 
 if __name__ == '__main__':

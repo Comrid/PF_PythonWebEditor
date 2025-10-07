@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# --- 변수 설정 ---
 ACTUAL_USER=${SUDO_USER:-pi}
 WAN_IF="wlan0"
 AP_SSID="PF_Kit_Wifi"
@@ -9,59 +8,45 @@ AP_PASSWORD="12345678"
 GIT_REPO_URL="https://github.com/Comrid/PF_PythonWebEditor.git"
 CLONE_DIR="/home/${ACTUAL_USER}/PF_PythonWebEditor"
 
-echo "🚀 (Bookworm version) Starting Pathfinder sequential mode switching setup (User=$ACTUAL_USER)"
-sleep 2
+echo "🚀 Pathfinder Kit Setup (User=$ACTUAL_USER)"
+sleep 1
 
-# --- [1] Install essential packages ---
-echo "[1/12] Installing essential packages (NetworkManager focused)..."
+
+echo "# 필수 패키지 설치 #"
 sudo apt-get update
 echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | sudo debconf-set-selections
 echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | sudo debconf-set-selections
 sudo apt-get install -y git python3-pip python3-opencv iw iproute2 network-manager iptables-persistent
 
-# --- [2] Disable Bluetooth ---
-echo "[2/12] Disabling Bluetooth functionality..."
+
+echo "# 블루투스 비활성화 #"
 grep -q "dtoverlay=disable-bt" /boot/config.txt || echo "dtoverlay=disable-bt" | sudo tee -a /boot/config.txt
 
-# --- [3] Set user permissions ---
-echo "[3/12] Granting network management group (netdev) permissions to user ($ACTUAL_USER)..."
+
+echo "# 사용자 권한 설정 #"
 sudo usermod -a -G netdev ${ACTUAL_USER}
 
-# --- [4] Clone GitHub repository ---
-echo "[4/12] Downloading latest source code from GitHub..."
+
+echo "# GitHub 리포지토리 클론 #"
 if [ -d "$CLONE_DIR" ]; then
     sudo rm -rf "$CLONE_DIR"
 fi
 sudo -u ${ACTUAL_USER} git clone ${GIT_REPO_URL} ${CLONE_DIR}
 
-# --- [5] Install Python libraries ---
-echo "[5/12] Installing Python libraries..."
-sudo pip3 install flask flask-socketio numpy==1.26.4 --break-system-packages
 
-# --- [6] Create and initialize NetworkManager profiles ---
-echo "[6/12] Creating and initializing NetworkManager persistent network profiles..."
-
-# 6-1. Delete all existing Wi-Fi client connection profiles to ensure AP mode boot.
-while IFS= read -r line; do
-    con_name=$(echo "$line" | cut -d: -f1)
-    if [ "$con_name" != "" ] && [ "$con_name" != "Pathfinder-AP" ]; then
-        echo "Deleting existing Wi-Fi profile '$con_name'."
-        sudo nmcli con delete "$con_name" || true
-    fi
-done <<< "$(nmcli -t -f NAME,TYPE con show | grep ':802-11-wireless')"
+echo "# Python 라이브러리 설치 #"
+sudo pip3 install flask flask-socketio numpy==1.26.4 websocket-client --break-system-package
 
 
-# 6-2. Create persistent AP mode profile.
+echo '# AP 모드 프로필 생성 #'
 sudo nmcli connection add type wifi ifname ${WAN_IF} con-name "Pathfinder-AP" autoconnect no mode ap ssid "${AP_SSID}"
 sudo nmcli connection modify "Pathfinder-AP" 802-11-wireless-security.key-mgmt wpa-psk
 sudo nmcli connection modify "Pathfinder-AP" 802-11-wireless-security.psk "${AP_PASSWORD}"
 sudo nmcli connection modify "Pathfinder-AP" ipv4.method shared
 sudo nmcli connection modify "Pathfinder-AP" ipv4.addresses 10.42.0.1/24
 
-# --- [7] Register systemd services for robot client ---
-echo "[7/12] Registering services for robot client..."
 
-# WiFi setup service (runs in AP mode)
+echo "# 와이파이 설정 서비스 등록 #"
 sudo tee /etc/systemd/system/wifi_setup.service >/dev/null <<UNIT
 [Unit]
 Description=Pathfinder WiFi Setup App (Bookworm)
@@ -78,7 +63,8 @@ KillMode=mixed
 WantedBy=multi-user.target
 UNIT
 
-# Robot client service (runs in Client mode)
+
+echo '# 로봇 클라이언트 서비스 등록 #'
 sudo tee /etc/systemd/system/robot_client.service >/dev/null <<UNIT
 [Unit]
 Description=Pathfinder Robot Client (Bookworm)
@@ -95,8 +81,8 @@ KillMode=mixed
 WantedBy=multi-user.target
 UNIT
 
-# --- [8] Create dynamic mode switching script ---
-echo "[8/12] Creating dynamic mode switching script with captive portal functionality..."
+
+echo "# 동적 모드 전환 스크립트 생성 #"
 sudo tee /usr/local/bin/pf-netmode-bookworm.sh >/dev/null << 'EOF'
 #!/bin/bash
 set -e
@@ -105,7 +91,6 @@ if [ ! -f /etc/pf_env ]; then
     echo "MODE=AP" | sudo tee /etc/pf_env > /dev/null
 fi
 source /etc/pf_env
-
 CURRENT_CONNECTION=$(nmcli -t -f NAME,DEVICE con show --active | grep 'wlan0' | cut -d: -f1 || true)
 
 if [ "$MODE" = "AP" ]; then
@@ -146,6 +131,7 @@ elif [ "$MODE" = "CLIENT" ]; then
         sudo nmcli con up "Pathfinder-Client"
     fi
 
+    sleep 1
     sudo systemctl start robot_client.service
     sudo systemctl stop wifi_setup.service || true
     echo "[pf-netmode] CLIENT mode switching completed."
@@ -155,8 +141,8 @@ sudo iptables-save | sudo tee /etc/iptables/rules.v4 > /dev/null
 EOF
 sudo chmod +x /usr/local/bin/pf-netmode-bookworm.sh
 
-# --- [9] Register service for network mode initialization at boot ---
-echo "[9/12] Registering service for automatic network mode setup at boot..."
+
+echo "# 네트워크 모드 초기화 서비스 등록 #"
 sudo tee /etc/systemd/system/pf-netmode.service >/dev/null <<'UNIT'
 [Unit]
 Description=Pathfinder Network Mode Initializer
@@ -168,22 +154,28 @@ ExecStart=/usr/local/bin/pf-netmode-bookworm.sh
 WantedBy=multi-user.target
 UNIT
 
-# --- [10] Configure sudoers ---
-echo "[10/12] Setting up sudoers permissions..."
+
+echo "# sudoers 권한 설정 #"
 SUDOERS_FILE="/etc/sudoers.d/010_${ACTUAL_USER}-nopasswd-wifi"
 echo "${ACTUAL_USER} ALL=(ALL) NOPASSWD: /usr/bin/nmcli, /bin/systemctl" | sudo tee ${SUDOERS_FILE}
 sudo chmod 440 ${SUDOERS_FILE}
 
-# --- [11] Activate services and set initial mode (key modification) ---
-echo "[11/12] Activating services and setting initial AP mode..."
+
+echo "# 서비스 활성화 및 초기 AP 모드 설정 #"
 sudo systemctl daemon-reload
 sudo systemctl enable pf-netmode.service
-
-# Set to start in AP mode on initial boot.
 echo "MODE=AP" | sudo tee /etc/pf_env >/dev/null
 
-# --- [12] Completion and reboot ---
-echo "[12/12] ✅ All setup completed! Rebooting the system."
-sleep 5
+
+echo "# 기존 Wi-Fi 프로필 삭제 및 시스템 재부팅 #"
+while IFS= read -r line; do
+    con_name=$(echo "$line" | cut -d: -f1)
+    if [ "$con_name" != "" ] && [ "$con_name" != "Pathfinder-AP" ]; then
+        echo "Deleting existing Wi-Fi profile '$con_name'."
+        sudo nmcli con delete "$con_name" || true
+    fi
+done <<< "$(nmcli -t -f NAME,TYPE con show | grep ':802-11-wireless')"
+
+sleep 3
 sudo reboot
 

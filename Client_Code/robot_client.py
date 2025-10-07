@@ -5,14 +5,11 @@ import socketio
 import time
 import threading
 import sys
-import io
 import contextlib
 from robot_config import ROBOT_ID, ROBOT_NAME, SERVER_URL, HARDWARE_ENABLED
 
-# SocketIO 클라이언트 생성
 sio = socketio.Client()
 
-# 로봇 상태 관리
 robot_status = {
     'connected': False,
     'executing_code': False,
@@ -20,7 +17,6 @@ robot_status = {
 }
 
 class RealtimeOutput:
-    """실시간 출력을 위한 클래스"""
     def __init__(self, session_id, output_type='stdout'):
         self.session_id = session_id
         self.output_type = output_type

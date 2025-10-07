@@ -1,7 +1,3 @@
-"""
-사용자 인증 모듈
-"""
-
 import sqlite3
 import hashlib
 from datetime import datetime
