@@ -49,15 +49,6 @@ def disconnect():
                 pass
     threading.Thread(target=reconnect_loop, daemon=True).start()
 
-
-
-
-
-
-
-
-
-
 def exec_code(code, session_id):
     global stop_flag, running_thread
     stop_flag = False
@@ -112,7 +103,6 @@ def exec_code(code, session_id):
                 'widget_id': widget_id
             })
 
-
         exec_namespace = {
             'sio': sio,
             'session_id': session_id,
@@ -122,11 +112,8 @@ def exec_code(code, session_id):
             'emit_text': emit_text,
             'print': realtime_print
         }
-
         compiled_code = compile(code, '<string>', 'exec')
         exec(compiled_code, exec_namespace)
-
-
     except Exception:
         # 오류 출력
         for line in format_exc().splitlines():
@@ -134,18 +121,14 @@ def exec_code(code, session_id):
                 'session_id': session_id,
                 'output': line
             })
-
     finally:
         # 추적 딕셔너리에서 제거
         running_thread = None
         stop_flag = False
         print(f"DEBUG: Session {session_id}: 스레드 정리 완료")
-
-    # 코드 실행 완료 알림
-    sio.emit('robot_finished', {
-        'session_id': session_id,
-        'output': '실행 완료'
-    })
+        sio.emit('robot_finished', {
+            'session_id': session_id
+        })
 
 @sio.event
 def execute_code(data):
@@ -188,11 +171,9 @@ def stop_execution(data):
             })
             return
 
-        # 1단계: 중지 플래그 설정 (안전한 종료 시도)
         stop_flag = True
 
         if thread.is_alive():
-            # 안전하게 스레드에 예외를 주입하는 헬퍼 (라즈베리파이 포함 호환)
             def raise_in_thread(thread, exc_type = SystemExit):
                 import ctypes
                 if thread is None or not thread.is_alive():
@@ -210,23 +191,12 @@ def stop_execution(data):
                     return False
 
                 return res == 1
-            # 강제 종료 실행 (안전 헬퍼 사용)
+
             ok = raise_in_thread(thread, SystemExit)
+            thread.join(timeout=2.0)
 
-            thread.join(timeout=2.0)  # 2초 대기
-
-            if thread.is_alive():
-                print(f"DEBUG: 강제 종료 후에도 스레드가 살아있음")
-            else:
-                print(f"DEBUG: 강제 종료 성공")
-
-        # 최종 정리: 스레드가 실제로 종료된 경우에만 정리 (그 외에는 exec_code()의 finally에 위임)
-        try:
-            if not thread.is_alive():
-                running_thread = None
-                stop_flag = False
-        except Exception:
-            pass
+            running_thread = None
+            stop_flag = False
 
     except Exception as e:
         print(f"DEBUG: 스레드 중지 중 오류: {str(e)}")

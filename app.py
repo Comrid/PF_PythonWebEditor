@@ -344,7 +344,6 @@ def handle_disconnect():
 
 
 
-
 @socketio.on('execute_code') # 서버 < 웹, 서버 > 로봇
 def handle_execute_code(data):
     try:
@@ -373,7 +372,6 @@ def handle_execute_code(data):
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
 
-
 @socketio.on('stop_execution')
 def handle_stop_execution():
     try:
@@ -397,6 +395,12 @@ def handle_stop_execution():
     except Exception as e:
         print(f"DEBUG: 코드 중지 요청 중 오류: {str(e)}")
         emit('execution_error', {'error': f'코드 중지 요청 중 오류가 발생했습니다: {str(e)}'})
+
+
+
+
+
+
 
 
 
@@ -515,16 +519,17 @@ def handle_robot_stderr(data):
 def handle_robot_finished(data):
     try:
         session_id = data.get('session_id')
-        output = data.get('output', '실행 완료')
-
-        if not session_id:
-            return
-
-        # 브라우저로 finished 데이터 중계
-        socketio.emit('finished', {'output': output}, room=session_id)
-
+        if not session_id: return
+        socketio.emit('finished', {'output': '실행 완료'}, room=session_id)
     except Exception as e:
         print(f"로봇 finished 데이터 중계 오류: {e}")
+
+
+
+
+
+
+
 
 
 
