@@ -355,39 +355,20 @@ def handle_execute_code(data):
             emit('execution_error', {'error': '코드가 제공되지 않았습니다.'})
             return
 
-        # 현재 세션 ID 가져오기
         sid = request.sid
 
-        # 현재 사용자 정보 가져오기
-        user_info = session_user_mapping.get(sid, {})
-        user_id = user_info.get('user_id')
-        username = user_info.get('username', 'Unknown')
-
-        print(f"사용자 {username} (ID: {user_id})이 코드 실행을 요청했습니다.")
-
-        # 할당된 로봇 확인
         robot_id = user_robot_mapping.get(sid)
         if not robot_id or robot_id not in registered_robots:
             emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
             return
 
-        # 로봇 정보 가져오기
-        robot_info = registered_robots[robot_id]
-        robot_session_id = robot_info.get('session_id')
-
+        robot_session_id = registered_robots[robot_id].get('session_id')
         if not robot_session_id:
             emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
             return
 
-        # 로봇에 코드 실행 요청 전송
-        socketio.emit('execute_code', {
-            'code': code,
-            'session_id': sid
-        }, room=robot_session_id)
-
-        emit('execution_started', {
-            'message': f'로봇 {robot_info.get("name", robot_id)}에서 코드 실행을 시작합니다...'
-        })
+        socketio.emit('execute_code', {'code': code, 'session_id': sid}, room=robot_session_id)
+        emit('execution_started', {'message': f'로봇 {registered_robots[robot_id].get("name", robot_id)}에서 코드 실행을 시작합니다...'})
 
     except Exception as e:
         emit('execution_error', {'error': f'코드 실행 중 오류가 발생했습니다: {str(e)}'})
