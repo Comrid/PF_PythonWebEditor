@@ -908,7 +908,7 @@ async function logout() {
         if (response.ok) {
             showToast('로그아웃되었습니다.', 'success');
             setTimeout(() => {
-                window.location.href = '/login';
+                window.location.href = '/';
             }, 1000);
         } else {
             showToast('로그아웃에 실패했습니다.', 'error');
