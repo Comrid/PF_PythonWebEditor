@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 설정 버튼
     const settingsBtn = document.getElementById('settingsBtn');
-    if (settingsBtn) {settingsBtn.addEventListener('click', handleSettings('show'));}
+    if (settingsBtn) {settingsBtn.addEventListener('click', () => handleSettings('show'));}
     const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-    if (settingsCloseBtn) {settingsCloseBtn.addEventListener('click', handleSettings('close'));}
+    if (settingsCloseBtn) {settingsCloseBtn.addEventListener('click', () => handleSettings('close'));}
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay) {
         settingsOverlay.addEventListener('click', function(e) {
