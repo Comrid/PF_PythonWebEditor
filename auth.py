@@ -242,7 +242,7 @@ def append_robot_to_db(robot_id, robot_name):
 
         cursor.execute('''
             SELECT id FROM user_robot_assignments
-            WHERE robot_id = ? AND user_id IS NULL
+            WHERE robot_id = ? AND user_id = 0
         ''', (robot_id,))
 
         existing_robot = cursor.fetchone()
@@ -251,13 +251,13 @@ def append_robot_to_db(robot_id, robot_name):
             cursor.execute('''
                 UPDATE user_robot_assignments
                 SET robot_name = ?, assigned_at = CURRENT_TIMESTAMP
-                WHERE robot_id = ? AND user_id IS NULL
+                WHERE robot_id = ? AND user_id = 0
             ''', (robot_name, robot_id))
             print(f"로봇 정보 업데이트: {robot_name} (ID: {robot_id})")
         else:
             cursor.execute('''
-                INSERT INTO user_robot_assignments (robot_name, robot_id, user_id, is_active)
-                VALUES (?, ?, NULL, FALSE)
+                INSERT INTO user_robot_assignments (robot_name, robot_id, is_active)
+                VALUES (?, ?, FALSE)
             ''', (robot_name, robot_id))
             print(f"새 로봇 등록: {robot_name} (ID: {robot_id})")
 
