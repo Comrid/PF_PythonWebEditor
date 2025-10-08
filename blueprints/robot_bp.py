@@ -85,6 +85,19 @@ def get_robots():
         return jsonify([])
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 @robot_bp.route('/robot/assign', methods=['POST'])
 @login_required
 def assign_robot():
@@ -96,30 +109,33 @@ def assign_robot():
         if not robot_name:
             return jsonify({"success": False, "error": "로봇 이름이 필요합니다"}), 400
 
-        # 등록된 로봇 중에서 이름으로 찾기
-        registered_robots = get_registered_robots()
-        robot_id = None
-        for rid, robot_info in registered_robots.items():
-            if robot_info.get('name') == robot_name:
-                robot_id = rid
-                break
+        # 사용자에게 로봇 할당 (데이터베이스에서 직접 찾아서 할당)
+        success, message = assign_robot_to_user(current_user.id, robot_name)
 
-        if not robot_id:
-            return jsonify({"success": False, "error": f"로봇 '{robot_name}'을 찾을 수 없습니다"}), 404
-
-        # 사용자에게 로봇 할당
-        if assign_robot_to_user(current_user.id, robot_id):
+        if success:
             return jsonify({
                 "success": True,
-                "message": f"로봇 '{robot_name}'이 할당되었습니다",
-                "robot_id": robot_id
+                "message": message
             })
         else:
-            return jsonify({"success": False, "error": "로봇 할당에 실패했습니다"}), 500
+            return jsonify({"success": False, "error": message}), 400
 
     except Exception as e:
         print(f"로봇 할당 오류: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @robot_bp.route('/robots/register', methods=['POST'])
 def register_robot():

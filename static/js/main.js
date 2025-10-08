@@ -52,7 +52,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const robotSelect = document.getElementById('robotSelect');
     
     const assignRobotBtn = document.getElementById('assignRobotBtn');
+
+
+
     const connectRobotBtn = document.getElementById('connectRobotBtn');
+    if (connectRobotBtn) {connectRobotBtn.addEventListener('click', connectRobot);}
+
+
+
     const robotNameInput = document.getElementById('robotNameInput');
 
 
@@ -68,9 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (assignRobotBtn) {
         assignRobotBtn.addEventListener('click', assignRobot);
     }
-    if (connectRobotBtn) {
-        connectRobotBtn.addEventListener('click', connectRobot);
-    }
+    
     if (robotNameInput) {
         robotNameInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {connectRobot();}
@@ -394,11 +399,13 @@ async function refreshRobotStatus() {
 async function connectRobot() {
     const robotName = robotNameInput.value.trim();
     if (!robotName) {
-        showConnectStatus('로봇 이름을 입력해주세요.', 'error');
+        //showConnectStatus('로봇 이름을 입력해주세요.', 'error');
+        showToast('로봇 이름을 입력해주세요.', 'error');
         return;
     }
 
     // 버튼 비활성화
+    const connectRobotBtn = document.getElementById('connectRobotBtn');
     connectRobotBtn.disabled = true;
     connectRobotBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 연동 중...';
 
@@ -414,7 +421,8 @@ async function connectRobot() {
         const result = await response.json();
 
         if (response.ok) {
-            showConnectStatus(result.message, 'success');
+            //showConnectStatus(result.message, 'success');
+            showToast(result.message, 'success');
             // 연동 완료 후 로봇 목록 새로고침
             setTimeout(() => {
                 loadRobotList();
@@ -429,11 +437,13 @@ async function connectRobot() {
                 }
             }, 1000);
         } else {
-            showConnectStatus(result.error, 'error');
+            //showConnectStatus(result.error, 'error');
+            showToast(result.error, 'error');
         }
     } catch (error) {
         console.error('로봇 연동 오류:', error);
-        showConnectStatus('로봇 연동 중 오류가 발생했습니다.', 'error');
+        //showConnectStatus('로봇 연동 중 오류가 발생했습니다.', 'error');
+        showToast('로봇 연동 중 오류가 발생했습니다.', 'error');
     } finally {
         // 버튼 활성화
         connectRobotBtn.disabled = false;
