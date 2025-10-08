@@ -438,11 +438,16 @@ def handle_robot_connected(data):
         hardware_enabled = data.get('hardware_enabled', False)
         print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
 
-        # 데이터베이스에 로봇 등록
-        from auth import append_robot_to_db
-        db_success = append_robot_to_db(robot_id, robot_name)
-        if not db_success:
-            print(f"⚠️ 로봇 데이터베이스 등록 실패: {robot_name} (ID: {robot_id})")
+        # 데이터베이스에서 로봇 중복 등록 확인
+        from auth import is_robot_exist, append_robot_to_db
+
+        # 중복 등록이 아닌 경우에만 데이터베이스에 등록
+        if not is_robot_exist(robot_id):
+            db_success = append_robot_to_db(robot_id, robot_name)
+            if not db_success:
+                print(f"⚠️ 로봇 데이터베이스 등록 실패: {robot_name} (ID: {robot_id})")
+        else:
+            print(f"ℹ️ 로봇이 이미 등록되어 있음: {robot_name} (ID: {robot_id}) - 데이터베이스 등록 건너뜀")
 
         registered_robots[robot_id] = {
             "name": robot_name,

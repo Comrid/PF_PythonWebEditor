@@ -234,6 +234,23 @@ def get_robot_name_from_db(robot_id):
         print(f"로봇 이름 조회 오류: {e}")
         return f"Robot {robot_id[:8]}"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 로봇을 데이터베이스에 등록 (사용자 할당 없이)
 def append_robot_to_db(robot_id, robot_name):
     try:
@@ -310,3 +327,23 @@ def assign_robot_to_user(user_id, robot_name):
 
     except Exception as e:
         return False, f"로봇 할당 오류: {e}"
+
+def is_robot_exist(robot_id):
+    """로봇이 데이터베이스에 존재하는지 확인"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT id FROM user_robot_assignments
+            WHERE robot_id = ?
+        ''', (robot_id,))
+
+        existing_robot = cursor.fetchone()
+        conn.close()
+
+        return existing_robot is not None
+
+    except Exception as e:
+        print(f"로봇 존재 확인 오류: {e}")
+        return False
