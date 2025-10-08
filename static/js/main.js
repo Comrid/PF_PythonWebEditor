@@ -22,8 +22,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsCloseBtn = document.getElementById('settingsCloseBtn');
     if (settingsCloseBtn) {settingsCloseBtn.addEventListener('click', handleSettings('close'));}
     const settingsOverlay = document.getElementById('settingsOverlay');
-    if (settingsOverlay) {settingsOverlay.addEventListener('click', function(e) {if (e.target === this) {handleSettings('close');}});}
-    document.addEventListener('keydown', function(e) {if (e.key === 'Escape') {handleSettings('close');}});
+    if (settingsOverlay) {
+        settingsOverlay.addEventListener('click', function(e) {
+            if (e.target === this) {handleSettings('close');}
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {handleSettings('close');}
+    });
 
 
     const challengeBtn = document.getElementById('challengeBtn');

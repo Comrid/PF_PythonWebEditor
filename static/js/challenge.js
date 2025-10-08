@@ -37,7 +37,7 @@ const challengeList = [
         icon: 'fas fa-crown',
         completedAt: null
     },
-    
+
     // Widget Creation Challenges
     {
         id: 'widget-5-created',
@@ -63,7 +63,7 @@ const challengeList = [
         icon: 'fas fa-layer-group',
         completedAt: null
     },
-    
+
     // Code Execution Time Challenges
     {
         id: 'code-1-hour',
@@ -89,7 +89,7 @@ const challengeList = [
         icon: 'fas fa-hourglass-half',
         completedAt: null
     },
-    
+
     // File Management Challenges
     {
         id: 'save-5-files',
@@ -115,7 +115,7 @@ const challengeList = [
         icon: 'fas fa-folder-open',
         completedAt: null
     },
-    
+
     // Tutorial Completion Challenges
     {
         id: 'complete-3-tutorials',
@@ -141,7 +141,7 @@ const challengeList = [
         icon: 'fas fa-trophy',
         completedAt: null
     },
-    
+
     // Special Challenges
     {
         id: 'first-day',
@@ -195,7 +195,7 @@ function loadChallengeProgress() {
     if (saved) {
         challengeProgress = JSON.parse(saved);
     }
-    
+
     // Initialize challenges that don't have progress
     challengeList.forEach(challenge => {
         if (!challengeProgress[challenge.id]) {
@@ -227,19 +227,19 @@ function incrementChallenge(challengeId, amount = 1) {
     if (!challengeProgress[challengeId]) {
         challengeProgress[challengeId] = { current: 0, completedAt: null };
     }
-    
+
     challengeProgress[challengeId].current += amount;
-    
+
     // Check if challenge is completed
     const challenge = challengeList.find(c => c.id === challengeId);
     if (challenge && challengeProgress[challengeId].current >= challenge.target && !challengeProgress[challengeId].completedAt) {
         challengeProgress[challengeId].completedAt = new Date().toISOString();
         challenge.completedAt = challengeProgress[challengeId].completedAt;
-        
+
         // Show completion notification
         showChallengeCompletion(challenge);
     }
-    
+
     saveChallengeProgress();
     updateChallengeProgress();
 }
@@ -248,13 +248,13 @@ function showChallengeCompletion(challenge) {
     showToast(`🏆 도전과제 달성! "${challenge.title}" (+${challenge.points}점)`, 'success');
 }
 
-function showChallengeWindow() {
+function showChallenge() {
     // Remove existing challenge window
     const existingWindow = document.getElementById('challengeWindow');
     if (existingWindow) {
         existingWindow.remove();
     }
-    
+
     // Create challenge window HTML
     const challengeHTML = `
         <div class="challenge-overlay" id="challengeOverlay">
@@ -287,10 +287,10 @@ function showChallengeWindow() {
             </div>
         </div>
     `;
-    
+
     // Add to body
     document.body.insertAdjacentHTML('beforeend', challengeHTML);
-    
+
     // Bind events
     document.getElementById('challengeCloseBtn').addEventListener('click', closeChallengeWindow);
     document.getElementById('challengeOverlay').addEventListener('click', function(e) {
@@ -298,7 +298,7 @@ function showChallengeWindow() {
             closeChallengeWindow();
         }
     });
-    
+
     // Update stats
     updateChallengeStats();
 }
@@ -309,7 +309,7 @@ function generateChallengeList() {
         const progress = challenge.current;
         const target = challenge.target;
         const progressPercent = Math.min((progress / target) * 100, 100);
-        
+
         return `
             <div class="challenge-item ${isCompleted ? 'completed' : ''}" data-challenge-id="${challenge.id}">
                 <div class="challenge-icon">
@@ -369,10 +369,10 @@ function updateChallengeStats() {
     const totalScore = challengeList.reduce((sum, challenge) => {
         return sum + (challenge.completedAt ? challenge.points : 0);
     }, 0);
-    
+
     const completedCount = challengeList.filter(challenge => challenge.completedAt).length;
     const progressRate = Math.round((completedCount / challengeList.length) * 100);
-    
+
     document.getElementById('totalScore').textContent = totalScore;
     document.getElementById('completedCount').textContent = completedCount;
     document.getElementById('progressRate').textContent = `${progressRate}%`;
@@ -387,4 +387,4 @@ function closeChallengeWindow() {
 
 // Global functions for other modules to call
 window.incrementChallenge = incrementChallenge;
-window.showChallengeWindow = showChallengeWindow;
+window.showChallenge = showChallenge;
