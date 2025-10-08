@@ -15,7 +15,6 @@ class User(UserMixin):
         self.role = role
 
 class GuestUser(UserMixin):
-    """게스트 사용자 모델"""
     def __init__(self):
         self.id = 'guest'
         self.username = 'Guest'
@@ -37,56 +36,10 @@ class GuestUser(UserMixin):
     def is_anonymous(self):
         return self._is_anonymous
 
-def hash_password(password):
-    """비밀번호 해시화"""
-    return hashlib.sha256(password.encode()).hexdigest()
+##############################################################################
 
-def verify_password(password, password_hash):
-    """비밀번호 검증"""
-    return hash_password(password) == password_hash
-
-def get_user_by_id(user_id):
-    """ID로 사용자 조회"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT id, username, email, role FROM users WHERE id = ?
-        ''', (user_id,))
-
-        row = cursor.fetchone()
-        conn.close()
-
-        if row:
-            return User(row[0], row[1], row[2], row[3])
-        return None
-    except Exception as e:
-        print(f"사용자 조회 오류: {e}")
-        return None
-
-def get_user_by_username(username):
-    """사용자명으로 사용자 조회"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT id, username, email, role FROM users WHERE username = ?
-        ''', (username,))
-
-        row = cursor.fetchone()
-        conn.close()
-
-        if row:
-            return User(row[0], row[1], row[2], row[3])
-        return None
-    except Exception as e:
-        print(f"사용자 조회 오류: {e}")
-        return None
-
+# 사용자 인증
 def authenticate_user(username, password):
-    """사용자 인증"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -99,7 +52,6 @@ def authenticate_user(username, password):
         conn.close()
 
         if row and verify_password(password, row[4]):
-            # 마지막 로그인 시간 업데이트
             update_last_login(row[0])
             return User(row[0], row[1], row[2], row[3])
         return None
@@ -107,23 +59,8 @@ def authenticate_user(username, password):
         print(f"사용자 인증 오류: {e}")
         return None
 
-def update_last_login(user_id):
-    """마지막 로그인 시간 업데이트"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            UPDATE users SET last_login = ? WHERE id = ?
-        ''', (datetime.now().isoformat(), user_id))
-
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"로그인 시간 업데이트 오류: {e}")
-
-def create_user(username, password, email=None, role='user'):
-    """새 사용자 생성"""
+# 사용자 생성
+def create_user(username, password, email, role='user'):
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -146,8 +83,88 @@ def create_user(username, password, email=None, role='user'):
         print(f"사용자 생성 오류: {e}")
         return None
 
+##############################################################################
+
+# 비밀번호 해시화 및 검증
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, password_hash):
+    return hash_password(password) == password_hash
+
+##############################################################################
+
+# 사용자 조회(ID 또는 사용자명)
+def get_user(identifier, by='id'):
+    """
+    Args:
+        identifier: 사용자 ID 또는 사용자명
+        by: 'id' 또는 'username'
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        if by == 'id':
+            cursor.execute('''
+                SELECT id, username, email, role FROM users WHERE id = ?
+            ''', (identifier,))
+        elif by == 'username':
+            cursor.execute('''
+                SELECT id, username, email, role FROM users WHERE username = ?
+            ''', (identifier,))
+        else:
+            raise ValueError("by 파라미터는 'id' 또는 'username'이어야 합니다.")
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return User(row[0], row[1], row[2], row[3])
+        return None
+    except Exception as e:
+        print(f"사용자 조회 오류: {e}")
+        return None
+
+##############################################################################
+
+# users 테이블 관련 함수수
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 마지막 로그인 시간 업데이트
+def update_last_login(user_id):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE users SET last_login = ? WHERE id = ?
+        ''', (datetime.now().isoformat(), user_id))
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"로그인 시간 업데이트 오류: {e}")
+
+
+
+
+
+# 사용자에게 할당된 로봇 목록 조회
 def get_user_robots(user_id):
-    """사용자에게 할당된 로봇 목록 조회"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -165,8 +182,8 @@ def get_user_robots(user_id):
         print(f"사용자 로봇 조회 오류: {e}")
         return []
 
+# 사용자에게 로봇 할당
 def assign_robot_to_user(user_id, robot_id):
-    """사용자에게 로봇 할당"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -191,8 +208,8 @@ def assign_robot_to_user(user_id, robot_id):
         print(f"로봇 할당 오류: {e}")
         return False
 
+# 데이터베이스에서 로봇 이름 조회
 def get_robot_name_from_db(robot_id):
-    """데이터베이스에서 로봇 이름 조회"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -216,3 +233,37 @@ def get_robot_name_from_db(robot_id):
     except Exception as e:
         print(f"로봇 이름 조회 오류: {e}")
         return f"Robot {robot_id[:8]}"
+
+# 로봇을 데이터베이스에 등록 (사용자 할당 없이)
+def append_robot_to_db(robot_id, robot_name):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT id FROM user_robot_assignments
+            WHERE robot_id = ? AND user_id IS NULL
+        ''', (robot_id,))
+
+        existing_robot = cursor.fetchone()
+
+        if existing_robot:
+            cursor.execute('''
+                UPDATE user_robot_assignments
+                SET robot_name = ?, assigned_at = CURRENT_TIMESTAMP
+                WHERE robot_id = ? AND user_id IS NULL
+            ''', (robot_name, robot_id))
+            print(f"로봇 정보 업데이트: {robot_name} (ID: {robot_id})")
+        else:
+            cursor.execute('''
+                INSERT INTO user_robot_assignments (robot_name, robot_id, user_id, is_active)
+                VALUES (?, ?, NULL, FALSE)
+            ''', (robot_name, robot_id))
+            print(f"새 로봇 등록: {robot_name} (ID: {robot_id})")
+
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"로봇 등록 오류: {e}")
+        return False

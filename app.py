@@ -13,6 +13,7 @@ from blueprints.custom_code_bp import custom_code_bp
 from blueprints.tutorial_bp import tutorial_bp
 from blueprints.admin_bp import admin_bp
 from blueprints.robot_bp import robot_bp
+from blueprints.auth_bp import auth_bp
 
 # Auth
 from auth import *
@@ -29,6 +30,7 @@ app.register_blueprint(custom_code_bp)
 app.register_blueprint(tutorial_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(robot_bp)
+app.register_blueprint(auth_bp)
 
 # Flask-Login 초기화
 login_manager = LoginManager()
@@ -39,10 +41,10 @@ login_manager.login_message_category = 'info'
 
 @login_manager.user_loader
 def load_user(user_id):
-    from auth import get_user_by_id, GuestUser
+    from auth import get_user, GuestUser
     if user_id == 'guest':
         return GuestUser()
-    return get_user_by_id(user_id)
+    return get_user(user_id, by='id')
 
 
 socketio = SocketIO(
@@ -92,7 +94,6 @@ app.config['socketio'] = socketio
 # 5. login : 로그인 페이지
 # 6. register : 회원가입 페이지
 # 7. admin : 관리자 페이지
-
 #region 페이지 라우팅 목록
 @app.route('/')
 def index():
@@ -172,91 +173,10 @@ def admin():
                          role=current_user.role)
 #endregion
 
-#region Authentication API
-@app.route('/api/auth/login', methods=['POST'])
-def api_login():
-    """사용자 로그인"""
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
 
-        if not username or not password:
-            return jsonify({"error": "사용자명과 비밀번호를 입력해주세요."}), 400
 
-        user = authenticate_user(username, password)
-        if user:
-            login_user(user)
-            return jsonify({
-                "success": True,
-                "message": "로그인 성공",
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "role": user.role
-                }
-            })
-        else:
-            return jsonify({"error": "사용자명 또는 비밀번호가 올바르지 않습니다."}), 401
 
-    except Exception as e:
-        print(f"로그인 오류: {e}")
-        return jsonify({"error": "로그인 중 오류가 발생했습니다."}), 500
 
-@app.route('/api/auth/register', methods=['POST'])
-def api_register():
-    """사용자 회원가입"""
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        email = data.get('email')
-
-        if not username or not password:
-            return jsonify({"error": "사용자명과 비밀번호를 입력해주세요."}), 400
-
-        if len(password) < 6:
-            return jsonify({"error": "비밀번호는 6자 이상이어야 합니다."}), 400
-
-        user = create_user(username, password, email)
-        if user:
-            return jsonify({
-                "success": True,
-                "message": "회원가입 성공"
-            })
-        else:
-            return jsonify({"error": "이미 존재하는 사용자명입니다."}), 409
-
-    except Exception as e:
-        print(f"회원가입 오류: {e}")
-        return jsonify({"error": "회원가입 중 오류가 발생했습니다."}), 500
-
-@app.route('/api/auth/user', methods=['GET'])
-@login_required
-def api_get_user():
-    """현재 사용자 정보 조회"""
-    return jsonify({
-        "id": current_user.id,
-        "username": current_user.username,
-        "email": current_user.email,
-        "role": current_user.role
-    })
-
-@app.route('/api/auth/check', methods=['GET'])
-def check_auth():
-    """로그인 상태 확인 (로그인하지 않은 사용자도 접근 가능)"""
-    if current_user.is_authenticated:
-        return jsonify({
-            'authenticated': True,
-            'user': {
-                'user_id': current_user.id,
-                'username': current_user.username,
-                'email': current_user.email,
-                'role': current_user.role
-            }
-        })
-    else:
-        return jsonify({'authenticated': False})
 
 @app.route('/api/sessions', methods=['GET'])
 @login_required
@@ -290,7 +210,7 @@ def get_active_sessions():
 
 
 
-#region SocketIO connect/disconnect
+#region 로봇 연결 관리
 @socketio.on('connect') # 웹 > 서버
 def handle_connect():
     print('클라이언트가 연결되었습니다.')
@@ -314,13 +234,10 @@ def handle_connect():
 
     emit('connected', {'message': '서버에 연결되었습니다.'}) # 서버 > 웹
 
-
-
 @socketio.on('disconnect')
 def handle_disconnect():
     print('클라이언트가 연결을 해제했습니다.')
 
-    # 연결 해제 시 실행 중인 스레드 정리
     sid = request.sid
 
     # 세션-사용자 매핑 정리
@@ -332,18 +249,9 @@ def handle_disconnect():
     if sid in user_robot_mapping:
         robot_id = user_robot_mapping.pop(sid)
         print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
+#endregion
 
-    # 스레드는 로봇에서 관리하므로 서버에서는 정리 불필요
-
-
-
-
-
-
-
-
-
-
+#region 로봇 코드 실행 + 출력
 @socketio.on('execute_code') # 서버 < 웹, 서버 > 로봇
 def handle_execute_code(data):
     try:
@@ -396,18 +304,39 @@ def handle_stop_execution():
         print(f"DEBUG: 코드 중지 요청 중 오류: {str(e)}")
         emit('execution_error', {'error': f'코드 중지 요청 중 오류가 발생했습니다: {str(e)}'})
 
+@socketio.on('robot_finished')
+def handle_robot_finished(data):
+    try:
+        session_id = data.get('session_id')
+        if not session_id: return
+        socketio.emit('finished', {'output': '실행 완료'}, room=session_id)
+    except Exception as e:
+        print(f"로봇 finished 데이터 중계 오류: {e}")
 
+@socketio.on('robot_stdout')
+def handle_robot_stdout(data):
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output')
+        if not all([session_id, output]):
+            return
+        socketio.emit('stdout', {'output': output}, room=session_id)
+    except Exception as e:
+        print(f"Robot stdout data relay error: {e}")
 
+@socketio.on('robot_stderr')
+def handle_robot_stderr(data):
+    try:
+        session_id = data.get('session_id')
+        output = data.get('output')
+        if not all([session_id, output]):
+            return
+        socketio.emit('stderr', {'output': output}, room=session_id)
+    except Exception as e:
+        print(f"Robot stderr data relay error: {e}")
+#endregion
 
-
-
-
-
-
-
-
-
-
+#region 로봇 커스텀 함수 관리
 @socketio.on('gesture_update')
 def handle_gesture_update(data):
     sid = request.sid
@@ -486,53 +415,20 @@ def handle_robot_emit_text(data):
 
     except Exception as e:
         print(f"로봇 텍스트 데이터 중계 오류: {e}")
+#endregion
 
-
-
-
-
-
-
-@socketio.on('robot_stdout')
-def handle_robot_stdout(data):
+#region 로봇 연결 관리
+@socketio.on('robot_heartbeat')
+def handle_robot_heartbeat(data):
+    """로봇 하트비트 처리"""
     try:
-        session_id = data.get('session_id')
-        output = data.get('output')
-        if not all([session_id, output]):
-            return
-        socketio.emit('stdout', {'output': output}, room=session_id)
+        robot_id = data.get('robot_id')
+        if robot_id in registered_robots:
+            robot_heartbeats[robot_id] = time.time()
+            registered_robots[robot_id]['status'] = 'online'
+            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
     except Exception as e:
-        print(f"Robot stdout data relay error: {e}")
-
-@socketio.on('robot_stderr')
-def handle_robot_stderr(data):
-    try:
-        session_id = data.get('session_id')
-        output = data.get('output')
-        if not all([session_id, output]):
-            return
-        socketio.emit('stderr', {'output': output}, room=session_id)
-    except Exception as e:
-        print(f"Robot stderr data relay error: {e}")
-
-@socketio.on('robot_finished')
-def handle_robot_finished(data):
-    try:
-        session_id = data.get('session_id')
-        if not session_id: return
-        socketio.emit('finished', {'output': '실행 완료'}, room=session_id)
-    except Exception as e:
-        print(f"로봇 finished 데이터 중계 오류: {e}")
-
-
-
-
-
-
-
-
-
-
+        print(f"로봇 하트비트 처리 오류: {e}")
 
 @socketio.on('robot_connected') # 서버 < 로봇
 def handle_robot_connected(data):
@@ -541,6 +437,12 @@ def handle_robot_connected(data):
         robot_name = data.get('robot_name')
         hardware_enabled = data.get('hardware_enabled', False)
         print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
+
+        # 데이터베이스에 로봇 등록
+        from auth import append_robot_to_db
+        db_success = append_robot_to_db(robot_id, robot_name)
+        if not db_success:
+            print(f"⚠️ 로봇 데이터베이스 등록 실패: {robot_name} (ID: {robot_id})")
 
         registered_robots[robot_id] = {
             "name": robot_name,
@@ -551,7 +453,6 @@ def handle_robot_connected(data):
             "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
 
-        # 하트비트 초기화
         robot_heartbeats[robot_id] = time.time()
 
         emit('robot_registered', {
@@ -564,18 +465,6 @@ def handle_robot_connected(data):
             'success': False,
             'error': str(e)
         })
-
-@socketio.on('robot_heartbeat')
-def handle_robot_heartbeat(data):
-    """로봇 하트비트 처리"""
-    try:
-        robot_id = data.get('robot_id')
-        if robot_id in registered_robots:
-            robot_heartbeats[robot_id] = time.time()
-            registered_robots[robot_id]['status'] = 'online'
-            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
-    except Exception as e:
-        print(f"로봇 하트비트 처리 오류: {e}")
 
 @socketio.on('robot_disconnected')
 def handle_robot_disconnected(data):
@@ -593,16 +482,9 @@ def handle_robot_disconnected(data):
             for sid in sessions_to_remove:
                 user_robot_mapping.pop(sid, None)
                 print(f"사용자 세션 {sid}에서 로봇 {robot_id} 할당 해제")
-
     except Exception as e:
         print(f"로봇 연결 해제 처리 오류: {e}")
-
-
-
-
-
-
-
+#endregion
 
 if __name__ == '__main__':
     socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000)

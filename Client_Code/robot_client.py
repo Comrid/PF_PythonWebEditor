@@ -1,9 +1,15 @@
+#TODO 로봇 커스텀 함수 관리
+
 from __future__ import annotations
 import threading
 from traceback import format_exc
 import socketio
 import time
 from robot_config import ROBOT_ID, ROBOT_NAME, SERVER_URL, HARDWARE_ENABLED
+try:
+    from findee import Findee
+except Exception:
+    Findee = None
 
 stop_flag = False
 running_thread = None
