@@ -294,7 +294,7 @@ def assign_robot_to_user(user_id, robot_name):
         # 해당 로봇 이름으로 등록된 로봇 찾기 (사용자에게 할당되지 않은 것)
         cursor.execute('''
             SELECT robot_id FROM user_robot_assignments
-            WHERE robot_name = ? AND user_id IS NULL AND is_active = FALSE
+            WHERE robot_name = ? AND (user_id IS NULL OR user_id = 0) AND is_active = FALSE
             ORDER BY assigned_at DESC
             LIMIT 1
         ''', (robot_name,))
