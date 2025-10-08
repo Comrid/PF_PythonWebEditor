@@ -84,51 +84,6 @@ def get_robots():
         print(f"로봇 목록 조회 오류: {e}")
         return jsonify([])
 
-@robot_bp.route('/robot/register', methods=['POST'])
-def register_robot_simple():
-    """로봇 등록 (app_wifi.py에서 호출)"""
-    try:
-        data = request.get_json()
-        robot_id = data.get('robot_id')
-        robot_name = data.get('robot_name')
-        status = data.get('status', 'available')
-        user_id = data.get('user_id')  # 선택적 사용자 ID
-
-        if not robot_id or not robot_name:
-            return jsonify({"success": False, "error": "robot_id와 robot_name이 필요합니다"}), 400
-
-        # 로봇 등록 (SocketIO 전용)
-        # 실제 로봇은 SocketIO로 연결되므로 URL은 None으로 설정
-        registered_robots = get_registered_robots()
-        registered_robots[robot_id] = {
-            "name": robot_name,
-            "url": None,  # SocketIO 연결된 로봇은 URL이 None
-            "status": status,
-            "created_at": datetime.now().isoformat(),
-            "session_id": None  # SocketIO 세션 ID는 연결 시 설정됨
-        }
-
-        # 하트비트 초기화
-        robot_heartbeats = get_robot_heartbeats()
-        robot_heartbeats[robot_id] = time.time()
-
-        # 사용자 ID가 제공된 경우 자동 할당
-        if user_id:
-            assign_robot_to_user(user_id, robot_id)
-            print(f"로봇 등록 및 사용자 할당됨: {robot_name} (ID: {robot_id}) -> 사용자 {user_id}")
-        else:
-            print(f"로봇 등록됨: {robot_name} (ID: {robot_id}) - 사용자 할당 필요")
-
-        return jsonify({
-            "success": True,
-            "message": f"로봇 {robot_name}이 등록되었습니다",
-            "robot_id": robot_id,
-            "needs_assignment": user_id is None
-        })
-
-    except Exception as e:
-        print(f"로봇 등록 오류: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @robot_bp.route('/robot/assign', methods=['POST'])
 @login_required

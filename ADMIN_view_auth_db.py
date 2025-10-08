@@ -45,14 +45,14 @@ def view_database():
 
         # user_robot_assignments 테이블 데이터
         print("\nuser_robot_assignments 테이블 데이터:")
-        cursor.execute("SELECT * FROM user_robot_assignments;")
+        cursor.execute("SELECT id, user_id, robot_name, robot_id, assigned_at, is_active FROM user_robot_assignments;")
         assignments = cursor.fetchall()
 
         if assignments:
-            print(f"{'ID':<5} {'User ID':<10} {'Robot ID':<15} {'Assigned At':<20} {'Active':<10}")
-            print("-" * 70)
+            print(f"{'ID':<5} {'User ID':<10} {'Robot Name':<15} {'Robot ID':<15} {'Assigned At':<20} {'Active':<10}")
+            print("-" * 85)
             for assignment in assignments:
-                print(f"{assignment[0]:<5} {assignment[1]:<10} {assignment[2]:<15} {assignment[3] or 'N/A':<20} {assignment[4]:<10}")
+                print(f"{assignment[0]:<5} {assignment[1]:<10} {assignment[2]:<15} {assignment[3]:<15} {assignment[4] or 'N/A':<20} {assignment[5]:<10}")
         else:
             print("  (데이터 없음)")
 

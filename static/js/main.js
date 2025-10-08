@@ -9,12 +9,30 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.warn('사용자 정보를 찾을 수 없습니다.');
     }
-    // 시작 화면 버튼 이벤트 바인딩
-    const startEditorBtn = document.getElementById('startEditorBtn');
+
+    // 페이지 이동 버튼
+    const editorBtn = document.getElementById('editorBtn');
+    if (editorBtn) {editorBtn.addEventListener('click', redirectEditor);}
     const tutorialBtn = document.getElementById('tutorialBtn');
-    const firstScreenSettingsBtn = document.getElementById('firstScreenSettingsBtn');
-    const trophyIcon = document.getElementById('trophyIcon');
+    if (tutorialBtn) {tutorialBtn.addEventListener('click', redirectTutorial);}
+
+    // 설정 버튼
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {settingsBtn.addEventListener('click', handleSettings('show'));}
     const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    if (settingsCloseBtn) {settingsCloseBtn.addEventListener('click', handleSettings('close'));}
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    if (settingsOverlay) {settingsOverlay.addEventListener('click', function(e) {if (e.target === this) {handleSettings('close');}});}
+    document.addEventListener('keydown', function(e) {if (e.key === 'Escape') {handleSettings('close');}});
+
+
+    const challengeBtn = document.getElementById('challengeBtn');
+    if(challengeBtn) {challengeBtn.addEventListener('click', showChallenge);}
+
+
+
+
+    
     const resetDbBtn = document.getElementById('resetDbBtn');
     const robotSelect = document.getElementById('robotSelect');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -22,27 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const connectRobotBtn = document.getElementById('connectRobotBtn');
     const robotNameInput = document.getElementById('robotNameInput');
 
-    if (startEditorBtn) {
-        startEditorBtn.addEventListener('click', startEditor);
-    }
-    if (tutorialBtn) {
-        tutorialBtn.addEventListener('click', showTutorial);
-    }
-    if (firstScreenSettingsBtn) {
-        firstScreenSettingsBtn.addEventListener('click', showSettings);
-    }
-    if (trophyIcon) {
-        trophyIcon.addEventListener('click', function() {
-            if (typeof showChallengeWindow === 'function') {
-                showChallengeWindow();
-            } else {
-                console.error('showChallengeWindow function not found');
-            }
-        });
-    }
-    if (settingsCloseBtn) {
-        settingsCloseBtn.addEventListener('click', closeSettings);
-    }
+
+    
+    
+
+
     if (resetDbBtn) {
         resetDbBtn.addEventListener('click', resetDatabase);
     }
@@ -60,59 +62,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (robotNameInput) {
         robotNameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                connectRobot();
-            }
+            if (e.key === 'Enter') {connectRobot();}
         });
     }
 
-    // 배경 클릭으로 설정 모달 닫기
-    const settingsOverlay = document.getElementById('settingsOverlay');
-    if (settingsOverlay) {
-        settingsOverlay.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeSettings();
-        }
-    });
-    }
+    
 
-    // ESC 키로 설정 모달 닫기
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeSettings();
-        }
-    });
 
     // 로봇 목록 로드
     loadRobotList();
 
     // 주기적으로 로봇 상태 업데이트
     setInterval(refreshRobotStatus, 5000);
+
+    // 페이지 로드 시 에디터 버튼 비활성화
+    updateStartButton();
 });
 
-function startEditor() {
-    // 에디터 페이지로 이동
-    window.location.href = '/editor';
-}
-
-function showTutorial() {
-    // 튜토리얼 페이지로 이동
-    window.location.href = '/tutorial';
-}
-
-function showSettings() {
-    // 설정 모달 표시
+function redirectEditor() {window.location.href = '/editor';}
+function redirectTutorial() {window.location.href = '/tutorial';}
+function handleSettings(action) {
     const settingsOverlay = document.getElementById('settingsOverlay');
-    if (settingsOverlay) {
+    if (action === 'show')
         settingsOverlay.classList.add('show');
-    }
-}
-
-function closeSettings() {
-    const settingsOverlay = document.getElementById('settingsOverlay');
-    if (settingsOverlay) {
+    else if (action === 'close')
         settingsOverlay.classList.remove('show');
-    }
 }
 
 async function resetDatabase() {
@@ -140,7 +114,7 @@ async function resetDatabase() {
             } else {
                 alert('데이터베이스가 성공적으로 초기화되었습니다.');
             }
-            closeSettings();
+            handleSettings('close');
         } else {
             const error = await response.json();
             if (typeof showToast === 'function') {
@@ -394,17 +368,17 @@ function updateRobotStatus() {
 
 // 시작 버튼 상태 업데이트
 function updateStartButton() {
-    const startEditorBtn = document.getElementById('startEditorBtn');
-    if (!startEditorBtn) return;
+    const editorBtn = document.getElementById('editorBtn');
+    if (!editorBtn) return;
 
     if (selectedRobot && selectedRobot.online && selectedRobot.assigned) {
-        startEditorBtn.disabled = false;
-        startEditorBtn.style.opacity = '1';
-        startEditorBtn.style.cursor = 'pointer';
+        editorBtn.disabled = false;
+        editorBtn.style.opacity = '1';
+        editorBtn.style.cursor = 'pointer';
     } else {
-        startEditorBtn.disabled = true;
-        startEditorBtn.style.opacity = '0.5';
-        startEditorBtn.style.cursor = 'not-allowed';
+        editorBtn.disabled = true;
+        editorBtn.style.opacity = '0.5';
+        editorBtn.style.cursor = 'not-allowed';
     }
 }
 
@@ -493,3 +467,4 @@ function showConnectStatus(message, type) {
     }, 3000);
 }
 
+// showConnectStatus : message를 표시하고 3초 뒤에 숨김.

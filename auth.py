@@ -267,3 +267,46 @@ def append_robot_to_db(robot_id, robot_name):
     except Exception as e:
         print(f"로봇 등록 오류: {e}")
         return False
+
+# 사용자에게 로봇 할당 (로봇 이름으로 찾아서 할당)
+def assign_robot_to_user(user_id, robot_name):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # 해당 로봇 이름으로 등록된 로봇 찾기 (사용자에게 할당되지 않은 것)
+        cursor.execute('''
+            SELECT robot_id FROM user_robot_assignments
+            WHERE robot_name = ? AND user_id IS NULL AND is_active = FALSE
+            ORDER BY assigned_at DESC
+            LIMIT 1
+        ''', (robot_name,))
+
+        robot_record = cursor.fetchone()
+
+        if not robot_record:
+            conn.close()
+            return False, f"사용 가능한 로봇을 찾을 수 없습니다: {robot_name}"
+
+        robot_id = robot_record[0]
+
+        # 기존 사용자의 다른 로봇 할당 비활성화
+        cursor.execute('''
+            UPDATE user_robot_assignments
+            SET is_active = FALSE
+            WHERE user_id = ? AND is_active = TRUE
+        ''', (user_id,))
+
+        # 해당 로봇을 사용자에게 할당
+        cursor.execute('''
+            UPDATE user_robot_assignments
+            SET user_id = ?, is_active = TRUE, assigned_at = CURRENT_TIMESTAMP
+            WHERE robot_id = ? AND robot_name = ?
+        ''', (user_id, robot_id, robot_name))
+
+        conn.commit()
+        conn.close()
+        return True, f"로봇 {robot_name}이 사용자 {user_id}에게 할당되었습니다"
+
+    except Exception as e:
+        return False, f"로봇 할당 오류: {e}"
