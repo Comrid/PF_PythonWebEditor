@@ -6,6 +6,7 @@
 // - updateExecutionStatus()
 // - updateRunButtons()
 // - updateConnectionStatus()
+// - logout()
 // 나머진 코드 관련
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -892,3 +893,28 @@ document.addEventListener('gestureend', function(e) {
     e.stopPropagation();
     return false;
 });
+
+// 로그아웃
+async function logout() {
+    if (!confirm('로그아웃하시겠습니까?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/logout', {
+            method: 'GET'
+        });
+
+        if (response.ok) {
+            showToast('로그아웃되었습니다.', 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1000);
+        } else {
+            showToast('로그아웃에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('로그아웃 오류:', error);
+        showToast('로그아웃 중 오류가 발생했습니다.', 'error');
+    }
+}

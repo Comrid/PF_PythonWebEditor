@@ -24,42 +24,47 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay) {
         settingsOverlay.addEventListener('click', function(e) {
-            if (e.target === this) {handleSettings('close');}
+            if (e.target === this){
+                handleSettings('close');
+            }
         });
     }
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {handleSettings('close');}
+        if (e.key === 'Escape'){
+            handleSettings('close');
+        }
     });
+    const resetDbBtn = document.getElementById('resetDbBtn');
+    if (resetDbBtn) {resetDbBtn.addEventListener('click', resetDatabase);}
 
-
+    // 도전과제 버튼
     const challengeBtn = document.getElementById('challengeBtn');
     if(challengeBtn) {challengeBtn.addEventListener('click', showChallenge);}
 
+    // 로그아웃 버튼
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {logoutBtn.addEventListener('click', logout);}
 
 
 
     
-    const resetDbBtn = document.getElementById('resetDbBtn');
+
     const robotSelect = document.getElementById('robotSelect');
-    const logoutBtn = document.getElementById('logoutBtn');
+    
     const assignRobotBtn = document.getElementById('assignRobotBtn');
     const connectRobotBtn = document.getElementById('connectRobotBtn');
     const robotNameInput = document.getElementById('robotNameInput');
 
 
-    
-    
 
 
-    if (resetDbBtn) {
-        resetDbBtn.addEventListener('click', resetDatabase);
-    }
+
+
+    
     if (robotSelect) {
         robotSelect.addEventListener('change', handleRobotSelection);
     }
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
-    }
+    
     if (assignRobotBtn) {
         assignRobotBtn.addEventListener('click', assignRobot);
     }
@@ -72,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    
+
 
 
     // 로봇 목록 로드
@@ -149,30 +154,6 @@ function returnToFirstScreen() {
     window.location.href = '/';
 }
 
-// 로그아웃
-async function logout() {
-    if (!confirm('로그아웃하시겠습니까?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('/logout', {
-            method: 'GET'
-        });
-
-        if (response.ok) {
-            showToast('로그아웃되었습니다.', 'success');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 1000);
-        } else {
-            showToast('로그아웃에 실패했습니다.', 'error');
-        }
-    } catch (error) {
-        console.error('로그아웃 오류:', error);
-        showToast('로그아웃 중 오류가 발생했습니다.', 'error');
-    }
-}
 
 // 로봇 목록 로드
 async function loadRobotList() {
