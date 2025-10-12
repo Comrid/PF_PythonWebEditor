@@ -763,12 +763,44 @@
         </div>
     </div>
 
+    <!-- SocketIO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/challenge.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 
     <script>
+        // SocketIO 연결 초기화
+        let socket;
+        try {
+            socket = io();
+            console.log('SocketIO 연결 초기화됨');
+            
+            // 업데이트 응답 처리
+            socket.on('update_started', function(data) {
+                console.log('업데이트 시작:', data.message);
+                if (typeof showToast === 'function') {
+                    showToast(data.message, 'info');
+                } else {
+                    alert(data.message);
+                }
+            });
+            
+            socket.on('update_error', function(data) {
+                console.error('업데이트 오류:', data.error);
+                if (typeof showToast === 'function') {
+                    showToast(data.error, 'error');
+                } else {
+                    alert('업데이트 오류: ' + data.error);
+                }
+            });
+            
+        } catch (error) {
+            console.error('SocketIO 연결 실패:', error);
+        }
+
         // 새로운 UI 이벤트 핸들러
         document.addEventListener('DOMContentLoaded', function() {
             // 사용자 정보 Popover 이벤트
@@ -861,7 +893,25 @@
             });
 
 
-            // 로봇 업데이트/초기화 버튼 이벤트는 기존 main.js에서 처리됨
+            // 로봇 업데이트 버튼 이벤트
+            const updateRobotBtn = document.getElementById('updateRobotBtn');
+            if (updateRobotBtn) {
+                updateRobotBtn.addEventListener('click', function() {
+                    if (selectedRobot && selectedRobot.robot_id) {
+                        // SocketIO를 통해 업데이트 요청
+                        if (typeof socket !== 'undefined' && socket) {
+                            socket.emit('client_update', {
+                                robot_id: selectedRobot.robot_id
+                            });
+                        } else {
+                            console.error('SocketIO 연결이 없습니다.');
+                            alert('서버 연결이 없습니다. 페이지를 새로고침해주세요.');
+                        }
+                    } else {
+                        alert('로봇을 먼저 선택해주세요.');
+                    }
+                });
+            }
         });
     </script>
 </body>
