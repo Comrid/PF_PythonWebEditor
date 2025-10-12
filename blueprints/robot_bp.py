@@ -96,10 +96,6 @@ def get_robots():
 
 
 
-
-
-
-
 @robot_bp.route('/robot/assign', methods=['POST'])
 @login_required
 def assign_robot():
