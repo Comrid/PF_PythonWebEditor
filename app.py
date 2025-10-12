@@ -484,5 +484,39 @@ def handle_robot_connected(data):
         })
 #endregion
 
+#region 로봇 업데이트 관리
+@socketio.on('update_and_restart')
+def handle_update_and_restart(data):
+    try:
+        robot_id = data.get('robot_id')
+        if not robot_id or robot_id not in registered_robots:
+            emit('update_error', {'error': '로봇이 등록되지 않았습니다.'})
+            return
+
+        # 로봇 세션 ID 확인
+        robot_session_id = registered_robots[robot_id].get('session_id')
+        if not robot_session_id:
+            emit('update_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
+            return
+
+        # 로봇 상태를 업데이트 중으로 변경
+        registered_robots[robot_id]['status'] = 'updating'
+
+        # 웹 클라이언트에게 업데이트 시작 알림
+        emit('update_started', {'message': f'로봇 {registered_robots[robot_id].get("name", robot_id)}에서 업데이트 및 재시작을 시작합니다...'})
+
+        # 로봇 클라이언트로 업데이트 명령 전달
+        socketio.emit('update_and_restart', {
+            'robot_id': robot_id,
+            'message': '서버에서 업데이트 명령을 받았습니다.'
+        }, room=robot_session_id)
+
+        print(f"🤖 로봇 {robot_id}에 업데이트 명령 전달 완료")
+
+    except Exception as e:
+        print(f"로봇 업데이트 및 재시작 처리 오류: {e}")
+        emit('update_error', {'error': f'업데이트 처리 중 오류가 발생했습니다: {str(e)}'})
+#endregion
+
 if __name__ == '__main__':
     socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000)
