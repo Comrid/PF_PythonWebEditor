@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-Parent = Path(__file__).parent
+Parent = Path(__file__).parent.parent
 DB_PATH = Parent / "static" / "db" / "auth.db"
 
 def view_database():

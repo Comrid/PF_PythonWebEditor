@@ -303,7 +303,7 @@ def assign_robot_to_user(user_id, robot_name):
 
         if not robot_record:
             conn.close()
-            return False, f"사용 가능한 로봇을 찾을 수 없습니다: {robot_name}"
+            return False, f"등록된 로봇을 찾을 수 없습니다: {robot_name}"
 
         robot_id = robot_record[0]
 
@@ -323,10 +323,30 @@ def assign_robot_to_user(user_id, robot_name):
 
         conn.commit()
         conn.close()
-        return True, f"로봇 {robot_name}이 사용자 {user_id}에게 할당되었습니다"
+        return True, f"로봇 {robot_name}이 할당되었습니다"
 
     except Exception as e:
         return False, f"로봇 할당 오류: {e}"
+
+def deactivate_robot_assignment(robot_id):
+    """로봇 할당을 비활성화"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE user_robot_assignments
+            SET is_active = FALSE
+            WHERE robot_id = ?
+        ''', (robot_id,))
+        
+        conn.commit()
+        conn.close()
+        print(f"로봇 {robot_id} 할당이 비활성화되었습니다")
+        return True
+    except Exception as e:
+        print(f"로봇 할당 비활성화 오류: {e}")
+        return False
 
 def is_robot_exist(robot_id):
     """로봇이 데이터베이스에 존재하는지 확인"""

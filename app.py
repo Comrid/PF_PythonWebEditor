@@ -249,6 +249,18 @@ def handle_disconnect():
     if sid in user_robot_mapping:
         robot_id = user_robot_mapping.pop(sid)
         print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
+
+        # 로봇이 사용자에게 할당된 경우, 로봇 상태를 오프라인으로 변경
+        if robot_id in registered_robots:
+            print(f"🤖 로봇 클라이언트 연결 해제됨: {robot_id}")
+            registered_robots[robot_id]['status'] = 'offline'
+            # 세션 ID 정리
+            registered_robots[robot_id].pop('session_id', None)
+
+            # 데이터베이스에서 로봇 할당 비활성화
+            from auth import deactivate_robot_assignment
+            deactivate_robot_assignment(robot_id)
+            print(f"데이터베이스에서 로봇 {robot_id} 할당 비활성화")
 #endregion
 
 #region 로봇 코드 실행 + 출력
@@ -470,25 +482,6 @@ def handle_robot_connected(data):
             'success': False,
             'error': str(e)
         })
-
-@socketio.on('robot_disconnected')
-def handle_robot_disconnected(data):
-    """로봇 클라이언트 연결 해제 처리"""
-    try:
-        robot_id = data.get('robot_id')
-        if robot_id in registered_robots:
-            print(f"🤖 로봇 클라이언트 연결 해제됨: {robot_id}")
-            registered_robots[robot_id]['status'] = 'offline'
-            # 세션 ID 정리
-            registered_robots[robot_id].pop('session_id', None)
-
-            # 해당 로봇을 사용하는 사용자 세션 정리
-            sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
-            for sid in sessions_to_remove:
-                user_robot_mapping.pop(sid, None)
-                print(f"사용자 세션 {sid}에서 로봇 {robot_id} 할당 해제")
-    except Exception as e:
-        print(f"로봇 연결 해제 처리 오류: {e}")
 #endregion
 
 if __name__ == '__main__':
