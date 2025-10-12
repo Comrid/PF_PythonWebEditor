@@ -299,4 +299,3 @@ def delete_robot(robot_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
