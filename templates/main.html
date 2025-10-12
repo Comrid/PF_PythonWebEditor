@@ -157,6 +157,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
 
         .card-header h3 {
@@ -268,14 +269,17 @@
         /* Popover 스타일 */
         .popover {
             position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
             padding: 1.5rem;
             z-index: 1000;
             min-width: 300px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            top: 100%;
+            left: 0;
+            margin-top: 10px;
         }
 
         .popover-header {
@@ -475,16 +479,16 @@
         /* 사용자 정보 Popover */
         .user-popover {
             position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
             padding: 1.5rem;
             z-index: 1000;
             min-width: 250px;
             right: 0;
             top: calc(100% + 10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
         }
 
         .user-popover-header {
@@ -762,7 +766,11 @@
                     event.stopPropagation();
                     const robotPopover = document.getElementById('robotConnectPopover');
                     
-                    userInfoPopover.style.display = userInfoPopover.style.display === 'none' ? 'block' : 'none';
+                    // 사용자 팝오버 토글
+                    const isVisible = userInfoPopover.style.display === 'block';
+                    userInfoPopover.style.display = isVisible ? 'none' : 'block';
+                    
+                    // 로봇 팝오버 닫기
                     if (robotPopover) robotPopover.style.display = 'none';
                 });
 
@@ -791,7 +799,11 @@
                     event.stopPropagation();
                     const userPopover = document.getElementById('userInfoPopover');
                     
-                    robotConnectPopover.style.display = robotConnectPopover.style.display === 'none' ? 'block' : 'none';
+                    // 로봇 팝오버 토글
+                    const isVisible = robotConnectPopover.style.display === 'block';
+                    robotConnectPopover.style.display = isVisible ? 'none' : 'block';
+                    
+                    // 사용자 팝오버 닫기
                     if (userPopover) userPopover.style.display = 'none';
                 });
 
