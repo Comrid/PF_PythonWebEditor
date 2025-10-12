@@ -640,7 +640,7 @@
             <section class="robot-card">
                 <div class="card-header">
                     <h3><i class="fas fa-robot"></i> 로봇 선택</h3>
-                    <button class="robot-connect-btn" id="robotConnectBtn">
+                    <button class="robot-connect-btn" id="robotConnectTrigger">
                         <i class="fas fa-link"></i> 로봇 연동
                     </button>
                 </div>
@@ -813,12 +813,12 @@
             }
 
             // 로봇 연동 Popover 이벤트
-            const robotConnectBtn = document.getElementById('robotConnectBtn');
+            const robotConnectTrigger = document.getElementById('robotConnectTrigger');
             const robotConnectPopover = document.getElementById('robotConnectPopover');
             const closeRobotConnectPopover = document.getElementById('closeRobotConnectPopover');
 
-            if (robotConnectBtn && robotConnectPopover) {
-                robotConnectBtn.addEventListener('click', function(event) {
+            if (robotConnectTrigger && robotConnectPopover) {
+                robotConnectTrigger.addEventListener('click', function(event) {
                     event.stopPropagation();
                     const userPopover = document.getElementById('userInfoPopover');
                     
@@ -828,7 +828,7 @@
                     
                     // 위치 계산 (로봇 연동 버튼 기준)
                     if (robotConnectPopover.style.display === 'block') {
-                        const rect = robotConnectBtn.getBoundingClientRect();
+                        const rect = robotConnectTrigger.getBoundingClientRect();
                         robotConnectPopover.style.top = (rect.bottom + 10) + 'px';
                         robotConnectPopover.style.left = rect.left + 'px';
                     }
@@ -849,7 +849,7 @@
                 const userPopover = document.getElementById('userInfoPopover');
                 const userTrigger = document.getElementById('userInfoTrigger');
                 const robotPopover = document.getElementById('robotConnectPopover');
-                const robotTrigger = document.getElementById('robotConnectBtn');
+                const robotTrigger = document.getElementById('robotConnectTrigger');
                 
                 if (userPopover && userTrigger && !userPopover.contains(event.target) && !userTrigger.contains(event.target)) {
                     userPopover.style.display = 'none';
@@ -859,6 +859,7 @@
                     robotPopover.style.display = 'none';
                 }
             });
+
 
             // 로봇 업데이트/초기화 버튼 이벤트는 기존 main.js에서 처리됨
         });
