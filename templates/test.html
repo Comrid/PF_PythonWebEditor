@@ -3,15 +3,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pathfinder Python Web Editor</title>
-
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-
-    <!-- Font Awesome for Icons -->
+    <title>Pathfinder Python Web Editor - Test Layout</title>
+    <link rel="stylesheet" href="../static/css/base.css">
+    <link rel="stylesheet" href="../static/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
         * {
             margin: 0;
@@ -169,6 +164,9 @@
             background: rgba(255, 255, 255, 0.1);
             padding: 1rem 1.5rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -187,7 +185,7 @@
             padding: 1.5rem;
         }
 
-        /* 로봇 선택기 */
+        /* 로봇 선택기 - 기존 스타일 유지 */
         .robot-selection-container {
             display: flex;
             flex-direction: column;
@@ -282,15 +280,15 @@
 
         /* Popover 스타일 */
         .popover {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
+            position: fixed;
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 1.5rem;
             z-index: 1000;
             min-width: 300px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         .popover-header {
@@ -304,6 +302,7 @@
             color: white;
             font-size: 1.1rem;
             margin: 0;
+            font-weight: 600;
         }
 
         .popover-close {
@@ -313,10 +312,13 @@
             font-size: 1.2rem;
             cursor: pointer;
             padding: 0.25rem;
+            border-radius: 4px;
+            transition: background 0.3s;
         }
 
         .popover-close:hover {
             color: white;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .popover-body {
@@ -326,9 +328,10 @@
         }
 
         .popover-body p {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.9);
             margin: 0;
             font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .connect-form {
@@ -430,21 +433,13 @@
             background: #6c757d;
         }
 
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            background: #c82333;
-        }
 
         /* 액션 버튼 그리드 */
         .action-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
-            height: 100%;
+            height: 70%;
         }
 
         .action-box {
@@ -505,17 +500,15 @@
 
         /* 사용자 정보 Popover */
         .user-popover {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
+            position: fixed;
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 1.5rem;
             z-index: 1000;
             min-width: 250px;
-            right: 0;
-            top: calc(100% + 10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         .user-popover-header {
@@ -529,6 +522,7 @@
             color: white;
             font-size: 1.1rem;
             margin: 0;
+            font-weight: 600;
         }
 
         .user-popover-close {
@@ -538,10 +532,13 @@
             font-size: 1.2rem;
             cursor: pointer;
             padding: 0.25rem;
+            border-radius: 4px;
+            transition: background 0.3s;
         }
 
         .user-popover-close:hover {
             color: white;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .user-popover-body {
@@ -551,13 +548,15 @@
         }
 
         .user-popover-body p {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.9);
             margin: 0;
             font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .user-popover-body strong {
             color: white;
+            font-weight: 600;
         }
 
         .user-popover-body hr {
@@ -596,28 +595,8 @@
             }
         }
     </style>
-
-    <!-- 사용자 정보 -->
-    <script type="application/json" id="user-data">
-        {
-            "id": {{ user_id|tojson|safe }},
-            "username": {{ username|tojson|safe }},
-            "email": {{ email|tojson|safe }},
-            "role": {{ role|tojson|safe }}
-        }
-    </script>
-    <script>
-        // 사용자 정보 로드
-        const userDataElement = document.getElementById('user-data');
-        if (userDataElement) {
-            window.currentUser = JSON.parse(userDataElement.textContent);
-        }
-    </script>
 </head>
 <body>
-    <!-- Toast Container -->
-    <div id="toastContainer"></div>
-
     <!-- 헤더 -->
     <header class="main-header">
         <div class="header-left">
@@ -627,7 +606,7 @@
         <div class="header-right">
             <div class="user-info" id="userInfoTrigger">
                 <span>👤</span>
-                <span id="userDisplayName">{{ username if username else '사용자명' }}</span>
+                <span>사용자명</span>
             </div>
         </div>
     </header>
@@ -661,17 +640,26 @@
                         <div class="robot-dropdown">
                             <select class="robot-select" id="robotSelect">
                                 <option value="">로봇을 선택하세요...</option>
+                                <option value="robot1">Test1 - 온라인 (할당됨)</option>
+                                <option value="robot2">Test2 - 오프라인 (미할당)</option>
                             </select>
                             <div class="robot-status">
-                                <div class="status-indicator offline" id="statusIndicator"></div>
-                                <span id="statusText">로봇을 선택하세요</span>
+                                <div class="status-indicator online" id="statusIndicator"></div>
+                                <span id="statusText">Test1 - 온라인 (할당됨)</span>
                             </div>
                         </div>
                         
                         <!-- 로봇 정보 표시 (선택 시) -->
-                        <div class="robot-info" id="robotInfo" style="display: none;">
-                            <div class="robot-name" id="selectedRobotName"></div>
-                            <div class="robot-details" id="selectedRobotDetails"></div>
+                        <div class="robot-info" id="robotInfo" style="display: block;">
+                            <div class="robot-name" id="selectedRobotName">Test1</div>
+                            <div class="robot-details" id="selectedRobotDetails">
+                                로봇 ID: robot_a8edf631<br>
+                                상태: 온라인<br>
+                                할당 상태: 할당됨<br>
+                                하드웨어: 활성화<br>
+                                버전: 1.0.3<br>
+                                마지막 연결: 2025. 10. 12. 오후 7:13:49
+                            </div>
                             <div class="robot-actions">
                                 <button class="btn btn-warning" id="updateRobotBtn">
                                     <i class="fas fa-download"></i> 업데이트
@@ -705,6 +693,11 @@
                     <h3>도전과제</h3>
                     <p>미션 및 챌린지</p>
                 </div>
+                <div class="action-box settings" id="settingsBox">
+                    <i class="fas fa-cog"></i>
+                    <h3>설정</h3>
+                    <p>시스템 설정 및 관리</p>
+                </div>
             </div>
         </div>
     </main>
@@ -737,8 +730,8 @@
             </button>
         </div>
         <div class="user-popover-body">
-            <p><strong>이름:</strong> <span id="popoverUserName">{{ username if username else '사용자명' }}</span></p>
-            <p><strong>이메일:</strong> <span id="popoverUserEmail">{{ email if email else 'user@example.com' }}</span></p>
+            <p><strong>이름:</strong> 사용자명</p>
+            <p><strong>이메일:</strong> user@example.com</p>
             <hr>
             <button class="btn btn-danger" id="popoverLogoutBtn">
                 <i class="fas fa-sign-out-alt"></i> 로그아웃
@@ -746,90 +739,103 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div class="settings-overlay" id="settingsOverlay">
-        <div class="settings-modal" id="settingsModal">
-            <div class="settings-header">
-                <h2><i class="fas fa-cog"></i> 설정</h2>
-                <button class="settings-close" id="settingsCloseBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="settings-content">
-                <div class="settings-section">
-                    <h3><i class="fas fa-database"></i> 데이터베이스 관리</h3>
-                    <button class="reset-db-btn" id="resetDbBtn">
-                        <i class="fas fa-trash"></i> 완전 초기화
-                    </button>
-                    <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-top: 10px; text-align: center;">
-                        모든 튜토리얼 진행상황을 초기화합니다
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript -->
-    <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/challenge.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
-
     <script>
-        // 새로운 UI 이벤트 핸들러
+        // 간단한 JavaScript 예시
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test Layout Loaded');
+            
+            // 로봇 선택 이벤트
+            document.getElementById('robotSelect').addEventListener('change', function() {
+                const selectedValue = this.value;
+                const robotInfo = document.getElementById('robotInfo');
+                
+                if (selectedValue) {
+                    robotInfo.style.display = 'block';
+                    // 여기서 실제 로봇 정보를 업데이트
+                } else {
+                    robotInfo.style.display = 'none';
+                }
+            });
+
+            // 로봇 연동 버튼 이벤트
+            document.getElementById('robotConnectBtn').addEventListener('click', function() {
+                const popover = document.getElementById('robotConnectPopover');
+                
+                // 버튼 위치 기준으로 popover 위치 설정 (우측 라인 일치)
+                const rect = this.getBoundingClientRect();
+                popover.style.left = (rect.right - 380) + 'px'; // 팝오버 너비만큼 왼쪽으로 이동
+                popover.style.top = (rect.bottom + 10) + 'px';
+                popover.style.display = 'block';
+            });
+
+            // 로봇 연동 popover 닫기
+            document.getElementById('closeRobotConnectPopover').addEventListener('click', function() {
+                document.getElementById('robotConnectPopover').style.display = 'none';
+            });
+
+            // 로봇 연동하기 버튼
+            document.getElementById('connectRobotBtn').addEventListener('click', function() {
+                const robotName = document.getElementById('robotNameInput').value;
+                if (robotName) {
+                    alert(`로봇 "${robotName}" 연동 시도!`);
+                    document.getElementById('robotConnectPopover').style.display = 'none';
+                } else {
+                    alert('로봇 이름을 입력하세요!');
+                }
+            });
+
+            // 액션 박스 이벤트들
+            document.getElementById('editorBox').addEventListener('click', function() {
+                alert('에디터 사용하기!');
+            });
+
+            document.getElementById('tutorialBox').addEventListener('click', function() {
+                alert('튜토리얼!');
+            });
+
+            document.getElementById('challengeBox').addEventListener('click', function() {
+                alert('도전과제!');
+            });
+
+            document.getElementById('settingsBox').addEventListener('click', function() {
+                alert('설정!');
+            });
+
+            // 버튼 이벤트들
+            document.getElementById('updateRobotBtn').addEventListener('click', function() {
+                alert('로봇 업데이트 시작!');
+            });
+
+            document.getElementById('restartRobotBtn').addEventListener('click', function() {
+                alert('로봇 초기화 시작!');
+            });
+
             // 사용자 정보 Popover 이벤트
-            const userInfoTrigger = document.getElementById('userInfoTrigger');
-            const userInfoPopover = document.getElementById('userInfoPopover');
-            const closeUserInfoPopover = document.getElementById('closeUserInfoPopover');
-            const popoverLogoutBtn = document.getElementById('popoverLogoutBtn');
-
-            if (userInfoTrigger && userInfoPopover) {
-                userInfoTrigger.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    const robotPopover = document.getElementById('robotConnectPopover');
-                    
-                    userInfoPopover.style.display = userInfoPopover.style.display === 'none' ? 'block' : 'none';
-                    if (robotPopover) robotPopover.style.display = 'none';
-                });
-
-                if (closeUserInfoPopover) {
-                    closeUserInfoPopover.addEventListener('click', function() {
-                        userInfoPopover.style.display = 'none';
-                    });
+            document.getElementById('userInfoTrigger').addEventListener('click', function(event) {
+                event.stopPropagation();
+                const userPopover = document.getElementById('userInfoPopover');
+                const robotPopover = document.getElementById('robotConnectPopover');
+                
+                if (userPopover.style.display === 'none' || userPopover.style.display === '') {
+                    // 팝오버 위치 계산 (우측 라인 일치)
+                    const rect = this.getBoundingClientRect();
+                    userPopover.style.left = (rect.right - 250) + 'px'; // 팝오버 너비만큼 왼쪽으로 이동
+                    userPopover.style.top = (rect.bottom + 10) + 'px';
+                    userPopover.style.display = 'block';
+                } else {
+                    userPopover.style.display = 'none';
                 }
+                robotPopover.style.display = 'none';
+            });
 
-                if (popoverLogoutBtn) {
-                    popoverLogoutBtn.addEventListener('click', function() {
-                        // 기존 로그아웃 로직 호출
-                        const logoutBtn = document.getElementById('logoutBtn');
-                        if (logoutBtn) {
-                            logoutBtn.click();
-                        }
-                        userInfoPopover.style.display = 'none';
-                    });
-                }
-            }
+            document.getElementById('closeUserInfoPopover').addEventListener('click', function() {
+                document.getElementById('userInfoPopover').style.display = 'none';
+            });
 
-            // 로봇 연동 Popover 이벤트
-            const robotConnectBtn = document.getElementById('robotConnectBtn');
-            const robotConnectPopover = document.getElementById('robotConnectPopover');
-            const closeRobotConnectPopover = document.getElementById('closeRobotConnectPopover');
-
-            if (robotConnectBtn && robotConnectPopover) {
-                robotConnectBtn.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    const userPopover = document.getElementById('userInfoPopover');
-                    
-                    robotConnectPopover.style.display = robotConnectPopover.style.display === 'none' ? 'block' : 'none';
-                    if (userPopover) userPopover.style.display = 'none';
-                });
-
-                if (closeRobotConnectPopover) {
-                    closeRobotConnectPopover.addEventListener('click', function() {
-                        robotConnectPopover.style.display = 'none';
-                    });
-                }
-            }
+            document.getElementById('popoverLogoutBtn').addEventListener('click', function() {
+                alert('로그아웃 처리!');
+                document.getElementById('userInfoPopover').style.display = 'none';
+            });
 
             // 팝오버 외부 클릭 시 닫기
             document.addEventListener('click', function(event) {
@@ -838,58 +844,14 @@
                 const robotPopover = document.getElementById('robotConnectPopover');
                 const robotTrigger = document.getElementById('robotConnectBtn');
                 
-                if (userPopover && userTrigger && !userPopover.contains(event.target) && !userTrigger.contains(event.target)) {
+                if (!userPopover.contains(event.target) && !userTrigger.contains(event.target)) {
                     userPopover.style.display = 'none';
                 }
                 
-                if (robotPopover && robotTrigger && !robotPopover.contains(event.target) && !robotTrigger.contains(event.target)) {
+                if (!robotPopover.contains(event.target) && !robotTrigger.contains(event.target)) {
                     robotPopover.style.display = 'none';
                 }
             });
-
-            // 액션 박스 이벤트들
-            const editorBox = document.getElementById('editorBox');
-            const tutorialBox = document.getElementById('tutorialBox');
-            const challengeBox = document.getElementById('challengeBox');
-
-            if (editorBox) {
-                editorBox.addEventListener('click', function() {
-                    const editorBtn = document.getElementById('editorBtn');
-                    if (editorBtn) editorBtn.click();
-                });
-            }
-
-            if (tutorialBox) {
-                tutorialBox.addEventListener('click', function() {
-                    const tutorialBtn = document.getElementById('tutorialBtn');
-                    if (tutorialBtn) tutorialBtn.click();
-                });
-            }
-
-            if (challengeBox) {
-                challengeBox.addEventListener('click', function() {
-                    const challengeBtn = document.getElementById('challengeBtn');
-                    if (challengeBtn) challengeBtn.click();
-                });
-            }
-
-            // 로봇 업데이트/초기화 버튼 이벤트
-            const updateRobotBtn = document.getElementById('updateRobotBtn');
-            const restartRobotBtn = document.getElementById('restartRobotBtn');
-
-            if (updateRobotBtn) {
-                updateRobotBtn.addEventListener('click', function() {
-                    // 로봇 업데이트 로직 (기존 로직과 연동)
-                    console.log('로봇 업데이트 요청');
-                });
-            }
-
-            if (restartRobotBtn) {
-                restartRobotBtn.addEventListener('click', function() {
-                    // 로봇 초기화 로직 (기존 로직과 연동)
-                    console.log('로봇 초기화 요청');
-                });
-            }
         });
     </script>
 </body>

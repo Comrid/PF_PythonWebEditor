@@ -70,6 +70,9 @@ registered_robots: dict[str, dict] = {}                      # 등록된 로봇 
 user_robot_mapping: dict[str, str] = {}                      # 사용자 세션 → 로봇 ID 매핑
 robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비트: robot_id → timestamp
 
+# 로봇 버전 관리
+LATEST_ROBOT_VERSION = "1.0.3"  # 최신 로봇 버전
+
 # 세션 관리 시스템
 session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
 
@@ -448,7 +451,8 @@ def handle_robot_connected(data):
         robot_id = data.get('robot_id')
         robot_name = data.get('robot_name')
         hardware_enabled = data.get('hardware_enabled', False)
-        print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id})")
+        robot_version = data.get('robot_version', '1.0.0')
+        print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id}, 버전: {robot_version})")
 
         # 데이터베이스에서 로봇 중복 등록 확인
         from auth import is_robot_exist, append_robot_to_db
@@ -461,11 +465,16 @@ def handle_robot_connected(data):
         else:
             print(f"ℹ️ 로봇이 이미 등록되어 있음: {robot_name} (ID: {robot_id}) - 데이터베이스 등록 건너뜀")
 
+        # 버전 비교
+        needs_update = robot_version < LATEST_ROBOT_VERSION
+
         registered_robots[robot_id] = {
             "name": robot_name,
             "url": None,  # SocketIO 연결이므로 URL 불필요
             "status": "online",
             "hardware_enabled": hardware_enabled,
+            "robot_version": robot_version,
+            "needs_update": needs_update,
             "connected_at": datetime.now().isoformat(),
             "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
@@ -474,7 +483,10 @@ def handle_robot_connected(data):
 
         emit('robot_registered', {
             'success': True,
-            'message': f'로봇 {robot_name}이 등록되었습니다'
+            'message': f'로봇 {robot_name}이 등록되었습니다',
+            'needs_update': needs_update,
+            'current_version': robot_version,
+            'latest_version': LATEST_ROBOT_VERSION
         })
     except Exception as e:
         print(f"로봇 연결 처리 오류: {e}")
@@ -485,8 +497,8 @@ def handle_robot_connected(data):
 #endregion
 
 #region 로봇 업데이트 관리
-@socketio.on('update_and_restart')
-def handle_update_and_restart(data):
+@socketio.on('client_update')
+def handle_client_update(data):
     try:
         robot_id = data.get('robot_id')
         if not robot_id or robot_id not in registered_robots:
@@ -503,10 +515,10 @@ def handle_update_and_restart(data):
         registered_robots[robot_id]['status'] = 'updating'
 
         # 웹 클라이언트에게 업데이트 시작 알림
-        emit('update_started', {'message': f'로봇 {registered_robots[robot_id].get("name", robot_id)}에서 업데이트 및 재시작을 시작합니다...'})
+        emit('client_update', {'message': f'로봇 {registered_robots[robot_id].get("name", robot_id)}에서 업데이트 및 재시작을 시작합니다...'})
 
         # 로봇 클라이언트로 업데이트 명령 전달
-        socketio.emit('update_and_restart', {
+        socketio.emit('client_update', {
             'robot_id': robot_id,
             'message': '서버에서 업데이트 명령을 받았습니다.'
         }, room=robot_session_id)

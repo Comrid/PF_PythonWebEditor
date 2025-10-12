@@ -75,7 +75,9 @@ def get_robots():
                 "online": is_online,
                 "assigned": True,  # 할당된 로봇만 표시하므로 항상 True
                 "last_seen": last_seen_str,
-                "hardware_enabled": hardware_enabled
+                "hardware_enabled": hardware_enabled,
+                "robot_version": robot_info.get("robot_version", "1.0.0"),
+                "needs_update": robot_info.get("needs_update", False)
             })
 
         print(f"사용자 {current_user.username}에게 반환할 로봇 목록: {len(robots)}개")
@@ -296,4 +298,5 @@ def delete_robot(robot_id):
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 
