@@ -91,8 +91,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 주기적으로 로봇 상태 업데이트
     setInterval(refreshRobotStatus, 5000);
 
-    // 페이지 로드 시 에디터 버튼 비활성화
-    updateStartButton();
 });
 
 function redirectEditor() {window.location.href = '/editor';}
@@ -251,7 +249,6 @@ function handleRobotSelection(event) {
     if (!robotId) {
         selectedRobot = null;
         updateRobotStatus();
-        updateStartButton();
         return;
     }
 
@@ -262,7 +259,6 @@ function handleRobotSelection(event) {
         // 로봇 할당 요청
         assignRobot(robotId);
         updateRobotStatus();
-        updateStartButton();
     }
 }
 
@@ -288,7 +284,6 @@ async function assignRobot(robotId) {
             if (assignedRobot) {
                 selectedRobot = assignedRobot;
                 updateRobotStatus();
-                updateStartButton();
             }
 
             // 할당 UI 숨기기 (존재하는 경우)
@@ -358,21 +353,6 @@ function updateRobotStatus() {
     }
 }
 
-// 시작 버튼 상태 업데이트
-function updateStartButton() {
-    const editorBtn = document.getElementById('editorBtn');
-    if (!editorBtn) return;
-
-    if (selectedRobot && selectedRobot.online && selectedRobot.assigned) {
-        editorBtn.disabled = false;
-        editorBtn.style.opacity = '1';
-        editorBtn.style.cursor = 'pointer';
-    } else {
-        editorBtn.disabled = true;
-        editorBtn.style.opacity = '0.5';
-        editorBtn.style.cursor = 'not-allowed';
-    }
-}
 
 // 주기적 로봇 상태 업데이트
 async function refreshRobotStatus() {
@@ -387,7 +367,6 @@ async function refreshRobotStatus() {
             if (updatedRobot) {
                 selectedRobot = updatedRobot;
                 updateRobotStatus();
-                updateStartButton();
             }
         }
     } catch (error) {
@@ -433,7 +412,6 @@ async function connectRobot() {
                 if (connectedRobot) {
                     selectedRobot = connectedRobot;
                     updateRobotStatus();
-                    updateStartButton();
                 }
             }, 1000);
         } else {
