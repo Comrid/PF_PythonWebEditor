@@ -503,6 +503,11 @@
             border-color: rgba(255, 212, 59, 0.3);
         }
 
+        .action-box.settings {
+            background: linear-gradient(135deg, rgba(77, 171, 247, 0.2), rgba(51, 154, 240, 0.2));
+            border-color: rgba(77, 171, 247, 0.3);
+        }
+
         /* 사용자 정보 Popover */
         .user-popover {
             position: absolute;
@@ -705,6 +710,11 @@
                     <h3>도전과제</h3>
                     <p>미션 및 챌린지</p>
                 </div>
+                <div class="action-box settings" id="settingsBox">
+                    <i class="fas fa-cog"></i>
+                    <h3>설정</h3>
+                    <p>시스템 설정 및 관리</p>
+                </div>
             </div>
         </div>
     </main>
@@ -870,6 +880,14 @@
                 challengeBox.addEventListener('click', function() {
                     const challengeBtn = document.getElementById('challengeBtn');
                     if (challengeBtn) challengeBtn.click();
+                });
+            }
+
+            const settingsBox = document.getElementById('settingsBox');
+            if (settingsBox) {
+                settingsBox.addEventListener('click', function() {
+                    const settingsBtn = document.getElementById('settingsBtn');
+                    if (settingsBtn) settingsBtn.click();
                 });
             }
 
