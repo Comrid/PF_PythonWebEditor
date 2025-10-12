@@ -797,6 +797,21 @@
                 }
             });
             
+            // 로봇 출력 메시지 처리 (Toast로 표시)
+            socket.on('robot_stdout', function(data) {
+                console.log('로봇 출력:', data.output);
+                if (typeof showToast === 'function') {
+                    showToast(data.output, 'success');
+                }
+            });
+            
+            socket.on('robot_stderr', function(data) {
+                console.error('로봇 오류:', data.output);
+                if (typeof showToast === 'function') {
+                    showToast(data.output, 'error');
+                }
+            });
+            
         } catch (error) {
             console.error('SocketIO 연결 실패:', error);
         }
