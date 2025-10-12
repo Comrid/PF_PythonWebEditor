@@ -376,7 +376,9 @@ async function refreshRobotStatus() {
 
 // 로봇 연동
 async function connectRobot() {
+    const robotNameInput = document.getElementById('robotNameInput');
     const robotName = robotNameInput.value.trim();
+    
     if (!robotName) {
         showConnectStatus('로봇 이름을 입력해주세요.', 'error');
         showToast('로봇 이름을 입력해주세요.', 'error');
@@ -402,9 +404,16 @@ async function connectRobot() {
         if (response.ok) {
             showConnectStatus(result.message, 'success');
             showToast(result.message, 'success');
+            
+            // 팝오버 닫기
+            const robotConnectPopover = document.getElementById('robotConnectPopover');
+            if (robotConnectPopover) {
+                robotConnectPopover.style.display = 'none';
+            }
+            
             // 연동 완료 후 로봇 목록 새로고침
-            setTimeout(() => {
-                loadRobotList();
+            setTimeout(async () => {
+                await loadRobotList();
                 // 입력 필드 초기화
                 robotNameInput.value = '';
                 // 연동된 로봇을 자동으로 선택
@@ -412,6 +421,11 @@ async function connectRobot() {
                 if (connectedRobot) {
                     selectedRobot = connectedRobot;
                     updateRobotStatus();
+                    // 드롭다운에서 해당 로봇 선택
+                    const robotSelect = document.getElementById('robotSelect');
+                    if (robotSelect) {
+                        robotSelect.value = connectedRobot.robot_id;
+                    }
                 }
             }, 1000);
         } else {
@@ -425,7 +439,7 @@ async function connectRobot() {
     } finally {
         // 버튼 활성화
         connectRobotBtn.disabled = false;
-        connectRobotBtn.innerHTML = '<i class="fas fa-link"></i> 로봇 연동하기';
+        connectRobotBtn.innerHTML = '<i class="fas fa-link"></i> 연동하기';
     }
 }
 
