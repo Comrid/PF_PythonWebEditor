@@ -268,7 +268,7 @@
 
         /* Popover 스타일 */
         .popover {
-            position: absolute;
+            position: fixed;
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -277,9 +277,6 @@
             z-index: 1000;
             min-width: 300px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-            top: 100%;
-            left: 0;
-            margin-top: 10px;
         }
 
         .popover-header {
@@ -419,7 +416,7 @@
         }
 
         .action-box {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.18);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 1.5rem;
@@ -435,7 +432,7 @@
         }
 
         .action-box:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.25);
             transform: translateY(-2px);
         }
 
@@ -461,24 +458,24 @@
 
         /* 특별한 색상 */
         .action-box.editor {
-            background: linear-gradient(135deg, rgba(81, 207, 102, 0.2), rgba(64, 192, 87, 0.2));
+            background: linear-gradient(135deg, rgba(81, 207, 102, 0.3), rgba(64, 192, 87, 0.3));
         }
 
         .action-box.tutorial {
-            background: linear-gradient(135deg, rgba(134, 142, 150, 0.2), rgba(108, 117, 125, 0.2));
+            background: linear-gradient(135deg, rgba(134, 142, 150, 0.3), rgba(108, 117, 125, 0.3));
         }
 
         .action-box.challenge {
-            background: linear-gradient(135deg, rgba(255, 212, 59, 0.2), rgba(255, 204, 2, 0.2));
+            background: linear-gradient(135deg, rgba(255, 212, 59, 0.3), rgba(255, 204, 2, 0.3));
         }
 
         .action-box.settings {
-            background: linear-gradient(135deg, rgba(77, 171, 247, 0.2), rgba(51, 154, 240, 0.2));
+            background: linear-gradient(135deg, rgba(77, 171, 247, 0.3), rgba(51, 154, 240, 0.3));
         }
 
         /* 사용자 정보 Popover */
         .user-popover {
-            position: absolute;
+            position: fixed;
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -486,8 +483,6 @@
             padding: 1.5rem;
             z-index: 1000;
             min-width: 250px;
-            right: 0;
-            top: calc(100% + 10px);
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
         }
 
@@ -770,6 +765,13 @@
                     const isVisible = userInfoPopover.style.display === 'block';
                     userInfoPopover.style.display = isVisible ? 'none' : 'block';
                     
+                    // 위치 계산 (사용자 정보 버튼 기준)
+                    if (userInfoPopover.style.display === 'block') {
+                        const rect = userInfoTrigger.getBoundingClientRect();
+                        userInfoPopover.style.top = (rect.bottom + 10) + 'px';
+                        userInfoPopover.style.right = (window.innerWidth - rect.right) + 'px';
+                    }
+                    
                     // 로봇 팝오버 닫기
                     if (robotPopover) robotPopover.style.display = 'none';
                 });
@@ -802,6 +804,13 @@
                     // 로봇 팝오버 토글
                     const isVisible = robotConnectPopover.style.display === 'block';
                     robotConnectPopover.style.display = isVisible ? 'none' : 'block';
+                    
+                    // 위치 계산 (로봇 연동 버튼 기준)
+                    if (robotConnectPopover.style.display === 'block') {
+                        const rect = robotConnectBtn.getBoundingClientRect();
+                        robotConnectPopover.style.top = (rect.bottom + 10) + 'px';
+                        robotConnectPopover.style.left = rect.left + 'px';
+                    }
                     
                     // 사용자 팝오버 닫기
                     if (userPopover) userPopover.style.display = 'none';
