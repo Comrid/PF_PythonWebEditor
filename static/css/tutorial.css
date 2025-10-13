@@ -11,7 +11,7 @@
     align-items: center;
     justify-content: center;
     z-index: 10001;
-    padding: 20px;
+    padding: 40px 20px;
 }
 
 .tutorial-window {
@@ -21,10 +21,11 @@
     border-radius: 20px;
     width: 100%;
     max-width: 1200px;
-    max-height: 80vh;
+    max-height: 90vh;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     animation: tutorialSlideIn 0.3s ease-out;
+    margin: auto;
 }
 
 @keyframes tutorialSlideIn {
@@ -85,7 +86,7 @@
 
 .tutorial-body {
     display: flex;
-    height: calc(80vh - 100px);
+    height: calc(90vh - 100px);
 }
 
 .tutorial-left {
