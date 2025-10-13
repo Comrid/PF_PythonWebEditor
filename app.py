@@ -55,7 +55,8 @@ socketio = SocketIO(
     ping_timeout=60,                        # 핑 타임아웃 60초
     ping_interval=25,                       # 핑 간격 25초
     transports=['websocket', 'polling'],    # 전송 방식 설정
-    allow_upgrades=True
+    allow_upgrades=True,
+    log_output=False                        # SocketIO 출력 로그 비활성화
 )
 
 # 로봇 관리 시스템
@@ -88,15 +89,10 @@ integrated_mapping: dict[str, dict] = {}
 LATEST_ROBOT_VERSION = "1.1.2"  # 최신 로봇 버전
 
 
-# 전역 변수 초기화는 더 이상 필요하지 않음 (editor_bp 제거됨)
-
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
 app.config['integrated_mapping'] = integrated_mapping
 app.config['socketio'] = socketio
-
-
-
 
 #- 페이지 목록 -#
 # 1. index : 랜딩 페이지
@@ -525,7 +521,7 @@ def handle_robot_connected(data):
         robot_name = data.get('robot_name')
         hardware_enabled = data.get('hardware_enabled', False)
         robot_version = data.get('robot_version', '1.0.0')
-        print(f"🤖 로봇 클라이언트 연결됨: {robot_name} (ID: {robot_id}, 버전: {robot_version})")
+        print(f"🤖 로봇 연결: {robot_name} (ID: {robot_id}, 버전: {robot_version})")
 
         # 데이터베이스에서 로봇 중복 등록 확인
         from auth import is_robot_exist, append_robot_to_db
@@ -602,4 +598,17 @@ def handle_client_update(data):
 #endregion
 
 if __name__ == '__main__':
-    socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000)
+    import logging
+    import werkzeug
+    
+    # Flask 로그 레벨을 WARNING으로 설정하여 일반적인 요청 로그 숨기기
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    
+    # SocketIO 로그 비활성화 (이미 설정되어 있지만 확실히 하기 위해)
+    logging.getLogger('socketio').setLevel(logging.WARNING)
+    logging.getLogger('engineio').setLevel(logging.WARNING)
+    
+    # 개발 서버 경고 메시지 숨기기
+    werkzeug.serving.WSGIRequestHandler.log_request = lambda self, code, size: None
+    
+    socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000, log_output=False)
