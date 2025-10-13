@@ -171,7 +171,7 @@ def get_user_robots(user_id):
 
         cursor.execute('''
             SELECT robot_id FROM user_robot_assignments
-            WHERE user_id = ? AND is_active = TRUE
+            WHERE user_id = ?
         ''', (user_id,))
 
         rows = cursor.fetchall()
@@ -291,10 +291,10 @@ def assign_robot_to_user(user_id, robot_name):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        # 해당 로봇 이름으로 등록된 로봇 찾기 (사용자에게 할당되지 않은 것)
+        # 해당 로봇 이름으로 등록된 로봇 찾기 (가장 최근에 등록한 것)
         cursor.execute('''
             SELECT robot_id FROM user_robot_assignments
-            WHERE robot_name = ? AND (user_id IS NULL OR user_id = 0) AND is_active = FALSE
+            WHERE robot_name = ?
             ORDER BY assigned_at DESC
             LIMIT 1
         ''', (robot_name,))
@@ -313,6 +313,13 @@ def assign_robot_to_user(user_id, robot_name):
             SET is_active = FALSE
             WHERE user_id = ? AND is_active = TRUE
         ''', (user_id,))
+
+        # 해당 로봇이 다른 사용자에게 할당되어 있다면 비활성화
+        cursor.execute('''
+            UPDATE user_robot_assignments
+            SET is_active = FALSE
+            WHERE robot_id = ? AND user_id != ? AND is_active = TRUE
+        ''', (robot_id, user_id))
 
         # 해당 로봇을 사용자에게 할당
         cursor.execute('''
