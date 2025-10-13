@@ -609,6 +609,6 @@ if __name__ == '__main__':
     logging.getLogger('engineio').setLevel(logging.WARNING)
     
     # 개발 서버 경고 메시지 숨기기
-    werkzeug.serving.WSGIRequestHandler.log_request = lambda self, code, size: None
+    werkzeug.serving.WSGIRequestHandler.log_request = lambda self, code, size=None: None
     
     socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000, log_output=False)
