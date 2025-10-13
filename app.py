@@ -55,8 +55,7 @@ socketio = SocketIO(
     ping_timeout=60,                        # 핑 타임아웃 60초
     ping_interval=25,                       # 핑 간격 25초
     transports=['websocket', 'polling'],    # 전송 방식 설정
-    allow_upgrades=True,
-    log_output=False                        # SocketIO 출력 로그 비활성화
+    allow_upgrades=True
 )
 
 # 로봇 관리 시스템
@@ -243,7 +242,7 @@ def handle_disconnect():
         session_data = integrated_mapping.pop(sid)
         user_info = {k: v for k, v in session_data.items() if k != "assigned_robot"}
         robot_id = session_data.get("assigned_robot")
-        
+
         print(f"세션 {sid}에서 사용자 {user_info['username']} (ID: {user_info['user_id']}) 매핑 제거")
 
         # 로봇이 사용자에게 할당된 경우, 로봇 상태를 오프라인으로 변경
@@ -599,16 +598,5 @@ def handle_client_update(data):
 
 if __name__ == '__main__':
     import logging
-    import werkzeug
-    
-    # Flask 로그 레벨을 WARNING으로 설정하여 일반적인 요청 로그 숨기기
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
-    
-    # SocketIO 로그 비활성화 (이미 설정되어 있지만 확실히 하기 위해)
-    logging.getLogger('socketio').setLevel(logging.WARNING)
-    logging.getLogger('engineio').setLevel(logging.WARNING)
-    
-    # 개발 서버 경고 메시지 숨기기
-    werkzeug.serving.WSGIRequestHandler.log_request = lambda self, code, size=None: None
-    
     socketio.run(app, debug=False, host='0.0.0.0', allow_unsafe_werkzeug=True, port=5000, log_output=False)
