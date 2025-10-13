@@ -82,7 +82,15 @@ user_robot_mapping: dict[str, str] = {}
 LATEST_ROBOT_VERSION = "1.1.2"  # 최신 로봇 버전
 
 # 세션 관리 시스템
-session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
+session_user_mapping: dict[str, dict] = {}
+"""
+    "web_session_789": {
+        "user_id": 123,
+        "username": "john_doe",
+        "email": "john@example.com",
+        "role": "user"
+    }
+"""
 
 
 # 전역 변수 초기화는 더 이상 필요하지 않음 (editor_bp 제거됨)
@@ -250,10 +258,9 @@ def handle_disconnect():
 
         # 로봇이 사용자에게 할당된 경우, 로봇 상태를 오프라인으로 변경
         if robot_id in registered_robots:
-            print(f"🤖 로봇 클라이언트 연결 해제됨: {robot_id}")
-            registered_robots[robot_id]['status'] = 'offline'
-            # 세션 ID 정리
-            registered_robots[robot_id].pop('session_id', None)
+            print(f"🤖 사용자 세션에서 로봇 {robot_id} 할당 해제됨")
+            # 로봇의 session_id는 제거하지 않음 (로봇이 직접 연결 해제할 때만 제거)
+            # registered_robots[robot_id]['status'] = 'offline'  # 로봇은 여전히 연결되어 있을 수 있음
 
             # 데이터베이스에서 로봇 할당 비활성화
             from auth import deactivate_robot_assignment
@@ -281,7 +288,7 @@ def handle_execute_code(data):
         # 로봇 세션 ID 확인
         robot_session_id = registered_robots[robot_id].get('session_id')
         if not robot_session_id:
-            emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
+            emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다. 로봇이 연결되지 않았거나 재연결이 필요합니다.'})
             return
 
         socketio.emit('execute_code', {'code': code, 'session_id': sid}, room=robot_session_id)
@@ -304,7 +311,7 @@ def handle_stop_execution():
         # 로봇 세션 ID 확인
         robot_session_id = registered_robots[robot_id].get('session_id')
         if not robot_session_id:
-            emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
+            emit('execution_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다. 로봇이 연결되지 않았거나 재연결이 필요합니다.'})
             return
 
         socketio.emit('stop_execution', {'session_id': sid}, room=robot_session_id)
@@ -573,7 +580,7 @@ def handle_client_update(data):
         # 로봇 세션 ID 확인
         robot_session_id = registered_robots[robot_id].get('session_id')
         if not robot_session_id:
-            emit('update_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다.'})
+            emit('update_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없습니다. 로봇이 연결되지 않았거나 재연결이 필요합니다.'})
             return
 
         # 로봇 상태를 업데이트 중으로 변경
