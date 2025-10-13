@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editorBtn = document.getElementById('editorBtn');
     if (editorBtn) {editorBtn.addEventListener('click', redirectEditor);}
     const tutorialBtn = document.getElementById('tutorialBtn');
-    if (tutorialBtn) {tutorialBtn.addEventListener('click', redirectTutorial);}
+    if (tutorialBtn) {tutorialBtn.addEventListener('click', showTutorial);}
 
     // 설정 버튼
     const settingsBtn = document.getElementById('settingsBtn');
@@ -94,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function redirectEditor() {window.location.href = '/editor';}
-function redirectTutorial() {window.location.href = '/tutorial';}
 function handleSettings(action) {
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (action === 'show')

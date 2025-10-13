@@ -1,4 +1,6 @@
-// Tutorial Management
+// Tutorial Management (for tutorial.html only)
+// main.html에서는 인라인 JavaScript를 사용합니다.
+
 const tutorialList = {
     'editor': [
         {
