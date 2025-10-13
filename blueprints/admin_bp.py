@@ -17,14 +17,13 @@ admin_bp = Blueprint('admin_bp', __name__)
 # 전역 변수들을 import하기 위한 함수들
 def get_global_variables():
     """전역 변수들을 가져오는 함수"""
-    from app import session_user_mapping, user_robot_mapping, registered_robots, robot_heartbeats
+    from app import session_user_mapping, user_robot_mapping, registered_robots
     from auth import get_robot_name_from_db
     
     return {
         'session_user_mapping': session_user_mapping,
         'user_robot_mapping': user_robot_mapping,
         'registered_robots': registered_robots,
-        'robot_heartbeats': robot_heartbeats,
         'get_robot_name_from_db': get_robot_name_from_db
     }
 
@@ -38,7 +37,6 @@ def get_admin_status():
         session_user_mapping = globals_dict['session_user_mapping']
         user_robot_mapping = globals_dict['user_robot_mapping']
         registered_robots = globals_dict['registered_robots']
-        robot_heartbeats = globals_dict['robot_heartbeats']
         get_robot_name_from_db = globals_dict['get_robot_name_from_db']
         
         # 현재 시간
@@ -72,10 +70,10 @@ def get_admin_status():
             # 로봇 온라인 상태 확인
             is_robot_online = False
             robot_last_seen = None
-            if robot_id in robot_heartbeats:
-                last_seen = robot_heartbeats[robot_id]
+            if robot_id in registered_robots:
+                last_seen = registered_robots[robot_id].get('last_heartbeat', 0)
                 is_robot_online = (current_time - last_seen) < 30
-                robot_last_seen = datetime.fromtimestamp(last_seen).isoformat()
+                robot_last_seen = datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
 
             # 로봇 이름 가져오기
             robot_name = "Unknown"
@@ -117,7 +115,7 @@ def get_admin_status():
             # SocketIO 연결된 로봇인지 확인
             if robot_id in registered_robots:
                 robot_info = registered_robots[robot_id]
-                last_seen = robot_heartbeats.get(robot_id, 0)
+                last_seen = robot_info.get('last_heartbeat', 0)
                 is_online = (current_time - last_seen) < 30
                 hardware_enabled = robot_info.get('hardware_enabled', False)
                 last_seen_str = datetime.fromtimestamp(last_seen).isoformat() if last_seen else None

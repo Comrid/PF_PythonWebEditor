@@ -25,9 +25,6 @@ def get_user_robot_mapping():
     """사용자-로봇 매핑 딕셔너리 반환"""
     return current_app.config.get('user_robot_mapping', {})
 
-def get_robot_heartbeats():
-    """로봇 하트비트 딕셔너리 반환"""
-    return current_app.config.get('robot_heartbeats', {})
 
 def get_session_user_mapping():
     """세션-사용자 매핑 딕셔너리 반환"""
@@ -56,8 +53,7 @@ def get_robots():
             registered_robots = get_registered_robots()
             if robot_id in registered_robots:
                 robot_info = registered_robots[robot_id]
-                robot_heartbeats = get_robot_heartbeats()
-                last_seen = robot_heartbeats.get(robot_id, 0)
+                last_seen = robot_info.get('last_heartbeat', 0)
                 is_online = (current_time - last_seen) < 30  # 30초 이내에 하트비트가 있으면 온라인
                 hardware_enabled = robot_info.get("hardware_enabled", False)
                 last_seen_str = datetime.fromtimestamp(last_seen).isoformat() if last_seen else None
@@ -142,24 +138,20 @@ def register_robot():
         data = request.get_json()
         robot_id = data.get('robot_id')
         robot_name = data.get('robot_name')
-        robot_url = data.get('robot_url')
 
-        if not all([robot_id, robot_name, robot_url]):
-            return jsonify({"success": False, "error": "robot_id, robot_name, robot_url이 모두 필요합니다"}), 400
+        if not all([robot_id, robot_name]):
+            return jsonify({"success": False, "error": "robot_id, robot_name이 모두 필요합니다"}), 400
 
         # 로봇 등록
         registered_robots = get_registered_robots()
         registered_robots[robot_id] = {
             "name": robot_name,
-            "url": robot_url,
             "status": "offline",
             "last_seen": None,
             "registered_at": datetime.now().isoformat()
         }
 
-        # 하트비트 초기화
-        robot_heartbeats = get_robot_heartbeats()
-        robot_heartbeats[robot_id] = 0
+        # 하트비트는 로봇 등록 시 자동으로 초기화됨
 
         return jsonify({"success": True, "message": f"로봇 {robot_name}이 등록되었습니다"})
 
@@ -173,8 +165,6 @@ def unregister_robot(robot_id):
         registered_robots = get_registered_robots()
         if robot_id in registered_robots:
             del registered_robots[robot_id]
-            robot_heartbeats = get_robot_heartbeats()
-            robot_heartbeats.pop(robot_id, None)
 
             # 해당 로봇을 사용하는 사용자 세션 정리
             user_robot_mapping = get_user_robot_mapping()
@@ -260,9 +250,7 @@ def delete_robot(robot_id):
             del registered_robots[robot_id]
             print(f"등록된 로봇에서 {robot_id} 제거")
 
-        # 하트비트에서 제거
-        robot_heartbeats = get_robot_heartbeats()
-        robot_heartbeats.pop(robot_id, None)
+        # 하트비트는 registered_robots에서 자동으로 제거됨
 
         # 해당 로봇을 사용하는 사용자 세션 정리
         user_robot_mapping = get_user_robot_mapping()

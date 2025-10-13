@@ -19,11 +19,10 @@ from blueprints.auth_bp import auth_bp
 from auth import *
 from pathlib import Path
 
-# Database
+# DB 경로
 DB_PATH = Path(__file__).parent / "static" / "db" / "auth.db"
 
-
-
+# Flask 앱 초기화
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = token_hex(32)
 app.register_blueprint(custom_code_bp)
@@ -59,16 +58,25 @@ socketio = SocketIO(
     allow_upgrades=True
 )
 
-# 에디터 블루프린트 초기화
-# 중앙 서버 상태 관리
-gesture_states: dict[str, dict[str, dict[str, float]]] = {} # 제스처 최신 상태 저장: 세션별 → 위젯별
-pid_states: dict[str, dict[str, dict[str, float]]] = {}     # PID 최신 값 저장: 세션별 → 위젯ID별 {p,i,d}
-slider_states: dict[str, dict[str, list[float]]] = {}       # Slider 최신 값 저장: 세션별 → 위젯ID별 [values]
-
 # 로봇 관리 시스템
-registered_robots: dict[str, dict] = {}                      # 등록된 로봇 정보: robot_id → {name, url, status, last_seen}
-user_robot_mapping: dict[str, str] = {}                      # 사용자 세션 → 로봇 ID 매핑
-robot_heartbeats: dict[str, float] = {}                      # 로봇 하트비트: robot_id → timestamp
+registered_robots: dict[str, dict] = {}
+"""
+    "robot_123": {
+        "name": "tbot",                    # 로봇 이름
+        "status": "online",                # 상태: "online", "offline", "updating"
+        "hardware_enabled": True,          # 하드웨어 활성화 여부
+        "robot_version": "1.0.3",          # 로봇 버전
+        "needs_update": False,             # 업데이트 필요 여부
+        "connected_at": "2024-01-01T12:00:00",  # 연결 시간
+        "last_heartbeat": 1717334700.0,    # 마지막 하트비트 시간 (Unix timestamp)
+        "session_id": "socket_session_456"      # 로봇의 SocketIO 세션 ID
+    }
+"""
+user_robot_mapping: dict[str, str] = {}
+"""
+    "web_session_789": "robot_123",  # 웹 사용자 세션 → 로봇 ID
+    "web_session_101": "robot_456"   # 다른 웹 사용자 → 다른 로봇
+"""
 
 # 로봇 버전 관리
 LATEST_ROBOT_VERSION = "1.0.3"  # 최신 로봇 버전
@@ -82,7 +90,6 @@ session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
 app.config['user_robot_mapping'] = user_robot_mapping
-app.config['robot_heartbeats'] = robot_heartbeats
 app.config['session_user_mapping'] = session_user_mapping
 app.config['socketio'] = socketio
 
@@ -205,18 +212,10 @@ def get_active_sessions():
 
 
 
-
-
-
-
-
-
-
-
-#region 로봇 연결 관리
+#region 웹 접속 관리
 @socketio.on('connect') # 웹 > 서버
 def handle_connect():
-    print('클라이언트가 연결되었습니다.')
+    print('웹 접속 인원 발생')
 
     if current_user.is_authenticated:
         try:
@@ -226,20 +225,16 @@ def handle_connect():
                 'email': current_user.email,
                 'role': current_user.role
             }
-            print(f"세션 {request.sid}에 사용자 {current_user.username} (ID: {current_user.id}) 매핑")
-
-            # 자동 할당 비활성화 - 사용자가 직접 선택하도록 함
-            print(f"사용자 {current_user.username}의 로봇 할당은 에디터에서 직접 선택해야 합니다.")
+            print(f"세션 : {request.sid} 사용자 : {current_user.username} (ID: {current_user.id}) 매핑")
         except Exception as e:
-            print(f"사용자 로봇 매핑 오류: {e}")
+            print(f"사용자 매핑 오류: {e}")
     else:
         print(f"세션 {request.sid}에 로그인되지 않은 사용자 연결")
-
     emit('connected', {'message': '서버에 연결되었습니다.'}) # 서버 > 웹
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print('클라이언트가 연결을 해제했습니다.')
+    print('웹 접속 인원 해제')
 
     sid = request.sid
 
@@ -267,7 +262,7 @@ def handle_disconnect():
 #endregion
 
 #region 로봇 코드 실행 + 출력
-@socketio.on('execute_code') # 서버 < 웹, 서버 > 로봇
+@socketio.on('execute_code') # 웹 > 서버 > 로봇
 def handle_execute_code(data):
     try:
         code = data.get('code', '')
@@ -354,44 +349,117 @@ def handle_robot_stderr(data):
 #region 로봇 커스텀 함수 관리
 @socketio.on('gesture_update')
 def handle_gesture_update(data):
-    sid = request.sid
-    data = data.get('data')
-    if data:
-        gesture_states[sid] = data
+    """제스처 업데이트 데이터를 로봇에 직접 전달"""
+    try:
+        sid = request.sid
+        gesture_data = data.get('data')
+
+        if not gesture_data:
+            return
+
+        # 로봇 할당 확인
+        robot_id = user_robot_mapping.get(sid)
+        if not robot_id or robot_id not in registered_robots:
+            print(f"세션 {sid}: 로봇이 할당되지 않음")
+            return
+
+        # 로봇 세션 ID 확인
+        robot_session_id = registered_robots[robot_id].get('session_id')
+        if not robot_session_id:
+            print(f"로봇 {robot_id}: 세션 ID를 찾을 수 없음")
+            return
+
+        # 로봇에 직접 전달
+        socketio.emit('gesture_update', {
+            'data': gesture_data,
+            'session_id': sid
+        }, room=robot_session_id)
+
+    except Exception as e:
+        print(f"제스처 업데이트 전달 오류: {e}")
 
 @socketio.on('pid_update')
 def handle_pid_update(payload):
-    sid = request.sid
+    """PID 업데이트 데이터를 로봇에 직접 전달"""
     try:
+        sid = request.sid
+
+        # 데이터 검증
         widget_id = payload.get('widget_id')
-        p = float(payload.get('p', 0.0))
-        i = float(payload.get('i', 0.0))
-        d = float(payload.get('d', 0.0))
-    except Exception:
-        return
-    if not widget_id:
-        return
-    session_map = pid_states.get(sid)
-    if session_map is None:
-        session_map = {}
-        pid_states[sid] = session_map
-    session_map[widget_id] = {'p': p, 'i': i, 'd': d}
+        if not widget_id:
+            print(f"세션 {sid}: widget_id가 없음")
+            return
+
+        try:
+            p = float(payload.get('p', 0.0))
+            i = float(payload.get('i', 0.0))
+            d = float(payload.get('d', 0.0))
+        except (ValueError, TypeError) as e:
+            print(f"세션 {sid}: PID 값 변환 오류: {e}")
+            return
+
+        # 로봇 할당 확인
+        robot_id = user_robot_mapping.get(sid)
+        if not robot_id or robot_id not in registered_robots:
+            print(f"세션 {sid}: 로봇이 할당되지 않음")
+            return
+
+        # 로봇 세션 ID 확인
+        robot_session_id = registered_robots[robot_id].get('session_id')
+        if not robot_session_id:
+            print(f"로봇 {robot_id}: 세션 ID를 찾을 수 없음")
+            return
+
+        # 로봇에 직접 전달
+        socketio.emit('pid_update', {
+            'widget_id': widget_id,
+            'p': p,
+            'i': i,
+            'd': d,
+            'session_id': sid
+        }, room=robot_session_id)
+
+    except Exception as e:
+        print(f"PID 업데이트 전달 오류: {e}")
 
 @socketio.on('slider_update')
 def handle_slider_update(payload):
-    sid = request.sid
+    """슬라이더 업데이트 데이터를 로봇에 직접 전달"""
     try:
+        sid = request.sid
+
+        # 데이터 검증
         widget_id = payload.get('widget_id')
+        if not widget_id:
+            print(f"세션 {sid}: widget_id가 없음")
+            return
+
         values = payload.get('values')
-    except Exception:
-        return
-    if not widget_id:
-        return
-    session_map = gesture_states.get(sid)
-    if session_map is None:
-        session_map = {}
-        gesture_states[sid] = session_map
-    session_map[widget_id] = values
+        if not isinstance(values, list):
+            print(f"세션 {sid}: values가 리스트가 아님")
+            return
+
+        # 로봇 할당 확인
+        robot_id = user_robot_mapping.get(sid)
+        if not robot_id or robot_id not in registered_robots:
+            print(f"세션 {sid}: 로봇이 할당되지 않음")
+            return
+
+        # 로봇 세션 ID 확인
+        robot_session_id = registered_robots[robot_id].get('session_id')
+        if not robot_session_id:
+            print(f"로봇 {robot_id}: 세션 ID를 찾을 수 없음")
+            return
+
+        # 로봇에 직접 전달
+        socketio.emit('slider_update', {
+            'widget_id': widget_id,
+            'values': values,
+            'session_id': sid
+        }, room=robot_session_id)
+
+    except Exception as e:
+        print(f"슬라이더 업데이트 전달 오류: {e}")
 
 @socketio.on('robot_emit_image')
 def handle_robot_emit_image(data):
@@ -439,9 +507,8 @@ def handle_robot_heartbeat(data):
     try:
         robot_id = data.get('robot_id')
         if robot_id in registered_robots:
-            robot_heartbeats[robot_id] = time.time()
+            registered_robots[robot_id]['last_heartbeat'] = time.time()
             registered_robots[robot_id]['status'] = 'online'
-            registered_robots[robot_id]['last_seen'] = datetime.now().isoformat()
     except Exception as e:
         print(f"로봇 하트비트 처리 오류: {e}")
 
@@ -470,16 +537,14 @@ def handle_robot_connected(data):
 
         registered_robots[robot_id] = {
             "name": robot_name,
-            "url": None,  # SocketIO 연결이므로 URL 불필요
             "status": "online",
             "hardware_enabled": hardware_enabled,
             "robot_version": robot_version,
             "needs_update": needs_update,
             "connected_at": datetime.now().isoformat(),
+            "last_heartbeat": time.time(),
             "session_id": request.sid  # 로봇 클라이언트의 세션 ID 저장
         }
-
-        robot_heartbeats[robot_id] = time.time()
 
         emit('robot_registered', {
             'success': True,
