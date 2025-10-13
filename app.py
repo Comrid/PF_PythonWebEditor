@@ -72,27 +72,25 @@ registered_robots: dict[str, dict] = {}
         "session_id": "socket_session_456"      # 로봇의 SocketIO 세션 ID
     }
 """
-# 통합 세션 관리 시스템
-integrated_mapping: dict[str, dict] = {}
+user_robot_mapping: dict[str, str] = {}
 """
-    "socket_session_789": {
-        "user_id": 123,
-        "username": "john_doe",
-        "email": "john@example.com", 
-        "role": "user",
-        "assigned_robot": "robot_123"  # 할당된 로봇 ID (없으면 None)
-    }
+    "web_session_789": "robot_123",  # 웹 사용자 세션 → 로봇 ID
+    "web_session_101": "robot_456"   # 다른 웹 사용자 → 다른 로봇
 """
 
 # 로봇 버전 관리
 LATEST_ROBOT_VERSION = "1.1.2"  # 최신 로봇 버전
+
+# 세션 관리 시스템
+session_user_mapping: dict[str, dict] = {}                   # 세션 ID → 사용자 정보 매핑
 
 
 # 전역 변수 초기화는 더 이상 필요하지 않음 (editor_bp 제거됨)
 
 # 전역 변수들을 app.config에 저장 (blueprint에서 접근 가능하도록)
 app.config['registered_robots'] = registered_robots
-app.config['integrated_mapping'] = integrated_mapping
+app.config['user_robot_mapping'] = user_robot_mapping
+app.config['session_user_mapping'] = session_user_mapping
 app.config['socketio'] = socketio
 
 
@@ -198,9 +196,8 @@ def get_active_sessions():
         return jsonify({"error": "관리자 권한이 필요합니다"}), 403
 
     sessions = []
-    for sid, session_data in integrated_mapping.items():
-        user_info = {k: v for k, v in session_data.items() if k != "assigned_robot"}
-        robot_id = session_data.get("assigned_robot")
+    for sid, user_info in session_user_mapping.items():
+        robot_id = user_robot_mapping.get(sid)
         sessions.append({
             "session_id": sid,
             "user": user_info,
@@ -222,12 +219,11 @@ def handle_connect():
 
     if current_user.is_authenticated:
         try:
-            integrated_mapping[request.sid] = {
+            session_user_mapping[request.sid] = {
                 'user_id': current_user.id,
                 'username': current_user.username,
                 'email': current_user.email,
-                'role': current_user.role,
-                'assigned_robot': None  # 초기에는 로봇 할당 없음
+                'role': current_user.role
             }
             print(f"세션 : {request.sid} 사용자 : {current_user.username} (ID: {current_user.id}) 매핑")
         except Exception as e:
@@ -242,14 +238,15 @@ def handle_disconnect():
 
     sid = request.sid
 
-    # 통합 세션 매핑 정리
-    if sid in integrated_mapping:
-        session_data = integrated_mapping.pop(sid)
-        user_info = {k: v for k, v in session_data.items() if k != "assigned_robot"}
-        robot_id = session_data.get("assigned_robot")
+    # 세션-사용자 매핑 정리
+    if sid in session_user_mapping:
+        user_info = session_user_mapping.pop(sid)
         print(f"세션 {sid}에서 사용자 {user_info['username']} (ID: {user_info['user_id']}) 매핑 제거")
-        if robot_id:
-            print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
+
+    # 세션-로봇 매핑 정리
+    if sid in user_robot_mapping:
+        robot_id = user_robot_mapping.pop(sid)
+        print(f"세션 {sid}에서 로봇 {robot_id} 매핑 제거")
 
         # 로봇이 사용자에게 할당된 경우, 로봇 상태를 오프라인으로 변경
         if robot_id in registered_robots:
@@ -264,22 +261,6 @@ def handle_disconnect():
             print(f"데이터베이스에서 로봇 {robot_id} 할당 비활성화")
 #endregion
 
-#region 로봇 할당 관리
-def assign_robot_to_session(session_id, robot_id):
-    """세션에 로봇 할당"""
-    if session_id in integrated_mapping:
-        integrated_mapping[session_id]['assigned_robot'] = robot_id
-        return True
-    return False
-
-def unassign_robot_from_session(session_id):
-    """세션에서 로봇 할당 해제"""
-    if session_id in integrated_mapping:
-        integrated_mapping[session_id]['assigned_robot'] = None
-        return True
-    return False
-#endregion
-
 #region 로봇 코드 실행 + 출력
 @socketio.on('execute_code') # 웹 > 서버 > 로봇
 def handle_execute_code(data):
@@ -292,8 +273,7 @@ def handle_execute_code(data):
         sid = request.sid
 
         # 로봇 할당 확인
-        session_data = integrated_mapping.get(sid, {})
-        robot_id = session_data.get("assigned_robot")
+        robot_id = user_robot_mapping.get(sid)
         if not robot_id or robot_id not in registered_robots:
             emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
             return
@@ -316,8 +296,7 @@ def handle_stop_execution():
         sid = request.sid
 
         # 로봇 할당 확인
-        session_data = integrated_mapping.get(sid, {})
-        robot_id = session_data.get("assigned_robot")
+        robot_id = user_robot_mapping.get(sid)
         if not robot_id or robot_id not in registered_robots:
             emit('execution_error', {'error': '로봇이 할당되지 않았습니다. 먼저 로봇을 선택하세요.'})
             return
@@ -379,8 +358,7 @@ def handle_gesture_update(data):
             return
 
         # 로봇 할당 확인
-        session_data = integrated_mapping.get(sid, {})
-        robot_id = session_data.get("assigned_robot")
+        robot_id = user_robot_mapping.get(sid)
         if not robot_id or robot_id not in registered_robots:
             print(f"세션 {sid}: 로봇이 할당되지 않음")
             return
@@ -421,8 +399,7 @@ def handle_pid_update(payload):
             return
 
         # 로봇 할당 확인
-        session_data = integrated_mapping.get(sid, {})
-        robot_id = session_data.get("assigned_robot")
+        robot_id = user_robot_mapping.get(sid)
         if not robot_id or robot_id not in registered_robots:
             print(f"세션 {sid}: 로봇이 할당되지 않음")
             return
@@ -463,8 +440,7 @@ def handle_slider_update(payload):
             return
 
         # 로봇 할당 확인
-        session_data = integrated_mapping.get(sid, {})
-        robot_id = session_data.get("assigned_robot")
+        robot_id = user_robot_mapping.get(sid)
         if not robot_id or robot_id not in registered_robots:
             print(f"세션 {sid}: 로봇이 할당되지 않음")
             return

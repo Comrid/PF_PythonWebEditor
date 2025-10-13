@@ -17,11 +17,12 @@ admin_bp = Blueprint('admin_bp', __name__)
 # 전역 변수들을 import하기 위한 함수들
 def get_global_variables():
     """전역 변수들을 가져오는 함수"""
-    from app import integrated_mapping, registered_robots
+    from app import session_user_mapping, user_robot_mapping, registered_robots
     from auth import get_robot_name_from_db
     
     return {
-        'integrated_mapping': integrated_mapping,
+        'session_user_mapping': session_user_mapping,
+        'user_robot_mapping': user_robot_mapping,
         'registered_robots': registered_robots,
         'get_robot_name_from_db': get_robot_name_from_db
     }
@@ -33,7 +34,8 @@ def get_admin_status():
     try:
         # 전역 변수들 가져오기
         globals_dict = get_global_variables()
-        integrated_mapping = globals_dict['integrated_mapping']
+        session_user_mapping = globals_dict['session_user_mapping']
+        user_robot_mapping = globals_dict['user_robot_mapping']
         registered_robots = globals_dict['registered_robots']
         get_robot_name_from_db = globals_dict['get_robot_name_from_db']
         
@@ -42,9 +44,8 @@ def get_admin_status():
 
         # 활성 세션 정보
         active_sessions = []
-        for sid, session_data in integrated_mapping.items():
-            user_info = {k: v for k, v in session_data.items() if k != "assigned_robot"}
-            robot_id = session_data.get("assigned_robot")
+        for sid, user_info in session_user_mapping.items():
+            robot_id = user_robot_mapping.get(sid)
 
             # SocketIO 세션에 할당된 로봇이 없으면 데이터베이스에서 확인
             if not robot_id:
@@ -130,9 +131,8 @@ def get_admin_status():
             assigned_users = []
 
             # 1. SocketIO 연결된 세션에서 할당된 사용자 찾기
-            for sid, session_data in integrated_mapping.items():
-                if session_data.get("assigned_robot") == robot_id:
-                    user_info = {k: v for k, v in session_data.items() if k != "assigned_robot"}
+            for sid, user_info in session_user_mapping.items():
+                if user_robot_mapping.get(sid) == robot_id:
                     assigned_users.append(user_info)
 
             # 2. 데이터베이스에서 할당된 사용자 찾기 (SocketIO 연결되지 않은 사용자 포함)
@@ -210,7 +210,7 @@ def get_admin_status():
             "registered_robots": registered_robots_info,
             "db_users": db_users,
             "stats": {
-                "total_sessions": len(integrated_mapping),
+                "total_sessions": len(session_user_mapping),
                 "total_robots": len(registered_robots_info),
                 "online_robots": len([r for r in registered_robots_info if r['online']]),
                 "total_db_users": len(db_users)

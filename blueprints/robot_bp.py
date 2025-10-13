@@ -21,9 +21,14 @@ def get_registered_robots():
     """등록된 로봇 딕셔너리 반환"""
     return current_app.config.get('registered_robots', {})
 
-def get_integrated_mapping():
-    """통합 세션 매핑 딕셔너리 반환"""
-    return current_app.config.get('integrated_mapping', {})
+def get_user_robot_mapping():
+    """사용자-로봇 매핑 딕셔너리 반환"""
+    return current_app.config.get('user_robot_mapping', {})
+
+
+def get_session_user_mapping():
+    """세션-사용자 매핑 딕셔너리 반환"""
+    return current_app.config.get('session_user_mapping', {})
 
 def get_socketio():
     """SocketIO 인스턴스 반환"""
@@ -162,10 +167,10 @@ def unregister_robot(robot_id):
             del registered_robots[robot_id]
 
             # 해당 로봇을 사용하는 사용자 세션 정리
-            integrated_mapping = get_integrated_mapping()
-            for sid, session_data in integrated_mapping.items():
-                if session_data.get('assigned_robot') == robot_id:
-                    session_data['assigned_robot'] = None
+            user_robot_mapping = get_user_robot_mapping()
+            sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
+            for sid in sessions_to_remove:
+                user_robot_mapping.pop(sid, None)
 
             return jsonify({"success": True, "message": f"로봇 {robot_id}이 등록 해제되었습니다"})
         else:
@@ -195,12 +200,13 @@ def assign_robot_to_session(robot_id):
         if assign_robot_to_user(current_user.id, robot_id):
             # HTTP 요청에서는 세션 ID를 직접 가져올 수 없으므로,
             # 사용자의 모든 활성 세션에 로봇 할당
-            integrated_mapping = get_integrated_mapping()
-            user_sessions = [sid for sid, session_data in integrated_mapping.items()
-                           if session_data.get('user_id') == current_user.id]
+            session_user_mapping = get_session_user_mapping()
+            user_robot_mapping = get_user_robot_mapping()
+            user_sessions = [sid for sid, user_info in session_user_mapping.items()
+                           if user_info.get('user_id') == current_user.id]
 
             for sid in user_sessions:
-                integrated_mapping[sid]['assigned_robot'] = robot_id
+                user_robot_mapping[sid] = robot_id
                 print(f"사용자 {current_user.username}의 세션 {sid}에 로봇 {robot_id} 할당")
 
             # 로봇 이름 가져오기
@@ -247,10 +253,10 @@ def delete_robot(robot_id):
         # 하트비트는 registered_robots에서 자동으로 제거됨
 
         # 해당 로봇을 사용하는 사용자 세션 정리
-        integrated_mapping = get_integrated_mapping()
-        for sid, session_data in integrated_mapping.items():
-            if session_data.get('assigned_robot') == robot_id:
-                session_data['assigned_robot'] = None
+        user_robot_mapping = get_user_robot_mapping()
+        sessions_to_remove = [sid for sid, rid in user_robot_mapping.items() if rid == robot_id]
+        for sid in sessions_to_remove:
+            user_robot_mapping.pop(sid, None)
             print(f"사용자 세션 {sid}에서 로봇 {robot_id} 할당 해제")
 
         # 데이터베이스에서 로봇 할당 정보 삭제
