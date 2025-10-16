@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    
+
 
     const robotSelect = document.getElementById('robotSelect');
-    
-    const assignRobotBtn = document.getElementById('assignRobotBtn');
 
+    const assignRobotBtn = document.getElementById('assignRobotBtn');
+    if (assignRobotBtn) {assignRobotBtn.addEventListener('click', assignRobot);}
 
 
     const connectRobotBtn = document.getElementById('connectRobotBtn');
@@ -67,15 +67,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    
+
     if (robotSelect) {
         robotSelect.addEventListener('change', handleRobotSelection);
     }
-    
-    if (assignRobotBtn) {
-        assignRobotBtn.addEventListener('click', assignRobot);
-    }
-    
+
+
+
     if (robotNameInput) {
         robotNameInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {connectRobot();}
@@ -377,7 +375,7 @@ async function refreshRobotStatus() {
 async function connectRobot() {
     const robotNameInput = document.getElementById('robotNameInput');
     const robotName = robotNameInput.value.trim();
-    
+
     if (!robotName) {
         showConnectStatus('로봇 이름을 입력해주세요.', 'error');
         showToast('로봇 이름을 입력해주세요.', 'error');
@@ -403,13 +401,13 @@ async function connectRobot() {
         if (response.ok) {
             showConnectStatus(result.message, 'success');
             showToast(result.message, 'success');
-            
+
             // 팝오버 닫기
             const robotConnectPopover = document.getElementById('robotConnectPopover');
             if (robotConnectPopover) {
                 robotConnectPopover.style.display = 'none';
             }
-            
+
             // 연동 완료 후 로봇 목록 새로고침
             setTimeout(async () => {
                 await loadRobotList();

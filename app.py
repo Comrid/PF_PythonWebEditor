@@ -594,6 +594,14 @@ def handle_client_update(data):
     except Exception as e:
         print(f"로봇 업데이트 및 재시작 처리 오류: {e}")
         emit('update_error', {'error': f'업데이트 처리 중 오류가 발생했습니다: {str(e)}'})
+
+@socketio.on('client_reset')
+def handle_client_reset():
+    try:
+        socketio.emit('client_reset', {}, room=request.sid)
+    except Exception as e:
+        print(f"로봇 재설정 처리 오류: {e}")
+        emit('reset_error', {'error': f'재설정 처리 중 오류가 발생했습니다: {str(e)}'})
 #endregion
 
 if __name__ == '__main__':

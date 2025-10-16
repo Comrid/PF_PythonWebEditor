@@ -686,7 +686,7 @@
                                 <span id="statusText">로봇을 선택하세요</span>
                             </div>
                         </div>
-                        
+
                         <!-- 로봇 정보 표시 (선택 시) -->
                         <div class="robot-info" id="robotInfo" style="display: none;">
                             <div class="robot-name" id="selectedRobotName"></div>
@@ -695,8 +695,8 @@
                                 <button class="btn btn-warning" id="updateRobotBtn">
                                     <i class="fas fa-download"></i> 업데이트
                                 </button>
-                                <button class="btn btn-info" id="restartRobotBtn">
-                                    <i class="fas fa-redo"></i> 초기화
+                                <button class="btn btn-info" id="resetRobotBtn">
+                                    <i class="fas fa-redo"></i> 기기 초기화
                                 </button>
                             </div>
                         </div>
@@ -796,7 +796,7 @@
 
     <!-- SocketIO -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    
+
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/util.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/challenge.js') }}" defer></script>
@@ -809,7 +809,7 @@
         try {
             socket = io();
             console.log('SocketIO 연결 초기화됨');
-            
+
             // 업데이트 응답 처리
             socket.on('update_started', function(data) {
                 console.log('업데이트 시작:', data.message);
@@ -819,7 +819,7 @@
                     alert(data.message);
                 }
             });
-            
+
             socket.on('update_error', function(data) {
                 console.error('업데이트 오류:', data.error);
                 if (typeof showToast === 'function') {
@@ -828,7 +828,7 @@
                     alert('업데이트 오류: ' + data.error);
                 }
             });
-            
+
             // 로봇 출력 메시지 처리 (Toast로 표시)
             socket.on('robot_stdout', function(data) {
                 console.log('로봇 출력:', data.output);
@@ -836,14 +836,14 @@
                     showToast(data.output, 'success');
                 }
             });
-            
+
             socket.on('robot_stderr', function(data) {
                 console.error('로봇 오류:', data.output);
                 if (typeof showToast === 'function') {
                     showToast(data.output, 'error');
                 }
             });
-            
+
         } catch (error) {
             console.error('SocketIO 연결 실패:', error);
         }
@@ -958,7 +958,7 @@
                         completed_at: new Date().toISOString()
                     })
                 });
-                
+
                 if (response.ok) {
                     if (completed) {
                         tutorialProgress[tutorialId] = {
@@ -1038,7 +1038,7 @@
                 { id: 'findee', title: 'Findee 사용하기', icon: 'fas fa-robot' },
                 { id: 'advanced', title: '고급 기능', icon: 'fas fa-rocket' }
             ];
-            
+
             const tabsContainer = document.getElementById('tutorialTabs');
             tabsContainer.innerHTML = tabList.map(tab => `
                 <button class="tutorial-tab ${tab.id === currentTab ? 'active' : ''}" data-tab="${tab.id}">
@@ -1056,7 +1056,7 @@
 
             const items = tutorialList[currentTab] || [];
             const tutorialListElement = document.getElementById('tutorialList');
-            
+
             tutorialListElement.innerHTML = items.map(item => {
                 const isCompleted = tutorialProgress[item.id] && tutorialProgress[item.id].completed;
                 return `
@@ -1114,13 +1114,13 @@
 
         function switchTab(tabId) {
             currentTab = tabId;
-            
+
             // 탭 활성화 상태 변경
             const tabButtons = document.querySelectorAll('.tutorial-tab');
             tabButtons.forEach(tab => {
                 tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
             });
-            
+
             // 튜토리얼 목록 업데이트
             updateTutorialList();
             bindTutorialItemEvents();
@@ -1144,7 +1144,7 @@
                 ...tutorialList.findee,
                 ...tutorialList.advanced
             ];
-            
+
             const tutorial = allTutorials.find(t => t.id === tutorialId);
             if (tutorial) {
                 showToast(`"${tutorial.title}" 튜토리얼을 완료했습니다!`, 'success');
@@ -1164,18 +1164,18 @@
                 userInfoTrigger.addEventListener('click', function(event) {
                     event.stopPropagation();
                     const robotPopover = document.getElementById('robotConnectPopover');
-                    
+
                     // 사용자 팝오버 토글
                     const isVisible = userInfoPopover.style.display === 'block';
                     userInfoPopover.style.display = isVisible ? 'none' : 'block';
-                    
+
                     // 위치 계산 (사용자 정보 버튼 기준)
                     if (userInfoPopover.style.display === 'block') {
                         const rect = userInfoTrigger.getBoundingClientRect();
                         userInfoPopover.style.top = (rect.bottom + 10) + 'px';
                         userInfoPopover.style.right = (window.innerWidth - rect.right) + 'px';
                     }
-                    
+
                     // 로봇 팝오버 닫기
                     if (robotPopover) robotPopover.style.display = 'none';
                 });
@@ -1204,18 +1204,18 @@
                 robotConnectTrigger.addEventListener('click', function(event) {
                     event.stopPropagation();
                     const userPopover = document.getElementById('userInfoPopover');
-                    
+
                     // 로봇 팝오버 토글
                     const isVisible = robotConnectPopover.style.display === 'block';
                     robotConnectPopover.style.display = isVisible ? 'none' : 'block';
-                    
+
                     // 위치 계산 (로봇 연동 버튼 기준)
                     if (robotConnectPopover.style.display === 'block') {
                         const rect = robotConnectTrigger.getBoundingClientRect();
                         robotConnectPopover.style.top = (rect.bottom + 10) + 'px';
                         robotConnectPopover.style.left = rect.left + 'px';
                     }
-                    
+
                     // 사용자 팝오버 닫기
                     if (userPopover) userPopover.style.display = 'none';
                 });
@@ -1233,11 +1233,11 @@
                 const userTrigger = document.getElementById('userInfoTrigger');
                 const robotPopover = document.getElementById('robotConnectPopover');
                 const robotTrigger = document.getElementById('robotConnectTrigger');
-                
+
                 if (userPopover && userTrigger && !userPopover.contains(event.target) && !userTrigger.contains(event.target)) {
                     userPopover.style.display = 'none';
                 }
-                
+
                 if (robotPopover && robotTrigger && !robotPopover.contains(event.target) && !robotTrigger.contains(event.target)) {
                     robotPopover.style.display = 'none';
                 }
@@ -1252,6 +1252,26 @@
                         // SocketIO를 통해 업데이트 요청
                         if (typeof socket !== 'undefined' && socket) {
                             socket.emit('client_update', {
+                                robot_id: selectedRobot.robot_id
+                            });
+                        } else {
+                            console.error('SocketIO 연결이 없습니다.');
+                            alert('서버 연결이 없습니다. 페이지를 새로고침해주세요.');
+                        }
+                    } else {
+                        alert('로봇을 먼저 선택해주세요.');
+                    }
+                });
+            }
+
+            // 로봇 기기 초기화 버튼 이벤트
+            const resetRobotBtn = document.getElementById('resetRobotBtn');
+            if (resetRobotBtn) {
+                resetRobotBtn.addEventListener('click', function() {
+                    if (selectedRobot && selectedRobot.robot_id) {
+                        // SocketIO를 통해 업데이트 요청
+                        if (typeof socket !== 'undefined' && socket) {
+                            socket.emit('client_reset', {
                                 robot_id: selectedRobot.robot_id
                             });
                         } else {
