@@ -596,9 +596,24 @@ def handle_client_update(data):
         emit('update_error', {'error': f'업데이트 처리 중 오류가 발생했습니다: {str(e)}'})
 
 @socketio.on('client_reset')
-def handle_client_reset():
+def handle_client_reset(data):
     try:
-        socketio.emit('client_reset', {}, room=request.sid)
+        robot_id = data.get('robot_id')
+        if not robot_id or robot_id not in registered_robots:
+            emit('reset_error', {'error': '로봇이 등록되지 않았습니다.'})
+            return
+
+        # 로봇 세션 ID 확인
+        robot_session_id = registered_robots[robot_id].get('session_id')
+        if not robot_session_id:
+            emit('reset_error', {'error': '로봇 클라이언트의 세션 ID를 찾을 수 없음. 로봇이 연결되지 않았거나 재연결이 필요합니다.'})
+            return
+
+        # 로봇 클라이언트로 기기 초기화 명령 전달
+        socketio.emit('client_reset', {}, room=robot_session_id)
+
+        print(f"🤖 로봇 {robot_id}에 기기 초기화 명령 전달 완료")
+
     except Exception as e:
         print(f"로봇 재설정 처리 오류: {e}")
         emit('reset_error', {'error': f'재설정 처리 중 오류가 발생했습니다: {str(e)}'})

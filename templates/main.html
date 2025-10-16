@@ -1268,8 +1268,8 @@
             const resetRobotBtn = document.getElementById('resetRobotBtn');
             if (resetRobotBtn) {
                 resetRobotBtn.addEventListener('click', function() {
-                    if (selectedRobot && selectedRobot.robot_id) {
-                        // SocketIO를 통해 업데이트 요청
+                    if(selectedRobot && selectedRobot.robot_id) {
+                        // SocketIO를 통해 기기 초기화 요청
                         if (typeof socket !== 'undefined' && socket) {
                             socket.emit('client_reset', {
                                 robot_id: selectedRobot.robot_id
